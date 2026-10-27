@@ -1,0 +1,36 @@
+{
+    "name": "greywarden/greywarden",
+    "description": "Greywarden - self-hosted security management (risks, controls, decisions, incidents, devices, threat intel)",
+    "type": "project",
+    "license": "Apache-2.0",
+    "minimum-stability": "stable",
+    "require": {
+        "php": ">=8.3",
+        "dompdf/dompdf": "^3.1",
+        "npm-asset/bootstrap-icons": "^1.11",
+        "npm-asset/chart.js": "^4.4",
+        "yiisoft/yii2": "~2.0.51",
+        "yiisoft/yii2-bootstrap5": "^2.0.4"
+    },
+    "require-dev": {
+        "yiisoft/yii2-debug": "^2.1.25",
+        "yiisoft/yii2-gii": "^2.2.6",
+        "phpunit/phpunit": "^11.0"
+    },
+    "config": {
+        "process-timeout": 1800,
+        "sort-packages": true,
+        "allow-plugins": {
+            "yiisoft/yii2-composer": true
+        }
+    },
+    "scripts": {
+        "test": "phpunit"
+    },
+    "repositories": [
+        {
+            "type": "composer",
+            "url": "https://asset-packagist.org"
+        }
+    ]
+}

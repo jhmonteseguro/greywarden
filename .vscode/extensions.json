@@ -1,0 +1,10 @@
+{
+  "recommendations": [
+    "bmewburn.vscode-intelephense-client",
+    "ms-azuretools.vscode-docker",
+    "editorconfig.editorconfig",
+    "xdebug.php-debug",
+    "mtxr.sqltools",
+    "mtxr.sqltools-driver-mysql"
+  ]
+}

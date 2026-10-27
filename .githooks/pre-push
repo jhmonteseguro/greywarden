@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# ---------------------------------------------------------------------------
+# Before anything is pushed: every new commit passes scripts/leak-check.sh
+# (files and message). Pushing to the public release repository (a remote
+# URL containing jhmonteseguro/greywarden, or the pattern in `git config
+# greywarden.signedRemote`) also needs a valid PGP signature on every new
+# commit and on every tag.
+# ---------------------------------------------------------------------------
+set -euo pipefail
+REMOTE=$1 URL=$2
+CHECK="$(git rev-parse --show-toplevel)/scripts/leak-check.sh"
+SIGNED_PATTERN=$(git config --get greywarden.signedRemote || echo jhmonteseguro/greywarden)
+SIGNED=0; [[ "$URL" == *"$SIGNED_PATTERN"* ]] && SIGNED=1
+
+FAILED=0
+while read -r local_ref local_sha remote_ref remote_sha; do
+    [[ "$local_sha" =~ ^0+$ ]] && continue                    # deleting a remote ref
+    if [[ "$remote_ref" == refs/tags/* ]] && [ "$(git cat-file -t "$local_sha")" != commit ]; then
+        if [ "$SIGNED" = 1 ] && ! git verify-tag "$local_sha" >/dev/null 2>&1; then
+            echo "pre-push: tag ${remote_ref#refs/tags/} has no valid PGP signature (git tag -s)" >&2; FAILED=1
+        fi
+        local_sha=$(git rev-parse "$local_sha^{commit}")
+    elif [[ "$remote_ref" == refs/tags/* ]] && [ "$SIGNED" = 1 ]; then
+        echo "pre-push: tag ${remote_ref#refs/tags/} is not a signed annotated tag (git tag -s)" >&2; FAILED=1
+    fi
+    # The commits the remote does not have yet
+    if [[ "$remote_sha" =~ ^0+$ ]] || ! git cat-file -e "$remote_sha^{commit}" 2>/dev/null; then
+        RANGE=("$local_sha" --not --remotes="$REMOTE")
+    else
+        RANGE=("$remote_sha..$local_sha")
+    fi
+    for commit in $(git rev-list "${RANGE[@]}"); do
+        "$CHECK" --tree "$commit" || FAILED=1
+        "$CHECK" --log "$commit^!" || FAILED=1
+        if [ "$SIGNED" = 1 ] && ! git verify-commit "$commit" >/dev/null 2>&1; then
+            echo "pre-push: commit $(git rev-parse --short "$commit") has no valid PGP signature (git commit -S)" >&2; FAILED=1
+        fi
+    done
+done
+[ "$FAILED" = 0 ] || { echo "pre-push: nothing was pushed" >&2; exit 1; }

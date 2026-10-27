@@ -1,0 +1,128 @@
+<?php
+
+namespace app\modules\intel\components;
+
+use RuntimeException;
+
+/**
+ * Pushes blocklist entries to a Cloudflare WAF custom rule at the edge.
+ *
+ * The rule (CLOUDFLARE_RULE_NAME, default "Block Bad Actors") must already exist
+ * in the zone's custom rules. Each entry becomes one OR-ed condition in it:
+ *
+ *   ... or (ip.src eq 203.0.113.7) or (ip.src in {198.51.100.0/24}) or (ip.src.asnum eq 64496)
+ *
+ * Only the exact condition Greywarden added is ever removed, so hand-written
+ * parts of the expression are left alone.
+ *
+ * .env: CLOUDFLARE_API_TOKEN (Zone > Zone WAF > Edit), CLOUDFLARE_ZONE_ID.
+ */
+class Cloudflare
+{
+    public const API = 'https://api.cloudflare.com/client/v4';
+    public const PHASE = 'http_request_firewall_custom';
+    /** Rule fields sent back on PATCH (the API replaces the whole definition) */
+    private const RULE_FIELDS = ['action', 'action_parameters', 'description', 'enabled', 'expression', 'logging', 'ref'];
+
+    public static function isConfigured(): bool
+    {
+        return gw_env('CLOUDFLARE_API_TOKEN') && gw_env('CLOUDFLARE_ZONE_ID');
+    }
+
+    public static function ruleName(): string
+    {
+        return gw_env('CLOUDFLARE_RULE_NAME') ?: 'Block Bad Actors';
+    }
+
+    /** Rule-language condition for a blocklist value (ip | cidr | asn, as normalised by BlocklistEntry) */
+    public static function clause(string $type, string $value): string
+    {
+        return match ($type) {
+            'asn' => sprintf('(ip.src.asnum eq %d)', (int) preg_replace('/^AS/i', '', $value)),
+            'cidr' => sprintf('(ip.src in {%s})', $value),
+            default => sprintf('(ip.src eq %s)', $value),
+        };
+    }
+
+    /**
+     * Swap one condition in the rule for another in a single update; either may be null
+     * (add: null → clause, remove: clause → null).
+     *
+     * @return array{changed: bool, enabled: bool} whether the rule was updated, and whether it is enabled in Cloudflare
+     * @throws RuntimeException with a message fit for the user
+     */
+    public static function replace(?string $remove, ?string $add): array
+    {
+        if ($remove === $add) {
+            return ['changed' => false, 'enabled' => true];
+        }
+        if (!self::isConfigured()) {
+            throw new RuntimeException('Cloudflare is not configured (set CLOUDFLARE_API_TOKEN and CLOUDFLARE_ZONE_ID in .env).');
+        }
+        $zone = rawurlencode((string) gw_env('CLOUDFLARE_ZONE_ID'));
+        $ruleset = self::call('GET', "/zones/$zone/rulesets/phases/" . self::PHASE . '/entrypoint');
+        $matches = array_values(array_filter($ruleset['rules'] ?? [], static fn(array $r) => trim($r['description'] ?? '') === self::ruleName()));
+        if (count($matches) !== 1) {
+            throw new RuntimeException(sprintf(
+                $matches ? 'There are %2$d custom rules named "%1$s" in Cloudflare; rename all but one.' : 'No custom rule named "%s" was found in the Cloudflare zone. Create it first (WAF › Custom rules).',
+                self::ruleName(),
+                count($matches)
+            ));
+        }
+        $rule = $matches[0];
+        $expression = trim((string) $rule['expression']);
+        $updated = $expression;
+        if ($remove !== null) {
+            $updated = self::without($updated, $remove);
+        }
+        if ($add !== null && !str_contains($updated, $add)) {
+            $updated .= ' or ' . $add;
+        }
+        $enabled = (bool) ($rule['enabled'] ?? true);
+        if ($updated === $expression) {
+            return ['changed' => false, 'enabled' => $enabled];
+        }
+        $body = array_intersect_key($rule, array_flip(self::RULE_FIELDS));
+        $body['expression'] = $updated;
+        self::call('PATCH', "/zones/$zone/rulesets/" . rawurlencode($ruleset['id']) . '/rules/' . rawurlencode($rule['id']), $body);
+        return ['changed' => true, 'enabled' => $enabled];
+    }
+
+    /** The expression without one OR-ed condition (unchanged if it is not there) */
+    public static function without(string $expression, string $clause): string
+    {
+        $quoted = preg_quote($clause, '/');
+        foreach (["/\\s+or\\s+$quoted/", "/^$quoted\\s+or\\s+/"] as $pattern) {
+            $result = preg_replace($pattern, '', $expression, 1, $count);
+            if ($count) {
+                return $result;
+            }
+        }
+        if ($expression === $clause) {
+            throw new RuntimeException(sprintf('It is the only condition in the Cloudflare rule "%s", and a rule cannot be empty. Edit or disable the rule in Cloudflare instead.', self::ruleName()));
+        }
+        if (str_contains($expression, $clause)) {
+            throw new RuntimeException(sprintf('%s is not an OR-ed condition in the Cloudflare rule "%s" (the rule was edited by hand), so it cannot be removed automatically. Remove it in Cloudflare.', $clause, self::ruleName()));
+        }
+        // Already removed in Cloudflare
+        return $expression;
+    }
+
+    /** @throws RuntimeException */
+    private static function call(string $method, string $path, ?array $body = null): array
+    {
+        $response = Http::fetchAll(['cf' => [
+            'url' => self::API . $path,
+            'method' => $method,
+            'headers' => ['Authorization: Bearer ' . gw_env('CLOUDFLARE_API_TOKEN'), 'Content-Type: application/json'],
+            'body' => $body !== null ? json_encode($body, JSON_UNESCAPED_SLASHES) : null,
+            'timeout' => 15,
+        ]])['cf'];
+        $data = Http::json($response);
+        if (($data['success'] ?? false) === true && is_array($data['result'] ?? null)) {
+            return $data['result'];
+        }
+        $errors = array_map(static fn(array $e) => trim(($e['message'] ?? '') . (isset($e['code']) ? ' (' . $e['code'] . ')' : '')), $data['errors'] ?? []);
+        throw new RuntimeException('Cloudflare: ' . ($errors ? implode('; ', $errors) : Http::errorText($response)));
+    }
+}

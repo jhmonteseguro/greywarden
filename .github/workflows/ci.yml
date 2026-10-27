@@ -1,0 +1,68 @@
+# Every push and pull request: all test suites in the development stack, a
+# secret scan of the whole history, and a build of the production images.
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: Tests (leak check, PHPUnit, smoke)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure the development stack
+        run: |
+          cp .env.example .env
+          sed -i -e "s/^APP_UID=.*/APP_UID=$(id -u)/" -e "s/^APP_GID=.*/APP_GID=$(id -g)/" .env
+
+      - name: Start the stack
+        run: scripts/up.sh
+
+      - name: Run all test suites
+        run: scripts/run-all-tests.sh
+
+      - name: Container logs
+        if: failure()
+        run: docker compose logs --tail=200
+
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: gitleaks (every commit)
+        run: >
+          docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/repo:ro"
+          ghcr.io/gitleaks/gitleaks:v8.21.2 git /repo --no-banner --redact --verbose
+
+      - name: Commit messages
+        run: scripts/leak-check.sh --log HEAD
+
+  production-image:
+    name: Production images
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build
+        run: |
+          cp .env.example .env
+          docker compose -f docker-compose.yml -f docker-compose.prod.yml build --pull

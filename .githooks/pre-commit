@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# Refuse a commit that would add private files, denylisted terms or .env secrets
+exec "$(git rev-parse --show-toplevel)/scripts/leak-check.sh"

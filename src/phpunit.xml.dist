@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Run with `make test` (creates + migrates the test database first) or scripts/run-all-tests.sh. -->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="tests/bootstrap.php"
+         colors="true"
+         cacheDirectory="runtime/phpunit-cache"
+         displayDetailsOnTestsThatTriggerWarnings="true"
+         displayDetailsOnTestsThatTriggerDeprecations="true"
+         failOnWarning="true">
+    <testsuites>
+        <testsuite name="unit">
+            <directory>tests/unit</directory>
+        </testsuite>
+        <!-- In-process HTTP: controllers, RBAC, views and widgets (tests/FunctionalTestCase.php) -->
+        <testsuite name="functional">
+            <directory>tests/functional</directory>
+        </testsuite>
+    </testsuites>
+    <source>
+        <include>
+            <directory>helpers</directory>
+            <directory>components</directory>
+            <directory>behaviors</directory>
+            <directory>models</directory>
+            <directory>modules</directory>
+            <directory>controllers</directory>
+            <directory>commands</directory>
+            <directory>widgets</directory>
+        </include>
+        <exclude>
+            <directory>components/views</directory>
+            <directory>modules/admin/views</directory>
+            <directory>modules/attack/views</directory>
+            <directory>modules/control/views</directory>
+            <directory>modules/dashboard/views</directory>
+            <directory>modules/decision/views</directory>
+            <directory>modules/incident/views</directory>
+            <directory>modules/intel/views</directory>
+            <directory>modules/inventory/views</directory>
+            <directory>modules/risk/views</directory>
+        </exclude>
+    </source>
+</phpunit>

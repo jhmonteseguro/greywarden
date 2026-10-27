@@ -1,0 +1,38 @@
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+
+# Real data: database dumps and uploaded files never belong in the repository
+backups/
+storage/
+*.sql
+*.sql.gz
+*.dump
+
+# Dependencies, caches and generated files
+src/vendor/
+src/runtime/*
+!src/runtime/.gitignore
+src/web/assets/*
+!src/web/assets/.gitignore
+src/.phpunit.cache/
+
+# AI coding-assistant instructions and state are personal, not project files
+CLAUDE.md
+CLAUDE.local.md
+.claude/
+AGENTS.md
+GEMINI.md
+.gemini/
+.cursor/
+.cursorrules
+.windsurfrules
+.aider*
+.github/copilot-instructions.md
+
+# Editor and OS clutter
+.idea/
+*.swp
+*~
+.DS_Store

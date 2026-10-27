@@ -1,0 +1,40 @@
+{
+  "php.validate.enable": false,
+  "php.suggest.basic": false,
+  "intelephense.environment.phpVersion": "8.3.0",
+  "intelephense.files.exclude": [
+    "**/.git/**",
+    "**/node_modules/**",
+    "**/src/runtime/**",
+    "**/src/web/assets/**",
+    "**/vendor/**/{Tests,tests}/**"
+  ],
+  "files.exclude": {
+    "src/web/assets/*/": true
+  },
+  "search.exclude": {
+    "src/vendor": true,
+    "src/runtime": true,
+    "src/web/assets": true
+  },
+  "files.associations": {
+    "*.php": "php",
+    ".env*": "dotenv"
+  },
+  "editor.rulers": [120],
+  "[php]": {
+    "editor.defaultFormatter": "bmewburn.vscode-intelephense-client",
+    "editor.formatOnSave": false
+  },
+  "sqltools.connections": [
+    {
+      "name": "Greywarden (docker)",
+      "driver": "MariaDB",
+      "server": "127.0.0.1",
+      "port": 3307,
+      "database": "greywarden",
+      "username": "greywarden",
+      "askForPassword": true
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+# Build context is the repository root (docker/php/Dockerfile, docker/nginx/Dockerfile).
+# Keep secrets, data and anything regenerated out of the images.
+.git
+.env
+.env.*
+!.env.example
+backups
+storage
+docs
+.vscode
+**/node_modules
+src/vendor
+src/runtime/*
+!src/runtime/.gitignore
+src/web/assets/*
+!src/web/assets/.gitignore
+src/tests
+src/phpunit.xml.dist
+src/.phpunit.cache
+.github
+.githooks

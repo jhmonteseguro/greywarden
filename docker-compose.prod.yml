@@ -1,0 +1,32 @@
+# Production overrides: use with docker-compose.yml by setting, in .env,
+#   COMPOSE_FILE=docker-compose.yml:docker-compose.prod.yml
+# The code is built into the images (php target prod, nginx with src/web), so the
+# running app only changes when a release is deployed (scripts/deploy.sh).
+# runtime/ (logs, sessions, cache, cookie key) and the published asset bundles
+# live in volumes, so they survive an upgrade.
+services:
+  nginx:
+    build:
+      context: .
+      dockerfile: docker/nginx/Dockerfile
+    image: greywarden-nginx:prod
+    volumes: !override
+      - web-assets:/var/www/html/web/assets:ro
+
+  php:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+      target: prod
+      args:
+        UID: ${APP_UID:-1000}
+        GID: ${APP_GID:-1000}
+    image: greywarden-php:prod
+    volumes: !override
+      - ./storage:/var/www/storage
+      - runtime:/var/www/html/runtime
+      - web-assets:/var/www/html/web/assets
+
+volumes:
+  runtime:
+  web-assets:

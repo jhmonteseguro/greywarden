@@ -1,0 +1,19 @@
+Greywarden
+Copyright 2026 James Heckford
+
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+This product includes third-party material under its own terms:
+
+* MITRE ATT&CK® Enterprise data (src/data/attack/enterprise-attack.json.gz).
+  © The MITRE Corporation. This work is reproduced and distributed with the
+  permission of The MITRE Corporation. MITRE ATT&CK and ATT&CK are registered
+  trademarks of The MITRE Corporation.
+  Terms of Use: https://attack.mitre.org/resources/legal-and-branding/terms-of-use/
+* Inter and JetBrains Mono fonts (src/web/fonts), SIL Open Font License 1.1;
+  see the OFL-*.txt files next to them.
+* ISO/IEC 27001:2022 Annex A control identifiers and titles only; the control
+  text is ISO copyright and is not included.
+
+Composer dependencies are installed at build time and keep their own licences
+(src/vendor/*/*/LICENSE*).

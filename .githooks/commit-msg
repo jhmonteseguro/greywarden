@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# Refuse a commit message with AI-attribution trailers
+exec "$(git rev-parse --show-toplevel)/scripts/leak-check.sh" --message "$1"
