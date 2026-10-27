@@ -6,6 +6,11 @@ releases).
 
 ## [Unreleased]
 
+### Removed
+
+- The committed `.vscode/` editor settings. Editor settings are now ignored and the leak check refuses `.vscode/`,
+  `.idea/` and `*.code-workspace`.
+
 ## [0.1.0-alpha] - 2026-10-27
 
 First public release.

@@ -208,7 +208,7 @@ Business rules live in `src/config/params.php`:
 ```
 greywarden/
 ├── docs/         screenshots/
-├── docker-compose.yml, Makefile, .env(.example), .editorconfig, .vscode/
+├── docker-compose.yml, Makefile, .env(.example), .editorconfig
 ├── docker/
 │   ├── php/      Dockerfile, php.ini, fpm-pool.conf, entrypoint.sh (auto composer install)
 │   └── nginx/    default.conf (security headers, CSP)
@@ -409,10 +409,11 @@ make import-devices FILE=devices.csv AS=jdoe             # import; AS= is record
 
 ## Working in VS Code
 
-Open the repository root. `.vscode/extensions.json` recommends Intelephense, Docker, EditorConfig, PHP Debug and
-SQLTools (with a MariaDB connection preconfigured to `127.0.0.1:3307`; the password is `DB_PASSWORD` from `.env`).
-`src/vendor` lives on the host, so Intelephense indexes Yii. Edit, save and refresh; no rebuild is needed.
-Use `make shell` for Composer and Yii commands.
+Open the repository root. Editor settings are personal and not committed (`.vscode/` is ignored). Useful extensions:
+Intelephense, Docker, EditorConfig, PHP Debug and SQLTools with the MariaDB driver (connect to `127.0.0.1:3307`,
+database and user `greywarden`, password `DB_PASSWORD` from `.env`). Exclude `src/vendor`, `src/runtime` and
+`src/web/assets` from search. `src/vendor` lives on the host, so Intelephense indexes Yii. Edit, save and refresh; no
+rebuild is needed. Use `make shell` for Composer and Yii commands.
 
 ## Front-end / theming guide
 

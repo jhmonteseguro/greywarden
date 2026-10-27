@@ -31,8 +31,12 @@ GEMINI.md
 .aider*
 .github/copilot-instructions.md
 
-# Editor and OS clutter
+# Editor and OS clutter: editor settings are personal (README, Working in VS Code)
+.vscode/
 .idea/
+*.code-workspace
+.history/
 *.swp
 *~
 .DS_Store
+Thumbs.db

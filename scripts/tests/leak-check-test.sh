@@ -58,7 +58,8 @@ expect_refused "--tree with an unknown commit" scripts/leak-check.sh --tree no-s
 expect_ok "an ordinary file" commit_file src/app.php '<?php echo "hello";'
 for path in .env config/.env .env.production CLAUDE.md docs/AGENTS.md .claude/settings.json .cursorrules \
             .github/copilot-instructions.md backups/greywarden.sql.gz storage/attachments/ab/abc dump.sql \
-            certs/server.key docs/initial-prompts.txt; do
+            certs/server.key docs/initial-prompts.txt .vscode/settings.json .idea/workspace.xml \
+            greywarden.code-workspace; do
     expect_refused "committing $path" commit_file "$path" "x"
     output_has "committing $path" "$path must not be committed"
     git reset -q --hard

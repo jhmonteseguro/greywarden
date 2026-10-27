@@ -8,12 +8,12 @@
 #   scripts/leak-check.sh --message <file>  a commit message (commit-msg)
 #   scripts/leak-check.sh --log <range>     the messages of a range of commits (pre-push)
 #
-# Files fail on their path (.env, dumps, storage/, backups/, AI-assistant files)
-# or their content: a term from your private denylist, or a secret value from
-# .env. The denylist is one term per line (case-insensitive, # for comments)
-# and lives outside the repository: $GREYWARDEN_DENYLIST, default
-# ~/.config/greywarden/denylist. Messages fail on AI-attribution trailers.
-# Findings show the file and match count only, never the matched text.
+# Files fail on their path (.env, dumps, storage/, backups/, AI-assistant and
+# editor files) or their content: a term from your private denylist, or a
+# secret value from .env. The denylist is one term per line (case-insensitive,
+# # for comments) and lives outside the repository: $GREYWARDEN_DENYLIST,
+# default ~/.config/greywarden/denylist. Messages fail on AI-attribution
+# trailers. Findings show the file and match count only, never the matched text.
 # ---------------------------------------------------------------------------
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
@@ -37,7 +37,7 @@ fail() { echo "leak-check: $*" >&2; FOUND=1; }
 # Paths that must never be committed (extended regular expressions, matched against the whole path)
 FORBIDDEN_PATHS='(^|/)\.env(\..*)?$|(^|/)(backups|storage)/|\.(sql|sql\.gz|dump|pem|key|p12|pfx)$|(^|/)id_(rsa|ecdsa|ed25519)|'\
 '(^|/)(CLAUDE|CLAUDE\.local|AGENTS|GEMINI)\.md$|(^|/)\.(claude|gemini|cursor)/|(^|/)\.(cursorrules|windsurfrules)$|(^|/)\.aider|'\
-'(^|/)\.github/copilot-instructions\.md$|^docs/initial-prompts\.txt$'
+'(^|/)\.github/copilot-instructions\.md$|^docs/initial-prompts\.txt$|(^|/)\.(vscode|idea)/|\.code-workspace$'
 ALLOWED_PATHS='(^|/)\.env\.example$'
 
 # AI-attribution lines that must not appear in commit messages
