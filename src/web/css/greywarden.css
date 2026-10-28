@@ -1694,6 +1694,11 @@ a.gw-intel-flagchip:hover { color: var(--gw-text-strong); border-color: var(--gw
 
 /* Why this rating */
 .gw-intel-overview .gw-panel { margin-bottom: var(--gw-gap); }
+/* Side by side, both columns end level: the first panel in each takes up the slack */
+@media (min-width: 1200px) {
+    .gw-intel-overview > [class*="col-"] { display: flex; flex-direction: column; }
+    .gw-intel-overview .gw-intel-signals, .gw-intel-overview .gw-intel-sweep { flex: 1 0 auto; }
+}
 .gw-intel-signal-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .35rem; }
 .gw-intel-signal-group { margin: .5rem 0 .1rem; font-size: var(--gw-fs-2xs); font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--gw-text-subtle); }
 .gw-intel-signal-group:first-child { margin-top: 0; }
@@ -1760,9 +1765,15 @@ a.gw-intel-flagchip:hover { color: var(--gw-text-strong); border-color: var(--gw
     font-family: var(--gw-font-mono); font-size: var(--gw-fs-2xs); font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--gw-text-subtle);
 }
 .gw-intel-group__title::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, var(--gw-border-strong), transparent); }
+/* Two independently stacked columns (balanced server-side), so a short panel never
+   sits beside a tall one with a gap below it; one column in original order on narrow screens */
 .gw-intel-grid { display: grid; gap: var(--gw-gap); grid-template-columns: minmax(0, 1fr); align-items: start; }
-@media (min-width: 1200px) { .gw-intel-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-.gw-intel-grid > .gw-panel { margin: 0; }
+.gw-intel-stack { display: contents; }
+@media (min-width: 1200px) {
+    .gw-intel-grid:not(.gw-intel-grid--single) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .gw-intel-stack { display: flex; flex-direction: column; gap: var(--gw-gap); min-width: 0; }
+}
+.gw-intel-grid .gw-panel { margin: 0; }
 .gw-intel-source { scroll-margin-top: calc(var(--gw-topbar-height) + 1rem); }
 .gw-intel-source:target, .gw-intel-source.is-flash { border-color: var(--gw-accent-line); box-shadow: var(--gw-focus-ring); transition: box-shadow .3s, border-color .3s; }
 .gw-intel-source.gw-intel-status--hit { border-color: color-mix(in srgb, var(--gw-danger) 35%, var(--gw-border)); }

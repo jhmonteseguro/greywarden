@@ -1,7 +1,8 @@
 <?php
 /**
  * Top of a report: verdict hero (gauge, rating, headline, key facts), summary
- * tiles, "why this rating" signal breakdown and the source sweep.
+ * tiles, "why this rating" signal breakdown with the analyst verdict beneath
+ * it, and the source sweep.
  *
  * @var yii\web\View $this
  * @var app\modules\intel\components\Report $report
@@ -147,29 +148,6 @@ $counts = $report->statusCounts();
                 <p class="gw-intel-method">Weights combine like independent probabilities (two moderate listings outweigh one), known-good evidence scales the result down. <?= Html::a('How scoring works', ['/intel/source/index', '#' => 'scoring']) ?></p>
             <?php endif; ?>
         </section>
-    </div>
-    <div class="col-xl-5">
-        <section class="gw-panel gw-intel-sweep">
-            <h2 class="gw-panel__title"><i class="bi bi-radar" aria-hidden="true"></i> Source sweep
-                <span class="gw-intel-sweep__meta"><?= $report->queriedCount() ?> queried · <?= IntelHtml::duration($report->duration) ?><?= $report->cachedCount() ? ' · ' . $report->cachedCount() . ' cached' : '' ?></span></h2>
-            <div class="gw-intel-sweep__legend">
-                <?php foreach ([SourceResult::HIT, SourceResult::CLEAN, SourceResult::INFO, SourceResult::ERROR, SourceResult::UNCONFIGURED, SourceResult::SKIPPED] as $st):
-                    if (!$counts[$st]) { continue; } ?>
-                    <span class="gw-intel-sweep__count gw-intel-status--<?= $st ?>"><span class="gw-intel-dot" aria-hidden="true"></span><?= $counts[$st] ?> <?= strtolower(IntelHtml::STATUS_LABELS[$st]) ?></span>
-                <?php endforeach; ?>
-            </div>
-            <ul class="gw-intel-sweep__list">
-                <?php foreach ($report->results as $key => $r):
-                    $source = SourceRegistry::get($key); ?>
-                    <li class="gw-intel-sweep__item gw-intel-status--<?= $r->status ?>">
-                        <span class="gw-intel-dot" aria-hidden="true"></span>
-                        <?= Html::a(Html::encode($source->label()), '#src-' . $key, ['class' => 'gw-intel-sweep__name', 'data-gw-show-tab' => $source->category() === 'registry' ? 'tab-registry' : 'tab-intel']) ?>
-                        <span class="gw-intel-sweep__summary" title="<?= Html::encode($r->summary) ?>"><?= Html::encode($r->summary) ?></span>
-                        <span class="gw-intel-sweep__time"><?= $r->cached ? '<i class="bi bi-database" title="Cached ' . Html::encode(IntelHtml::age($r->fetchedAt)) . '"></i>' : ($r->answered() || $r->status === SourceResult::ERROR ? IntelHtml::duration($r->time) : '') ?></span>
-                    </li>
-                <?php endforeach; ?>
-            </ul>
-        </section>
 
         <section class="gw-panel gw-intel-verdict-panel">
             <h2 class="gw-panel__title"><i class="bi bi-person-badge" aria-hidden="true"></i> Analyst verdict</h2>
@@ -198,6 +176,29 @@ $counts = $report->statusCounts();
                 · first <?= Yii::$app->formatter->asDate($model->created_at) ?>
                 <?= $model->lastCheckedBy ? '· last by ' . Html::encode($model->lastCheckedBy->full_name) : '' ?>
             </p>
+        </section>
+    </div>
+    <div class="col-xl-5">
+        <section class="gw-panel gw-intel-sweep">
+            <h2 class="gw-panel__title"><i class="bi bi-radar" aria-hidden="true"></i> Source sweep
+                <span class="gw-intel-sweep__meta"><?= $report->queriedCount() ?> queried · <?= IntelHtml::duration($report->duration) ?><?= $report->cachedCount() ? ' · ' . $report->cachedCount() . ' cached' : '' ?></span></h2>
+            <div class="gw-intel-sweep__legend">
+                <?php foreach ([SourceResult::HIT, SourceResult::CLEAN, SourceResult::INFO, SourceResult::ERROR, SourceResult::UNCONFIGURED, SourceResult::SKIPPED] as $st):
+                    if (!$counts[$st]) { continue; } ?>
+                    <span class="gw-intel-sweep__count gw-intel-status--<?= $st ?>"><span class="gw-intel-dot" aria-hidden="true"></span><?= $counts[$st] ?> <?= strtolower(IntelHtml::STATUS_LABELS[$st]) ?></span>
+                <?php endforeach; ?>
+            </div>
+            <ul class="gw-intel-sweep__list">
+                <?php foreach ($report->results as $key => $r):
+                    $source = SourceRegistry::get($key); ?>
+                    <li class="gw-intel-sweep__item gw-intel-status--<?= $r->status ?>">
+                        <span class="gw-intel-dot" aria-hidden="true"></span>
+                        <?= Html::a(Html::encode($source->label()), '#src-' . $key, ['class' => 'gw-intel-sweep__name', 'data-gw-show-tab' => $source->category() === 'registry' ? 'tab-registry' : 'tab-intel']) ?>
+                        <span class="gw-intel-sweep__summary" title="<?= Html::encode($r->summary) ?>"><?= Html::encode($r->summary) ?></span>
+                        <span class="gw-intel-sweep__time"><?= $r->cached ? '<i class="bi bi-database" title="Cached ' . Html::encode(IntelHtml::age($r->fetchedAt)) . '"></i>' : ($r->answered() || $r->status === SourceResult::ERROR ? IntelHtml::duration($r->time) : '') ?></span>
+                    </li>
+                <?php endforeach; ?>
+            </ul>
         </section>
     </div>
 </div>

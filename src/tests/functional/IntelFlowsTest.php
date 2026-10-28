@@ -51,6 +51,14 @@ class IntelFlowsTest extends FunctionalTestCase
         // Each report is recorded, and the audit log links back to it
         $this->get('/intel/ip/203.0.113.66');
         $this->assertOk();
+        // Multi-source groups render as two balanced stacks, a lone source spans the width
+        $this->assertSee('class="gw-intel-stack"');
+        $this->assertSee('gw-intel-grid gw-intel-grid--single');
+        $this->assertSee('style="order: 0"');
+        // The analyst verdict sits under "Why this rating", the sweep has the other column
+        $signals = strpos($this->body, 'gw-intel-signals');
+        $verdict = strpos($this->body, 'gw-intel-verdict-panel');
+        $this->assertTrue($signals < $verdict && $verdict < strpos($this->body, 'gw-panel gw-intel-sweep'));
         $model = IntelIndicator::findOne(['value' => '203.0.113.66']);
         $this->assertGreaterThan(0, (int) $model->lookup_count);
         $this->get("/intel/indicator/{$model->id}");

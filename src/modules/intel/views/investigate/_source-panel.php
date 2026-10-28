@@ -6,6 +6,7 @@
  * @var app\modules\intel\components\sources\Source $source
  * @var app\modules\intel\components\SourceResult $result
  * @var app\modules\intel\components\Indicator $indicator
+ * @var int|null $position place in the original order (single-column layout)
  */
 
 use app\modules\intel\components\IntelHtml;
@@ -14,7 +15,7 @@ use yii\helpers\Html;
 $reportUrl = $source->reportUrl($indicator);
 $homepage = $source->homepage();
 ?>
-<section class="gw-panel gw-intel-source gw-intel-status--<?= $result->status ?>" id="src-<?= Html::encode($key) ?>">
+<section class="gw-panel gw-intel-source gw-intel-status--<?= $result->status ?>" id="src-<?= Html::encode($key) ?>"<?= isset($position) ? ' style="order: ' . (int) $position . '"' : '' ?>>
     <header class="gw-panel__header gw-intel-source__header">
         <h3 class="gw-panel__title">
             <span class="gw-intel-dot" aria-hidden="true"></span>

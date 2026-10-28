@@ -539,6 +539,13 @@ class IntelSourcesTest extends DbTestCase
         $this->assertSame('1.5 s', IntelHtml::duration(1.5));
         $this->assertSame(['never', 'just now', '5 min ago', '2 h ago', '3 d ago'],
             array_map([IntelHtml::class, 'age'], [null, time() - 5, time() - 300, time() - 7200, time() - 3 * 86400]));
+        $short = SourceResult::clean();
+        $tall = SourceResult::hit('x')->row('Tags', range(1, 13))->table('T', ['a'], array_fill(0, 20, ['b']))->rawJson(['k' => 1]);
+        $this->assertSame(165, IntelHtml::weight($short));
+        $this->assertSame(165 + 75 + 75 + 340 + 35, IntelHtml::weight($tall));
+        // Tallest first to the shortest column, each column back in the original order
+        $this->assertSame([['b' => 1], ['a' => 0, 'c' => 2]], IntelHtml::stacks(['a' => $short, 'b' => $tall, 'c' => $short]));
+        $this->assertSame([['a' => 0], []], IntelHtml::stacks(['a' => $short]));
         $this->assertSame('', IntelHtml::flag(null));
         $this->assertSame('', IntelHtml::flag('GBR'));
         $this->assertStringContainsString('>GB<', IntelHtml::flag('gb'));

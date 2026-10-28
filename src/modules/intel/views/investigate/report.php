@@ -13,6 +13,7 @@
 
 use app\components\Rbac;
 use app\helpers\Badge;
+use app\modules\intel\components\IntelHtml;
 use app\modules\intel\components\SourceRegistry;
 use app\modules\intel\components\sources\Source;
 use yii\bootstrap5\Tabs;
@@ -55,11 +56,21 @@ ob_start(); ?>
 <?php foreach ($groups as $category => $results): ?>
     <section class="gw-intel-group" aria-labelledby="grp-<?= $category ?>">
         <h2 class="gw-intel-group__title" id="grp-<?= $category ?>"><?= Html::encode(SourceRegistry::categoryLabels()[$category]) ?></h2>
-        <div class="gw-intel-grid">
-            <?php foreach ($results as $key => $result): ?>
-                <?= $this->render('_source-panel', ['key' => $key, 'source' => SourceRegistry::get($key), 'result' => $result, 'indicator' => $indicator]) ?>
-            <?php endforeach; ?>
-        </div>
+        <?php if (count($results) === 1): ?>
+            <div class="gw-intel-grid gw-intel-grid--single">
+                <?= $this->render('_source-panel', ['key' => key($results), 'source' => SourceRegistry::get(key($results)), 'result' => current($results), 'indicator' => $indicator]) ?>
+            </div>
+        <?php else: ?>
+            <div class="gw-intel-grid">
+                <?php foreach (IntelHtml::stacks($results) as $stack): ?>
+                    <div class="gw-intel-stack">
+                        <?php foreach ($stack as $key => $position): ?>
+                            <?= $this->render('_source-panel', ['key' => $key, 'source' => SourceRegistry::get($key), 'result' => $results[$key], 'indicator' => $indicator, 'position' => $position]) ?>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
     </section>
 <?php endforeach; ?>
 <?php $intel = ob_get_clean();

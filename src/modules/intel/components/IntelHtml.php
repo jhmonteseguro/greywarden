@@ -80,6 +80,45 @@ final class IntelHtml
         };
     }
 
+    /** Rough rendered height of a source panel in pixels, for balancing columns */
+    public static function weight(SourceResult $result): int
+    {
+        $h = 165;
+        foreach ($result->rows as $value) {
+            $h += 25 * (is_array($value) ? max(1, (int) ceil(count($value) / 6)) : 1);
+        }
+        foreach ($result->lists as $table) {
+            $h += 75 + min(340, 32 * count($table['rows'] ?? []));
+        }
+        return $h + ($result->raw ? 35 : 0);
+    }
+
+    /**
+     * Splits panels into balanced columns: tallest first, each to the shortest
+     * column so far, then each column back in the original order. Keys map to
+     * their position in the original order.
+     * @param SourceResult[] $results
+     * @return array<int, array<string, int>>
+     */
+    public static function stacks(array $results, int $columns = 2): array
+    {
+        $positions = array_flip(array_keys($results));
+        $weights = array_map(self::weight(...), $results);
+        uksort($weights, static fn($a, $b) => $weights[$b] <=> $weights[$a] ?: $positions[$a] <=> $positions[$b]);
+
+        $stacks = array_fill(0, $columns, []);
+        $heights = array_fill(0, $columns, 0);
+        foreach ($weights as $key => $weight) {
+            $col = array_search(min($heights), $heights, true);
+            $stacks[$col][$key] = $positions[$key];
+            $heights[$col] += $weight;
+        }
+        foreach ($stacks as &$stack) {
+            asort($stack);
+        }
+        return $stacks;
+    }
+
     /** Country code chip (emoji flags are not available on every platform) */
     public static function flag(?string $cc): string
     {
