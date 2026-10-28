@@ -76,6 +76,8 @@ final class Badge
             'password_change' => 'info', 'password_reset' => 'warning', 'unlock' => 'info',
         ],
         'bool' => ['yes' => 'success', 'no' => 'danger'],
+        // Incident CIA impact (app\modules\incident\models\Incident::IMPACT_ATTRIBUTES)
+        'cia' => ['confidentiality' => 'info', 'integrity' => 'info', 'availability' => 'info'],
     ];
 
     public static function render(string $kind, string|int|null $value, ?string $label = null, array $options = []): string
@@ -133,6 +135,22 @@ final class Badge
     public static function bool(mixed $value, string $yes = 'Yes', string $no = 'No'): string
     {
         return self::render('bool', $value ? 'yes' : 'no', $value ? $yes : $no, ['icon' => $value ? 'check-lg' : 'x-lg']);
+    }
+
+    /**
+     * CIA properties an incident affected (Incident::getImpacts()).
+     * Compact renders C / I / A with the full name as a tooltip.
+     */
+    public static function impacts(array $impacts, bool $compact = false): string
+    {
+        if ($impacts === []) {
+            return $compact ? '' : self::render('cia', null);
+        }
+        $out = [];
+        foreach ($impacts as $label) {
+            $out[] = self::render('cia', strtolower($label), $compact ? $label[0] : $label, $compact ? ['title' => $label] : []);
+        }
+        return implode(' ', $out);
     }
 
     public static function compliance(?bool $compliant, ?string $title = null): string

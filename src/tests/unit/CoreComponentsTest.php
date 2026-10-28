@@ -234,6 +234,12 @@ class CoreComponentsTest extends DbTestCase
         $this->assertStringContainsString('title="2 failing"', Badge::compliance(false, '2 failing'));
         $this->assertStringContainsString('Yes', Badge::bool(1));
         $this->assertStringContainsString('Off', Badge::bool(0, 'On', 'Off'));
+        $this->assertStringContainsString('gw-null', Badge::impacts([]));
+        $this->assertSame('', Badge::impacts([], true));
+        $cia = Badge::impacts(['impact_confidentiality' => 'Confidentiality', 'impact_integrity' => 'Integrity']);
+        $this->assertStringContainsString('data-value="confidentiality">Confidentiality<', $cia);
+        $this->assertStringContainsString('data-value="integrity">Integrity<', $cia);
+        $this->assertStringContainsString('title="Integrity" data-kind="cia" data-value="integrity">I<', Badge::impacts(['impact_integrity' => 'Integrity'], true));
         $this->assertStringContainsString('gw-null', Badge::intelRating(null), 'not assessed');
         $this->assertStringContainsString('87', Badge::intelRating('malicious', 87));
         $this->assertStringContainsString('mitigation-state', Badge::mitigationState('gap', 'No control'));

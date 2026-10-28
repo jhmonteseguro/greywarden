@@ -20,6 +20,8 @@ releases).
 - *Admin › Settings › Compliance frameworks*: switch ISO 27001, Cyber Essentials, SOC 2, NIST CSF 2.0 and the NCSC CAF
   on or off. A framework that
   is off is hidden everywhere, but its applicability decisions and control mappings are kept. All are on by default.
+- Incidents record which security properties were affected (confidentiality, integrity, availability). Any
+  combination can be ticked; the incident log shows them as C / I / A and can be filtered by each.
 
 ### Fixed
 

@@ -37,6 +37,12 @@ use yii\helpers\Console;
  */
 class SeedController extends Controller
 {
+    /** CIA properties affected (C, I, A), by incident number (INC-00nn); unlisted = none recorded */
+    private const CIA_INCIDENTS = [
+        1 => 'C', 2 => 'IA', 3 => 'C', 4 => 'C', 5 => 'A', 6 => 'I', 7 => 'C', 9 => 'I', 10 => 'C', 11 => 'I',
+        12 => 'C', 13 => 'C', 14 => 'CI', 15 => 'CIA', 16 => 'C', 17 => 'C', 19 => 'C', 20 => 'A',
+    ];
+
     /** MITRE ATT&CK techniques observed, by incident number (INC-00nn) */
     private const ATTACK_INCIDENTS = [
         1 => ['T1566', 'T1684.001', 'T1583.001'],                 // CEO impersonation
@@ -717,6 +723,9 @@ class SeedController extends Controller
                 'regulator_reference' => $notifyH !== null ? 'ICO-' . (1000000 + mt_rand(0, 899999)) : null,
                 'subjects_notified_at' => $notifyH !== null ? self::dt(-$detAgo + $notifyH + 24) : null,
                 'description' => $desc,
+                'impact_confidentiality' => str_contains(self::CIA_INCIDENTS[$idx + 1] ?? '', 'C'),
+                'impact_integrity' => str_contains(self::CIA_INCIDENTS[$idx + 1] ?? '', 'I'),
+                'impact_availability' => str_contains(self::CIA_INCIDENTS[$idx + 1] ?? '', 'A'),
                 'containment_actions' => $containTxt,
                 'recovery_actions' => $recoveryTxt,
                 'root_cause' => $root,

@@ -152,6 +152,7 @@ class RecordFlowsTest extends FunctionalTestCase
         $form = ['Incident' => [
             'title' => 'Functional incident', 'category_id' => $this->lookupId(Lookup::TYPE_INCIDENT_CATEGORY), 'severity' => Incident::SEVERITY_HIGH,
             'status' => Incident::STATUS_NEW, 'detected_at' => date('Y-m-d\TH:i'), 'personal_data_involved' => 1, 'regulator_notification_required' => 1,
+            'impact_confidentiality' => 1, 'impact_integrity' => 0, 'impact_availability' => 1,
             'deviceIds' => '', 'riskIds' => '', 'techniqueIds' => [$technique],
         ]];
         $this->post('/incidents/create', $form);
@@ -160,6 +161,14 @@ class RecordFlowsTest extends FunctionalTestCase
         $this->get("/incidents/{$incident->id}");
         $this->assertSee('T1566.001');
         $this->assertSee('data-gw-countdown');
+        $this->assertSee('Security impact');
+        $this->assertSee('data-value="confidentiality">Confidentiality<');
+        $this->assertSee('data-value="availability">Availability<');
+        $this->assertNotSee('data-value="integrity"');
+        $this->get('/incidents?impact=availability');
+        $this->assertSee('Functional incident');
+        $this->get('/incidents?impact=integrity');
+        $this->assertNotSee('Functional incident');
 
         $this->post("/incidents/{$incident->id}/add-entry", ['IncidentTimeline' => ['entry_type' => IncidentTimeline::TYPE_ACTION, 'entry_at' => date('Y-m-d\TH:i'), 'body' => 'Functional timeline entry']]);
         $this->assertRedirect("/incidents/{$incident->id}");

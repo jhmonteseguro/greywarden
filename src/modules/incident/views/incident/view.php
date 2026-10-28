@@ -54,6 +54,7 @@ ob_start(); ?>
                     ['attribute' => 'category_id', 'value' => $model->category->name ?? null],
                     ['attribute' => 'severity', 'format' => 'raw', 'value' => Badge::severity($model->severity)],
                     ['attribute' => 'status', 'format' => 'raw', 'value' => Badge::status('incident-status', $model->status, Incident::statusOptions())],
+                    ['label' => 'Security impact', 'format' => 'raw', 'value' => Badge::impacts($model->getImpacts())],
                     ['attribute' => 'assigned_to_id', 'value' => $model->assignedTo->full_name ?? null],
                     'reported_by',
                     ['label' => 'ATT&CK techniques', 'format' => 'raw', 'value' => TechniqueTags::widget(['items' => $techniques, 'compact' => true, 'emptyText' => 'None mapped'])],

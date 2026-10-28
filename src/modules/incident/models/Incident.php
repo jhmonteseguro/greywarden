@@ -22,6 +22,9 @@ use Yii;
  * @property string $title
  * @property string|null $description
  * @property int|null $category_id
+ * @property bool $impact_confidentiality
+ * @property bool $impact_integrity
+ * @property bool $impact_availability
  * @property string $severity
  * @property string $status
  * @property string|null $occurred_at
@@ -84,6 +87,13 @@ class Incident extends DomainRecord
     public const CONTROL_DETECTED = 'detected';
     public const CONTROL_FAILED = 'failed';
     public const CONTROL_RESPONSE = 'response';
+
+    /** CIA impact flag attribute => property label */
+    public const IMPACT_ATTRIBUTES = [
+        'impact_confidentiality' => 'Confidentiality',
+        'impact_integrity' => 'Integrity',
+        'impact_availability' => 'Availability',
+    ];
 
     /** Set false to suppress automatic timeline entries (e.g. when seeding history). */
     public bool $autoTimeline = true;
@@ -194,7 +204,7 @@ class Incident extends DomainRecord
 
     public function booleanAttributes(): array
     {
-        return ['personal_data_involved', 'regulator_notification_required'];
+        return array_merge(['personal_data_involved', 'regulator_notification_required'], array_keys(self::IMPACT_ATTRIBUTES));
     }
 
     public function dateTimeAttributes(): array
@@ -221,8 +231,8 @@ class Incident extends DomainRecord
             ['closed_at', 'validateNotBefore', 'params' => ['than' => 'detected_at']],
             ['closed_at', 'validateNotBefore', 'params' => ['than' => 'contained_at']],
             ['regulator_notified_at', 'validateNotBefore', 'params' => ['than' => 'detected_at']],
-            [['personal_data_involved', 'regulator_notification_required'], 'boolean'],
-            [['personal_data_involved', 'regulator_notification_required'], 'default', 'value' => false],
+            [$this->booleanAttributes(), 'boolean'],
+            [$this->booleanAttributes(), 'default', 'value' => false],
             ['category_id', 'exist', 'targetClass' => Lookup::class, 'targetAttribute' => 'id', 'filter' => ['type' => Lookup::TYPE_INCIDENT_CATEGORY]],
             ['assigned_to_id', 'exist', 'targetClass' => User::class, 'targetAttribute' => 'id'],
             ['root_cause', 'required', 'when' => fn() => $this->status === self::STATUS_CLOSED && in_array($this->severity, [self::SEVERITY_CRITICAL, self::SEVERITY_HIGH], true), 'whenClient' => 'function(){return false;}', 'message' => 'Record the root cause before closing a high or critical incident.'],
@@ -289,6 +299,9 @@ class Incident extends DomainRecord
             'title' => 'Title',
             'description' => 'Description',
             'category_id' => 'Category',
+            'impact_confidentiality' => 'Confidentiality',
+            'impact_integrity' => 'Integrity',
+            'impact_availability' => 'Availability',
             'severity' => 'Severity',
             'status' => 'Status',
             'occurred_at' => 'Occurred at',
@@ -375,6 +388,12 @@ class Incident extends DomainRecord
     public function getSeverityLabel(): string
     {
         return self::severityOptions()[$this->severity] ?? (string) $this->severity;
+    }
+
+    /** @return array<string,string> affected CIA properties, attribute => label */
+    public function getImpacts(): array
+    {
+        return array_filter(self::IMPACT_ATTRIBUTES, fn(string $attr) => (bool) $this->$attr, ARRAY_FILTER_USE_KEY);
     }
 
     public function isOpen(): bool

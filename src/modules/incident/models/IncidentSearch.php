@@ -29,6 +29,8 @@ class IncidentSearch extends Model
     public $status;
     public $assigned_to_id;
     public $personal_data_involved;
+    /** CIA property affected: confidentiality|integrity|availability */
+    public $impact;
     public $month; // YYYY-MM (from dashboard chart)
     /** ATT&CK id prefix or name, e.g. T1566 */
     public $technique;
@@ -39,6 +41,7 @@ class IncidentSearch extends Model
             [['q', 'technique', 'reference', 'title', 'severity', 'status'], 'string', 'max' => 100],
             [['category_id', 'assigned_to_id'], 'integer'],
             ['personal_data_involved', 'boolean'],
+            ['impact', 'in', 'range' => array_keys(self::impactOptions())],
             ['month', 'match', 'pattern' => '/^\d{4}-\d{2}$/'],
             ['filter', 'in', 'range' => array_keys(self::FILTERS)],
         ];
@@ -46,7 +49,17 @@ class IncidentSearch extends Model
 
     public function attributeLabels(): array
     {
-        return (new Incident())->attributeLabels() + ['personal_data_involved' => 'PII', 'technique' => 'ATT&CK'];
+        return (new Incident())->attributeLabels() + ['personal_data_involved' => 'PII', 'technique' => 'ATT&CK', 'impact' => 'CIA'];
+    }
+
+    /** CIA filter value => label */
+    public static function impactOptions(): array
+    {
+        $out = [];
+        foreach (Incident::IMPACT_ATTRIBUTES as $label) {
+            $out[strtolower($label)] = $label;
+        }
+        return $out;
     }
 
     public function formName(): string
@@ -120,6 +133,10 @@ class IncidentSearch extends Model
         if ($this->technique !== null && $this->technique !== '') {
             $query->andWhere(['incident.id' => (new Query())->select('incident_id')->from('incident_attack_technique')
                 ->where(['technique_id' => AttackTechnique::idsMatching($this->technique) ?: [0]])]);
+        }
+
+        if ($this->impact) {
+            $query->andWhere(['incident.impact_' . $this->impact => true]);
         }
 
         $query->andFilterWhere(['like', 'incident.reference', $this->reference])

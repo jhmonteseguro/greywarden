@@ -28,7 +28,17 @@ $dt = static fn(string $attr) => ['value' => Dt::toInput($model->$attr), 'step' 
         <div class="col-md-4"><?= $form->field($model, 'severity')->dropDownList(Incident::severityOptions()) ?></div>
         <div class="col-md-4"><?= $form->field($model, 'status')->dropDownList(Incident::statusOptions()) ?></div>
         <div class="col-md-4"><?= $form->field($model, 'assigned_to_id')->dropDownList(User::options($model->assigned_to_id), ['prompt' => '— Unassigned —']) ?></div>
-        <div class="col-12"><?= $form->field($model, 'description')->textarea(['rows' => 4]) ?></div>
+        <div class="col-12"><?= $form->field($model, 'description')->textarea(['rows' => 4]) ?></div>        <div class="col-12">
+            <fieldset class="mb-3 gw-field gw-impact">
+                <legend class="form-label gw-field__label">Security impact</legend>
+                <div class="d-flex flex-wrap column-gap-4">
+                    <?php foreach (array_keys(Incident::IMPACT_ATTRIBUTES) as $attribute): ?>
+                        <?= $form->field($model, $attribute, ['options' => ['class' => 'mb-1 gw-field']])->checkbox() ?>
+                    <?php endforeach; ?>
+                </div>
+                <p class="form-text gw-field__hint">Tick every property the incident affected or put at risk: data disclosed (confidentiality), data or systems altered (integrity), service lost or degraded (availability).</p>
+            </fieldset>
+        </div>
     </div>
 </fieldset>
 

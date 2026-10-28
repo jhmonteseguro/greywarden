@@ -76,6 +76,13 @@ $this->params['actions'] = Rbac::canManage() ? Html::a('<i class="bi bi-plus-lg"
         ],
         ['attribute' => 'assigned_to_id', 'value' => 'assignedTo.full_name', 'filter' => User::options()],
         [
+            'attribute' => 'impact',
+            'format' => 'raw',
+            'enableSorting' => false,
+            'value' => static fn(Incident $m) => Badge::impacts($m->getImpacts(), true),
+            'filter' => IncidentSearch::impactOptions(),
+        ],
+        [
             'attribute' => 'personal_data_involved',
             'format' => 'raw',
             'value' => static fn(Incident $m) => $m->personal_data_involved ? Badge::render('flag', 'pending', 'PII') : '',

@@ -164,7 +164,7 @@ READ_PAGES=(
     /risks/heatmap "/risks/heatmap?heatmap=inherent" /risks/$R1 /risks/$R2 /risks/$R5 /risks/$R13
     /decisions "/decisions?filter=proposed" "/decisions?filter=review-overdue" "/decisions?filter=mine" "/decisions?sort=-decision_date&status=approved" /decisions/$D1 /decisions/$D7 /decisions/$D11
     /incidents "/incidents?filter=all" "/incidents?filter=mine" "/incidents?filter=regulator-overdue" "/incidents?filter=regulator-pending"
-    "/incidents?filter=all&sort=-severity" "/incidents?filter=all&month=$(date +%Y-%m)" /incidents/$I1 /incidents/$I13 /incidents/$I17 /incidents/$I19
+    "/incidents?filter=all&sort=-severity" "/incidents?filter=all&month=$(date +%Y-%m)" "/incidents?filter=all&impact=confidentiality" /incidents/$I1 /incidents/$I13 /incidents/$I17 /incidents/$I19
     /devices "/devices?filter=active" "/devices?filter=mine" "/devices?filter=non-compliant" "/devices?filter=not-assessed" "/devices?filter=warranty" "/devices?filter=eol"
     "/devices?filter=active&control=$C5&result=fail" "/devices?filter=active&control=$C1&result=unknown" "/devices?filter=stale" "/devices?filter=all&sort=-last_seen_at"
     "/devices?filter=all&sort=-criticality&device_type=laptop" /devices/$V1 /devices/$V26 /devices/$V38
@@ -277,11 +277,15 @@ grep -q 'Superseded by' "$BODY" && ok || bad "superseded link not shown"
 post analyst /incidents/create /incidents/create 302 \
     "Incident[title]=Smoke test incident" "Incident[category_id]=$INC_CAT" "Incident[severity]=high" "Incident[status]=new" \
     "Incident[detected_at]=$NOW" "Incident[personal_data_involved]=1" "Incident[regulator_notification_required]=1" \
+    "Incident[impact_confidentiality]=1" "Incident[impact_integrity]=0" "Incident[impact_availability]=1" \
     "Incident[deviceIds]=" "Incident[riskIds]=" "Incident[techniqueIds]=" "Incident[techniqueIds][]=$TECH"
 IID=$(last_id incident)
 check analyst "/incidents/$IID" 200
 grep -q 'T1566.001' "$BODY" && grep -q 'tab-attack' "$BODY" && ok || bad "incident ATT&CK technique not shown"
 grep -q 'data-gw-countdown' "$BODY" && ok || bad "incident countdown missing"
+grep -q 'data-value="confidentiality"' "$BODY" && grep -q 'data-value="availability"' "$BODY" && ! grep -q 'data-value="integrity"' "$BODY" && ok || bad "incident CIA impact not shown"
+check analyst "/incidents?impact=availability" 200
+grep -q 'Smoke test incident' "$BODY" && ok || bad "incident CIA filter missing match"
 post analyst "/incidents/$IID" "/incidents/$IID/add-entry" 302 \
     "IncidentTimeline[entry_type]=action" "IncidentTimeline[entry_at]=$NOW" "IncidentTimeline[body]=Smoke test timeline entry"
 post analyst "/incidents/$IID/update" "/incidents/$IID/update" 302 \

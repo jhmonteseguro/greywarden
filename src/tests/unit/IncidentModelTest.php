@@ -41,6 +41,24 @@ class IncidentModelTest extends DbTestCase
         $this->assertSame(IncidentMetrics::STATE_NOT_REQUIRED, $incident->getRegulatorDeadlineState());
     }
 
+    public function testCiaImpactAllowsAnyCombination(): void
+    {
+        $none = $this->makeIncident();
+        $this->assertTrue($none->validate(), json_encode($none->getErrors()));
+        $this->assertSame([], $none->getImpacts());
+        $this->assertFalse((bool) $none->impact_confidentiality);
+
+        $incident = $this->makeIncident(['impact_confidentiality' => '1', 'impact_integrity' => '0', 'impact_availability' => '1']);
+        $this->assertTrue($incident->save(), json_encode($incident->getErrors()));
+        $incident->refresh();
+        $this->assertSame(['impact_confidentiality' => 'Confidentiality', 'impact_availability' => 'Availability'], $incident->getImpacts());
+        $this->assertSame('Yes', $incident->formatAuditValue('impact_availability', 1));
+
+        $bad = $this->makeIncident(['impact_integrity' => 'maybe']);
+        $this->assertFalse($bad->validate());
+        $this->assertArrayHasKey('impact_integrity', $bad->getErrors());
+    }
+
     public function testRegulatorDeadlineFromModel(): void
     {
         $incident = $this->makeIncident(['personal_data_involved' => 1, 'regulator_notification_required' => 1]);
