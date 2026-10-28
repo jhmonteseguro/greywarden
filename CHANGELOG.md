@@ -6,6 +6,16 @@ releases).
 
 ## [Unreleased]
 
+### Added
+
+- Incident PDF report for management and non-technical staff: a PDF button on every incident produces an interim report
+  while it is open and the final report once closed, with a plain-English summary, what the status and severity mean,
+  what was affected, the regulator position, key dates and response times, actions, root cause and lessons, controls,
+  the full timeline and a technical appendix. Exports are recorded in the incident's History.
+- *Management summary* field on incidents (migration `m261028_200001`): a plain-English summary that opens the report;
+  the description is used when it is blank. Incident search also matches it.
+- Admin › Settings › Incident reports: reword what each incident status and severity means in the report.
+
 ## [0.4.2-alpha] - 2026-10-28
 
 ### Changed

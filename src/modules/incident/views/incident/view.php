@@ -33,7 +33,7 @@ $this->params['subtitle'] = '<span class="gw-ref gw-ref--lg">' . Html::encode($m
     . Badge::status('incident-status', $model->status, Incident::statusOptions())
     . ($state === 'overdue' ? ' ' . Badge::flag('overdue', 'Regulator deadline overdue') : '')
     . ($state === 'pending' ? ' ' . Badge::flag('pending', 'Regulator notice due') : '');
-$this->params['actions'] = RecordActions::widget(['model' => $model]);
+$this->params['actions'] = RecordActions::widget(['model' => $model, 'pdf' => true]);
 $fmt = Yii::$app->formatter;
 
 $devices = $model->devices;
@@ -63,6 +63,7 @@ ob_start(); ?>
                 ],
             ]) ?>
             <?= $this->render('@app/views/partials/_text-block', ['label' => 'Description', 'text' => $model->description]) ?>
+            <?= $this->render('@app/views/partials/_text-block', ['label' => 'Management summary', 'text' => $model->management_summary]) ?>
         </section>
         <section class="gw-panel">
             <h2 class="gw-panel__title">Response</h2>

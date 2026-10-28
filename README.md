@@ -30,7 +30,8 @@ For real data, see [Production](#production); for the full setup, see [Developme
   profile and an **NCSC CAF 4.0** assessment (each can be switched off in Admin › Settings). Controls can also be
   **device checks** that every applicable device in the inventory is checked against
 * **Decision Log**: options, rationale, supersession chain, links to risks and incidents
-* **Incident Log**: NIST lifecycle, an incident timeline, the 72-hour regulator deadline with a countdown, response metrics
+* **Incident Log**: NIST lifecycle, an incident timeline, the 72-hour regulator deadline with a countdown, response metrics,
+  and a PDF incident report for management (interim while open, final once closed) written in plain English
 * **Device Inventory**: lifecycle, network data, and posture against the device checks (pass / fail / not assessed)
 * **Cloud Inventory**: cloud accounts (AWS, Azure, Google Cloud, Cloudflare, Google Workspace, Microsoft 365, GitHub...)
   and the assets in them (instances, VPCs, security groups, buckets, databases, IAM roles, DNS zones, repositories...)
@@ -261,7 +262,7 @@ greywarden/
     │   ├── control/    Control, ControlTest, ControlQuery, ControlSearch, FrameworkRequirement,
     │   │               components/ (FrameworkCatalogue, FrameworkCoverage), ControlController, FrameworkController
     │   ├── decision/   Decision, DecisionSearch, DecisionController
-    │   ├── incident/   Incident, IncidentTimeline, IncidentSearch, components/IncidentMetrics
+    │   ├── incident/   Incident, IncidentTimeline, IncidentSearch, components/IncidentMetrics + IncidentWording (PDF report wording)
     │   ├── inventory/  Device, DeviceQuery, DeviceSearch, components/ (DevicePosture, DeviceCheck, DeviceChecks, DeviceImporter)
     │   ├── cloud/      CloudAccount, CloudAsset (+ Query / Search), components/ (CloudCatalogue, CloudCheck, CloudChecks,
     │   │               CloudPosture, CloudExport + Aws/Azure/GcpExport, CloudTypeMap, CloudImporter, CloudflareZones),
@@ -406,6 +407,24 @@ greywarden/
 * **History**: *File attached* / *File removed* entries (name, size, SHA-256 prefix) appear in the record's History.
   Permanently deleting an archived record deletes its files.
 
+### Incident reports (PDF)
+
+The **PDF** button on an incident opens a report written for management and non-technical staff. It can be produced at
+any time: while the incident is open it is an *Interim incident report* (marked as such, the position at the time
+printed), once closed it is the *Final incident report*. Like the other PDFs it carries the letterhead and marking, and
+each export is recorded in the incident's History.
+
+* **At a glance**: the *Management summary* (an optional plain-English field on the incident form; the description is
+  used when it is blank), what the status and severity mean, what was affected (confidentiality, integrity,
+  availability in plain words), where the regulator notice stands, the type of incident and the incident lead.
+* **Key dates** with time to detect, contain and close; **what has been done**; **why it happened and what we
+  learned**; the **controls** that detected it, failed or are being improved; and the **full timeline**, oldest first.
+* **Technical detail** on its own page for the security team and auditors: the technical description, regulator
+  details, affected devices and cloud assets, ATT&CK techniques, related risks and decisions, and attached files
+  (lists longer than 25 are cut short).
+* The meaning of each status and severity can be reworded in **Admin › Settings › Incident reports**; clear a box to
+  go back to the built-in wording.
+
 ### Branding (Admin › Settings)
 
 Admins (`settings.manage`) set how the instance presents itself. Nothing organisation-specific lives in the code or
@@ -418,6 +437,7 @@ Admins (`settings.manage`) set how the instance presents itself. Nothing organis
 | Logo | Sidebar, sign-in page, browser icon, PDF letterhead | Built-in Greywarden mark |
 | Sign-in tagline / notice | Under the name / at the foot of the sign-in page | Hidden |
 | PDF marking | Protective marking on every PDF page (default *Confidential*) | No marking |
+| Incident reports | What each incident status and severity means, printed in plain English in incident PDF reports | Built-in wording |
 
 * **Logo**: PNG or JPEG, 16–1024 px per side, up to 512 KB; square works best. It is re-encoded with GD on upload
   (dropping metadata and anything appended to the image), stored as `logo-<hash>.png|jpg` in `branding.path`

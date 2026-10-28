@@ -1,15 +1,18 @@
 <?php
 /**
- * Admin › Settings: branding, and the compliance frameworks switched on (a
- * separate form, so each saves on its own).
+ * Admin › Settings: branding, the compliance frameworks switched on and the
+ * wording of incident PDF reports (separate forms, so each saves on its own).
  * @var yii\web\View $this
  * @var app\modules\admin\models\BrandingForm $model
  * @var app\modules\admin\models\ComplianceForm $compliance
+ * @var app\modules\admin\models\IncidentReportForm $incidentReport
  */
 
 use app\components\Branding;
 use app\modules\admin\models\ComplianceForm;
+use app\modules\admin\models\IncidentReportForm;
 use app\modules\control\components\FrameworkCatalogue;
+use app\modules\incident\components\IncidentWording;
 use app\widgets\ActiveForm;
 use yii\helpers\Html;
 
@@ -78,5 +81,26 @@ $check = static fn(string $class) => static fn($index, $label, $name, $checked, 
 
 <div class="gw-form__actions">
     <?= Html::submitButton('Save frameworks', ['class' => 'btn btn-primary gw-btn']) ?>
+</div>
+<?php ActiveForm::end(); ?>
+
+<?php $form = ActiveForm::begin(['id' => 'incident-report-form', 'options' => ['class' => 'gw-form gw-form--settings']]); ?>
+<?= $form->errorSummary($incidentReport, ['class' => 'alert alert-danger gw-error-summary']) ?>
+
+<?php foreach (['incident-reports' => [IncidentWording::KIND_STATUS, 'Incident reports: what each status means'],
+                'incident-report-severity' => [IncidentWording::KIND_SEVERITY, 'Incident reports: what each severity means']] as $id => [$kind, $legend]): ?>
+<fieldset class="gw-fieldset" id="<?= $id ?>">
+    <legend class="gw-fieldset__title"><?= Html::encode($legend) ?></legend>
+    <p class="form-text gw-field__hint">Printed in plain English next to the incident's <?= $kind ?> in incident PDF reports, for management and non-technical readers. Clear a box to go back to the default wording.</p>
+    <div class="row">
+        <?php foreach (IncidentReportForm::attributesOf($kind) as $attribute): ?>
+            <div class="col-md-6"><?= $form->field($incidentReport, $attribute)->textarea(['rows' => 2, 'maxlength' => IncidentReportForm::MAX_LENGTH]) ?></div>
+        <?php endforeach; ?>
+    </div>
+</fieldset>
+<?php endforeach; ?>
+
+<div class="gw-form__actions">
+    <?= Html::submitButton('Save incident report wording', ['class' => 'btn btn-primary gw-btn']) ?>
 </div>
 <?php ActiveForm::end(); ?>

@@ -22,6 +22,7 @@ use Yii;
  * @property string $reference
  * @property string $title
  * @property string|null $description
+ * @property string|null $management_summary plain-English summary that opens the PDF report
  * @property int|null $category_id
  * @property bool $impact_confidentiality
  * @property bool $impact_integrity
@@ -218,14 +219,14 @@ class Incident extends DomainRecord
 
     public function rules(): array
     {
-        $text = ['title', 'description', 'reported_by', 'regulator_reference', 'containment_actions', 'recovery_actions', 'root_cause', 'lessons_learned'];
+        $text = ['title', 'description', 'management_summary', 'reported_by', 'regulator_reference', 'containment_actions', 'recovery_actions', 'root_cause', 'lessons_learned'];
         return [
             [$text, 'trim'],
             [['title', 'category_id', 'severity', 'status', 'detected_at'], 'required'],
             ['title', 'string', 'max' => 255],
             ['reported_by', 'string', 'max' => 128],
             ['regulator_reference', 'string', 'max' => 64],
-            [['description', 'containment_actions', 'recovery_actions', 'root_cause', 'lessons_learned'], 'string', 'max' => 20000],
+            [['description', 'management_summary', 'containment_actions', 'recovery_actions', 'root_cause', 'lessons_learned'], 'string', 'max' => 20000],
             ['severity', 'in', 'range' => array_keys(self::severityOptions())],
             ['status', 'in', 'range' => array_keys(self::statusOptions())],
             [$this->dateTimeAttributes(), 'datetime', 'format' => 'php:Y-m-d H:i:s'],
@@ -303,6 +304,7 @@ class Incident extends DomainRecord
             'reference' => 'Reference',
             'title' => 'Title',
             'description' => 'Description',
+            'management_summary' => 'Management summary',
             'category_id' => 'Category',
             'impact_confidentiality' => 'Confidentiality',
             'impact_integrity' => 'Integrity',

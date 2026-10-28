@@ -321,6 +321,13 @@ post analyst "/incidents/$IID/update" "/incidents/$IID/update" 302 \
 check analyst "/incidents/$IID" 200
 grep -q 'Smoke test timeline entry' "$BODY" && ok || bad "timeline entry missing"
 grep -q 'Status changed from New to Contained' "$BODY" && ok || bad "automatic status timeline entry missing"
+grep -q "href=\"/incidents/$IID/pdf\"" "$BODY" && ok || bad "incident PDF button missing"
+
+# Incident PDF report: open (interim), closed (final) and with a pending regulator deadline; viewers may export
+for inc in $IID $I13 $I19; do
+    req viewer GET "/incidents/$inc/pdf"
+    [[ "$CODE" == "200" ]] && head -c 5 "$BODY" | grep -q '%PDF-' && ok || bad "incident $inc PDF -> $CODE"
+done
 
 # Device: validation, auto tag, override tag, posture, archive/restore/delete
 post analyst /devices/create /devices/create 200 \
@@ -549,6 +556,16 @@ check guest /branding/logo 404
 post admin /admin/settings /admin/settings 302 \
     "BrandingForm[app_name]=" "BrandingForm[organisation]=" "BrandingForm[tagline]=Security operations console" \
     "BrandingForm[login_notice]=Restricted system · all access is monitored and audited" "BrandingForm[pdf_classification]=Confidential"
+
+# Admin: incident report wording (restored to the default afterwards)
+post admin /admin/settings /admin/settings 302 "IncidentReportForm[status_closed]=Smoke wording for closed incidents"
+check admin /admin/settings 200
+grep -q 'Smoke wording for closed incidents' "$BODY" && ok || bad "incident report wording not saved"
+req viewer GET "/incidents/$I13/pdf"
+[[ "$CODE" == "200" ]] && ok || bad "incident PDF with custom wording -> $CODE"
+post admin /admin/settings /admin/settings 302 "IncidentReportForm[status_closed]="
+check admin /admin/settings 200
+! grep -q 'Smoke wording for closed incidents' "$BODY" && ok || bad "incident report wording not reset to the default"
 
 # Admin: compliance frameworks (Cyber Essentials off and SOC 2 Availability in scope; restored afterwards)
 post admin /admin/settings /admin/settings 302 \

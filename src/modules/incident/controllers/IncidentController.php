@@ -23,6 +23,11 @@ class IncidentController extends CrudController
         return IncidentSearch::class;
     }
 
+    protected function viewActions(): array
+    {
+        return ['pdf'];
+    }
+
     protected function manageActions(): array
     {
         return ['add-entry'];

@@ -122,6 +122,7 @@ class IncidentSearch extends Model
                 ['like', 'incident.reference', $this->q],
                 ['like', 'incident.title', $this->q],
                 ['like', 'incident.description', $this->q],
+                ['like', 'incident.management_summary', $this->q],
             ]);
         }
         if ($this->month) {

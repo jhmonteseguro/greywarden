@@ -80,6 +80,21 @@ $register = $this->params['pdf.register'] ?? $model::entityLabel();
     .gw-badge--high { border-color: #d0630c; color: #a44c06; }
     .gw-badge--low { border-color: #3f9142; color: #2b6e2e; }
     .gw-badge--muted { border-color: #cbd2d9; color: #7b8794; }
+    /* Incident report: interim / final notice, at-a-glance table, timeline, technical appendix */
+    .notice { border: 1px solid #cbd2d9; background: #f5f7fa; padding: 6pt 8pt; margin: 0 0 10pt; }
+    .notice--interim { border-color: #c98a00; background: #fff8e6; }
+    .notice strong { text-transform: uppercase; letter-spacing: 0.5pt; font-size: 8pt; }
+    table.glance { width: 100%; border-collapse: collapse; margin-bottom: 4pt; }
+    table.glance th { width: 22%; font-weight: normal; color: #52606d; text-align: left; vertical-align: top; padding: 5pt 8pt 5pt 0; border-bottom: 1px solid #e4e7eb; }
+    table.glance td { vertical-align: top; padding: 5pt 0; border-bottom: 1px solid #e4e7eb; }
+    .glance__value { font-weight: bold; }
+    .glance__meaning { color: #52606d; }
+    table.scores.scores--spaced { margin-top: 8pt; }
+    table.timeline td.timeline__when { width: 82pt; white-space: nowrap; }
+    table.timeline td.timeline__type { width: 70pt; }
+    table.timeline td.timeline__by { width: 80pt; }
+    .appendix { page-break-before: always; }
+    .appendix h2:first-child { margin-top: 0; }
     .rating--critical { color: #b42318; } .rating--high { color: #a44c06; } .rating--medium { color: #8a5d00; } .rating--low { color: #2b6e2e; }
 </style>
 </head>

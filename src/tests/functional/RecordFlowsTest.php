@@ -153,6 +153,7 @@ class RecordFlowsTest extends FunctionalTestCase
             'title' => 'Functional incident', 'category_id' => $this->lookupId(Lookup::TYPE_INCIDENT_CATEGORY), 'severity' => Incident::SEVERITY_HIGH,
             'status' => Incident::STATUS_NEW, 'detected_at' => date('Y-m-d\TH:i'), 'personal_data_involved' => 1, 'regulator_notification_required' => 1,
             'impact_confidentiality' => 1, 'impact_integrity' => 0, 'impact_availability' => 1,
+            'management_summary' => 'Plain summary for the board',
             'deviceIds' => '', 'riskIds' => '', 'techniqueIds' => [$technique],
         ]];
         $this->post('/incidents/create', $form);
@@ -165,6 +166,10 @@ class RecordFlowsTest extends FunctionalTestCase
         $this->assertSee('data-value="confidentiality">Confidentiality<');
         $this->assertSee('data-value="availability">Availability<');
         $this->assertNotSee('data-value="integrity"');
+        $this->assertSee('Plain summary for the board');
+        $this->assertSee('href="/incidents/' . $incident->id . '/pdf"');
+        $this->get('/incidents?q=board');
+        $this->assertSee('Functional incident');
         $this->get('/incidents?impact=availability');
         $this->assertSee('Functional incident');
         $this->get('/incidents?impact=integrity');
@@ -285,7 +290,8 @@ class RecordFlowsTest extends FunctionalTestCase
     public function testPdfExportIsAudited(): void
     {
         $this->loginAs('viewer');
-        foreach (['risks' => ['risk', 'RSK-0001'], 'controls' => ['control', 'CTL-0001'], 'decisions' => ['decision', 'DEC-0001']] as $path => [$table, $ref]) {
+        foreach (['risks' => ['risk', 'RSK-0001'], 'controls' => ['control', 'CTL-0001'], 'decisions' => ['decision', 'DEC-0001'],
+                     'incidents' => ['incident', 'INC-0001']] as $path => [$table, $ref]) {
             $id = $this->id($table, 'reference', $ref);
             $this->get("/$path/$id/pdf");
             $this->assertOk();
@@ -294,8 +300,8 @@ class RecordFlowsTest extends FunctionalTestCase
             $this->assertStringContainsString("$ref-", (string) $this->response->headers->get('content-disposition'));
             $this->assertTrue(AuditLog::find()->where(['entity_type' => $table, 'entity_id' => $id, 'action' => 'export'])->exists());
         }
-        // Incidents and devices have no PDF
-        $this->get('/incidents/' . $this->id('incident', 'reference', 'INC-0001') . '/pdf');
+        // Devices have no PDF
+        $this->get('/devices/' . $this->id('device', 'asset_tag', 'DEV-0001') . '/pdf');
         $this->assertStatus(403);
     }
 

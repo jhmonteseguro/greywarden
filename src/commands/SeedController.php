@@ -47,6 +47,19 @@ class SeedController extends Controller
         12 => 'C', 13 => 'C', 14 => 'CI', 15 => 'CIA', 16 => 'C', 17 => 'C', 19 => 'C', 20 => 'A',
     ];
 
+    /** Plain-English summary for management (opens the PDF report), by incident number (INC-00nn); unlisted = none */
+    private const MANAGEMENT_SUMMARIES = [
+        2 => 'A finance computer was infected with ransomware, software that locks files until a ransom is paid. Our security software spotted it '
+            . 'and cut the computer off from the network within minutes, so it did not spread. No ransom was paid; the computer was rebuilt and '
+            . '14 files were restored from backup.',
+        13 => 'Files containing the names and email addresses of 3,200 customers were stored in an online storage area that anyone on the '
+            . 'internet could open. A security researcher told us; we closed it the same hour and reported it to the regulator in time.',
+        15 => 'Suspicious commands were run on one of our file servers, which then tried to connect to an unknown computer on the internet. '
+            . 'The server has been taken off the network while we find out whether any information was taken.',
+        19 => 'A spreadsheet with the contact details of another client\'s 140 customers was emailed to the wrong client by mistake. '
+            . 'We have asked the recipient to delete it and are assessing whether the regulator needs to be told.',
+    ];
+
     /** MITRE ATT&CK techniques observed, by incident number (INC-00nn) */
     private const ATTACK_INCIDENTS = [
         1 => ['T1566', 'T1684.001', 'T1583.001'],                 // CEO impersonation
@@ -731,6 +744,7 @@ class SeedController extends Controller
                 'regulator_reference' => $notifyH !== null ? 'ICO-' . (1000000 + mt_rand(0, 899999)) : null,
                 'subjects_notified_at' => $notifyH !== null ? self::dt(-$detAgo + $notifyH + 24) : null,
                 'description' => $desc,
+                'management_summary' => self::MANAGEMENT_SUMMARIES[$idx + 1] ?? null,
                 'impact_confidentiality' => str_contains(self::CIA_INCIDENTS[$idx + 1] ?? '', 'C'),
                 'impact_integrity' => str_contains(self::CIA_INCIDENTS[$idx + 1] ?? '', 'I'),
                 'impact_availability' => str_contains(self::CIA_INCIDENTS[$idx + 1] ?? '', 'A'),
