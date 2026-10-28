@@ -248,14 +248,14 @@ class IntelTest extends DbTestCase
 
         try {
             // With a DQS key ZEN goes to zen.dq.spamhaus.net, and a refusal there is a real error
-            putenv('SPAMHAUS_DQS_KEY=abc123def456ghi789jkl012mn');
+            putenv('SPAMHAUS_DQS_KEY=testkeytestkeytestkeytestk');
             $queried = [];
             Network::$fakeDns = static function (string $name) use (&$queried) {
                 $queried[] = $name;
                 return str_ends_with($name, '.zen.dq.spamhaus.net') ? ['127.0.0.4'] : [];
             };
             $r = (new DnsblSource())->collect(Indicator::ip('8.8.4.4'), [], []);
-            $this->assertContains('4.4.8.8.abc123def456ghi789jkl012mn.zen.dq.spamhaus.net', $queried);
+            $this->assertContains('4.4.8.8.testkeytestkeytestkeytestk.zen.dq.spamhaus.net', $queried);
             $this->assertNotContains('4.4.8.8.zen.spamhaus.org', $queried);
             $this->assertSame(SourceResult::HIT, $r->status);
             $this->assertSame('Spamhaus ZEN: XBL – exploited host (botnet, malware)', $r->signals[0]['label']);
