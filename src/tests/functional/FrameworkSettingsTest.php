@@ -51,7 +51,7 @@ class FrameworkSettingsTest extends FunctionalTestCase
         $this->assertSee('id="complianceform-soc2_categories-privacy"');
         $this->assertNotSee('soc2_categories-security');   // Security is not optional
 
-        foreach (['iso27001', 'cyber-essentials', 'soc2'] as $slug) {
+        foreach (['iso27001', 'cyber-essentials', 'soc2', 'nist-csf'] as $slug) {
             $this->assertSee('href="/frameworks/' . $slug . '"');
         }
         $this->get('/frameworks/soc2');
@@ -139,6 +139,53 @@ class FrameworkSettingsTest extends FunctionalTestCase
         $this->assertSee('col-lg-6 col-xxl-3');
     }
 
+    public function testNistCsfProfile(): void
+    {
+        $control = $this->control(['A.8.5', 'PR.AA-03']);
+        $this->loginAs('viewer');
+        $this->get('/');
+        $this->assertSee('href="/frameworks/nist-csf"');
+        // Implemented controls plus four frameworks: rows of three
+        $this->assertMatchesRegularExpression('/class="col-md-6 col-xl-4">\s*<h3 class="gw-controls-panel__heading">Implemented/', $this->body);
+
+        $this->get('/frameworks/nist-csf');
+        $this->assertOk();
+        $this->assertSee('NIST CSF 2.0 profile');
+        $this->assertSee('NIST Cybersecurity Framework 2.0');
+        $this->assertSee('GV.OC Organizational Context');
+        $this->assertSee('Your current profile');
+        $this->assertSee($control->reference);
+        $this->get('/frameworks/nist-csf?state=met');
+        $this->assertSee('PR.AA-03');
+        $this->assertNotSee('PR.AA-01');
+
+        $this->get('/frameworks/requirement/' . $this->requirementId('PR.AA-03'));
+        $this->assertOk();
+        $this->assertSee('NIST CSF 2.0 subcategory (outcome)');
+        $this->get('/frameworks');
+        $this->assertSee('Current profile against the CSF 2.0 outcomes');
+        $this->get('/search?q=GV.SC-01');
+        $this->assertRedirect('/frameworks/requirement/' . $this->requirementId('GV.SC-01'));
+
+        $this->get("/controls/{$control->id}");
+        $this->assertSee('href="/frameworks/requirement/' . $this->requirementId('PR.AA-03') . '"');
+        $this->assertSee('col-md-6 col-xl-4');
+        $this->get('/controls?requirement=PR.AA');
+        $this->assertSee($control->reference);
+
+        $this->loginAs('analyst');
+        $this->get('/controls/create');
+        $this->assertSee('id="control-requirementids-nist-csf"');
+        $this->assertSee('NIST CSF 2.0 outcomes');
+
+        $this->loginAs('admin');
+        $this->save(['iso27001']);
+        $this->get('/frameworks/nist-csf');
+        $this->assertStatus(404);
+        $this->get('/frameworks/requirement/' . $this->requirementId('PR.AA-03'));
+        $this->assertStatus(404);
+    }
+
     public function testEveryFrameworkOff(): void
     {
         $this->loginAs('admin');
@@ -166,7 +213,7 @@ class FrameworkSettingsTest extends FunctionalTestCase
     public function testInvalidChoicesAndPermissions(): void
     {
         $this->loginAs('admin');
-        $this->save(['iso27001', 'nist-csf'], ['security']);
+        $this->save(['iso27001', 'pci_dss'], ['security']);
         $this->assertOk();
         $this->assertSee('Frameworks is invalid.');
         $this->assertSame(0, (int) Setting::find()->count());
@@ -176,13 +223,13 @@ class FrameworkSettingsTest extends FunctionalTestCase
             $this->save(['iso27001']);
             $this->assertStatus(403);
         }
-        $this->assertSame(['iso27001', 'cyber_essentials', 'soc2'], FrameworkCatalogue::enabled());
+        $this->assertSame(['iso27001', 'cyber_essentials', 'soc2', 'nist_csf'], FrameworkCatalogue::enabled());
 
         // The branding form still saves on its own
         $this->loginAs('admin');
         $this->post('/admin/settings', ['BrandingForm' => ['app_name' => 'Acme', 'organisation' => '', 'tagline' => '', 'login_notice' => '', 'pdf_classification' => '']]);
         $this->assertRedirect('/admin/settings');
         $this->assertSame('Branding saved.', $this->flash('success'));
-        $this->assertSame(['iso27001', 'cyber_essentials', 'soc2'], FrameworkCatalogue::enabled());
+        $this->assertSame(['iso27001', 'cyber_essentials', 'soc2', 'nist_csf'], FrameworkCatalogue::enabled());
     }
 }

@@ -1,6 +1,6 @@
 <?php
 /**
- * Statement of Applicability (ISO 27001) / readiness (Cyber Essentials, SOC 2).
+ * Statement of Applicability (ISO 27001) / readiness (Cyber Essentials, SOC 2) / profile (NIST CSF).
  *
  * @var yii\web\View $this
  * @var string $framework
@@ -43,6 +43,9 @@ $filters = ['' => 'All'] + FrameworkCoverage::stateLabels();
                     <?= Rbac::can(Rbac::PERM_SETTINGS) ? Html::a('Change in Settings', ['/admin/settings/index', '#' => 'compliance']) : 'An administrator can change them in Settings.' ?></p>
                 <p class="gw-muted gw-small mb-0">Criteria are paraphrased; see the AICPA 2017 Trust Services Criteria for the criteria text and points of focus.
                     Criteria marked not applicable need a justification.</p>
+            <?php elseif ($framework === FrameworkCatalogue::NIST_CSF): ?>
+                <p class="gw-muted gw-small mb-0">Your current profile: how far the controls achieve each CSF 2.0 outcome. Outcomes outside your target profile
+                    can be marked not applicable with a justification. See NIST CSWP 29 and its implementation examples for guidance.</p>
             <?php else: ?>
                 <p class="gw-muted gw-small mb-0">Requirements marked not applicable need a justification. Control titles only: see ISO/IEC 27001:2022 and 27002:2022 for the control text.</p>
             <?php endif; ?>

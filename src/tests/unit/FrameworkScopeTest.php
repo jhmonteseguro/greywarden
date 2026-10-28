@@ -56,13 +56,39 @@ class FrameworkScopeTest extends DbTestCase
         $this->assertSame('patch-check', FrameworkCatalogue::icon('nope'));
     }
 
+    public function testNistCsfCatalogueIsLoaded(): void
+    {
+        $count = static fn(array $where) => (int) FrameworkRequirement::find()->where(['framework' => FrameworkCatalogue::NIST_CSF])->andWhere($where)->count();
+        $this->assertSame(106, $count([]), 'CSF 2.0 Core: 106 subcategories (the withdrawn 1.1 ones left out)');
+        $this->assertSame(22, (int) FrameworkRequirement::find()->select('group_code')->distinct()->where(['framework' => FrameworkCatalogue::NIST_CSF])->count());
+        foreach (['GV' => 31, 'ID' => 21, 'PR' => 22, 'DE' => 11, 'RS' => 13, 'RC' => 8] as $function => $n) {
+            $this->assertSame($n, $count(['like', 'external_id', $function . '.%', false]), $function);
+        }
+        $this->assertSame(0, $count(['like', 'external_id', 'ID.AM-06', false]), 'withdrawn in 2.0');
+
+        $r = $this->requirement('PR.AA-01');
+        $this->assertSame('PR.AA', $r->group_code);
+        $this->assertSame('PR.AA Identity Management, Authentication, and Access Control', $r->group_name);
+        $this->assertStringContainsString('Identities and credentials for authorized users', $r->title);
+        $this->assertSame('GV.OC', FrameworkCatalogue::groupCode(FrameworkCatalogue::NIST_CSF, 'GV.OC-01'));
+        $this->assertSame(1, $this->requirement('GV.OC-01')->sort_order, 'NIST order, Govern first');
+
+        $this->assertSame(FrameworkCatalogue::NIST_CSF, FrameworkCatalogue::fromSlug('nist-csf'));
+        $this->assertSame('NIST CSF 2.0 profile', FrameworkCatalogue::title(FrameworkCatalogue::NIST_CSF));
+        $this->assertSame('NIST CSF', FrameworkCatalogue::shortLabel(FrameworkCatalogue::NIST_CSF));
+        $this->assertStringContainsString('CSWP 29', FrameworkCatalogue::version(FrameworkCatalogue::NIST_CSF));
+        $this->assertTrue($r->getIsInScope());
+        $this->assertSame([$r->id], FrameworkRequirement::idsMatching('PR.AA-01'));
+    }
+
     public function testFrameworksAreOnUntilSwitchedOff(): void
     {
-        $this->assertSame(['iso27001', 'cyber_essentials', 'soc2'], FrameworkCatalogue::enabled());
+        $this->assertSame(['iso27001', 'cyber_essentials', 'soc2', 'nist_csf'], FrameworkCatalogue::enabled());
         $this->assertFalse(FrameworkCatalogue::isEnabled('nope'));
 
-        $this->settings(['framework.cyber_essentials' => '0', 'framework.soc2' => '1']);
+        $this->settings(['framework.cyber_essentials' => '0', 'framework.soc2' => '1', 'framework.nist_csf' => '0']);
         $this->assertSame(['iso27001', 'soc2'], FrameworkCatalogue::enabled());
+        $this->assertSame([], FrameworkCoverage::rows(FrameworkCatalogue::NIST_CSF));
         $this->assertSame([], FrameworkCoverage::rows(FrameworkCatalogue::CYBER_ESSENTIALS));
         $this->assertSame([], FrameworkRequirement::selectOptions(FrameworkCatalogue::CYBER_ESSENTIALS));
         $this->assertSame([], FrameworkRequirement::idsMatching('CE-UA'));
@@ -131,13 +157,13 @@ class FrameworkScopeTest extends DbTestCase
     public function testComplianceFormSavesChangesAndAuditsThem(): void
     {
         $form = ComplianceForm::current();
-        $this->assertSame(['iso27001', 'cyber_essentials', 'soc2'], $form->frameworks);
+        $this->assertSame(['iso27001', 'cyber_essentials', 'soc2', 'nist_csf'], $form->frameworks);
         $this->assertSame([], $form->soc2_categories);
         $this->assertTrue($form->save(), 'saving unchanged settings is fine');
         $this->assertSame(0, (int) Setting::find()->count(), 'and stores nothing');
         $this->assertNull(AuditLog::findOne(['entity_type' => 'setting']));
 
-        $form = new ComplianceForm(['frameworks' => ['iso27001', 'nist'], 'soc2_categories' => ['security']]);
+        $form = new ComplianceForm(['frameworks' => ['iso27001', 'pci_dss'], 'soc2_categories' => ['security']]);
         $this->assertFalse($form->save());
         $this->assertTrue($form->hasErrors('frameworks'));
         $this->assertTrue($form->hasErrors('soc2_categories'), 'Security is not optional');
@@ -159,7 +185,8 @@ class FrameworkScopeTest extends DbTestCase
             [$rows['soc2_categories']['field'], $rows['soc2_categories']['old'], $rows['soc2_categories']['new']]);
         $this->assertArrayNotHasKey('cyber_essentials', $rows, 'unchanged frameworks are not logged');
 
-        $this->assertSame(['iso27001' => 'ISO/IEC 27001:2022', 'cyber_essentials' => 'Cyber Essentials', 'soc2' => 'SOC 2'], ComplianceForm::frameworkOptions());
+        $this->assertSame(['iso27001' => 'ISO/IEC 27001:2022', 'cyber_essentials' => 'Cyber Essentials', 'soc2' => 'SOC 2', 'nist_csf' => 'NIST CSF 2.0'],
+            ComplianceForm::frameworkOptions());
         $this->assertNotEmpty((new ComplianceForm())->attributeHints()['soc2_categories']);
     }
 }

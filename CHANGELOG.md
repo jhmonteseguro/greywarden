@@ -13,7 +13,9 @@ releases).
 - SOC 2 compliance module: the 61 AICPA 2017 Trust Services Criteria (paraphrased), mappable from controls, with a
   readiness view under *Compliance → SOC 2*. Security is always in scope; Availability, Confidentiality, Processing
   integrity and Privacy are added in Admin › Settings.
-- *Admin › Settings › Compliance frameworks*: switch ISO 27001, Cyber Essentials and SOC 2 on or off. A framework that
+- NIST CSF 2.0 compliance module: the 106 CSF 2.0 subcategories in NIST's wording, mappable from controls, with a
+  current-profile view under *Compliance → NIST CSF 2.0*.
+- *Admin › Settings › Compliance frameworks*: switch ISO 27001, Cyber Essentials, SOC 2 and NIST CSF 2.0 on or off. A framework that
   is off is hidden everywhere, but its applicability decisions and control mappings are kept. All are on by default.
 
 ### Fixed

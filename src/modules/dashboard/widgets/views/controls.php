@@ -17,7 +17,7 @@ $labels = Control::effectivenessOptions();
 $order = [Control::EFFECTIVENESS_EFFECTIVE, Control::EFFECTIVENESS_PARTIAL, Control::EFFECTIVENESS_INEFFECTIVE, Control::EFFECTIVENESS_NOT_TESTED];
 $base = max(1, $implemented);
 // The implemented-controls column plus one per framework
-$col = match (count($frameworks)) { 0 => 'col-12', 1 => 'col-lg-6', 2 => 'col-lg-4', default => 'col-md-6 col-xxl-3' };
+$col = match (count($frameworks)) { 0 => 'col-12', 1 => 'col-lg-6', 2 => 'col-lg-4', 3 => 'col-md-6 col-xxl-3', default => 'col-md-6 col-xl-4' };
 ?>
 <div class="row g-4 gw-controls-panel">
     <div class="<?= $col ?>">

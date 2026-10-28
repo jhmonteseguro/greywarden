@@ -59,7 +59,8 @@ foreach (FrameworkCatalogue::enabled() as $framework) {
     $requirements[$framework] = $model->requirementsOf($framework);
 }
 $requirementCount = array_sum(array_map('count', $requirements));
-$frameworkCol = count($requirements) < 3 ? 'col-lg-4' : 'col-lg-6 col-xxl-3';   // one column per framework, plus ATT&CK
+// One column per framework, plus ATT&CK
+$frameworkCol = match (true) { count($requirements) < 3 => 'col-lg-4', count($requirements) === 3 => 'col-lg-6 col-xxl-3', default => 'col-md-6 col-xl-4' };
 $incidentCount = array_sum(array_map('count', $incidents));
 
 ob_start(); ?>

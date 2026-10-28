@@ -36,6 +36,7 @@ $this->params['actions'] = Rbac::canManage()
             <p class="gw-muted gw-small mb-0"><?= match ($model->framework) {
                 FrameworkCatalogue::ISO27001 => 'Annex A control title only. See ISO/IEC 27001:2022 for the control and ISO/IEC 27002:2022 for implementation guidance.',
                 FrameworkCatalogue::SOC2 => 'Paraphrased. See the AICPA 2017 Trust Services Criteria for the criterion and its points of focus.',
+                FrameworkCatalogue::NIST_CSF => 'NIST CSF 2.0 subcategory (outcome). See NIST CSWP 29 and the CSF 2.0 implementation examples for guidance.',
                 default => 'Paraphrased from the NCSC Cyber Essentials requirements for IT infrastructure.',
             } ?></p>
         </section>

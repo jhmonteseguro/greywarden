@@ -16,6 +16,7 @@ $intro = [
     FrameworkCatalogue::ISO27001 => 'Statement of Applicability: every Annex A control, whether it applies and why, and the controls that implement it.',
     FrameworkCatalogue::CYBER_ESSENTIALS => 'Readiness against the five technical control themes, including the device checks an assessor will sample.',
     FrameworkCatalogue::SOC2 => 'Readiness against the Trust Services Criteria: Security, plus the categories chosen for the report.',
+    FrameworkCatalogue::NIST_CSF => 'Current profile against the CSF 2.0 outcomes across Govern, Identify, Protect, Detect, Respond and Recover.',
 ];
 ?>
 <?php if (!$summaries): ?>

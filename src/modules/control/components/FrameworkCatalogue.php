@@ -9,7 +9,8 @@ use yii\db\Query;
 
 /**
  * The bundled framework catalogues (data/frameworks): ISO/IEC 27001:2022
- * Annex A, Cyber Essentials and the SOC 2 Trust Services Criteria.
+ * Annex A, Cyber Essentials, the SOC 2 Trust Services Criteria and the NIST
+ * CSF 2.0 Core.
  *
  * Each framework can be switched off in Admin › Settings, and SOC 2 is scoped
  * to the Trust Services categories chosen there (Security is always in). A
@@ -24,6 +25,7 @@ final class FrameworkCatalogue
     public const ISO27001 = 'iso27001';
     public const CYBER_ESSENTIALS = 'cyber_essentials';
     public const SOC2 = 'soc2';
+    public const NIST_CSF = 'nist_csf';
 
     public const SOC2_SECURITY = 'security';
     public const SOC2_AVAILABILITY = 'availability';
@@ -46,6 +48,10 @@ final class FrameworkCatalogue
         self::SOC2 => [
             'label' => 'SOC 2', 'short' => 'SOC 2', 'file' => 'soc2-tsc-2017.php', 'slug' => 'soc2',
             'nav' => 'SOC 2', 'icon' => 'award', 'title' => 'SOC 2 readiness',
+        ],
+        self::NIST_CSF => [
+            'label' => 'NIST CSF 2.0', 'short' => 'NIST CSF', 'file' => 'nist-csf-2.0.php', 'slug' => 'nist-csf',
+            'nav' => 'NIST CSF 2.0', 'icon' => 'compass', 'title' => 'NIST CSF 2.0 profile',
         ],
     ];
 
@@ -236,12 +242,13 @@ final class FrameworkCatalogue
         return $stats;
     }
 
-    /** "A.5.12" -> "5", "CE-FW-3" -> "FW", "CC6.1" -> "CC6" */
+    /** "A.5.12" -> "5", "CE-FW-3" -> "FW", "CC6.1" -> "CC6", "GV.OC-01" -> "GV.OC" */
     public static function groupCode(string $framework, string $externalId): string
     {
         return match ($framework) {
             self::ISO27001 => explode('.', $externalId)[1] ?? '',
             self::SOC2 => explode('.', $externalId)[0],
+            self::NIST_CSF => explode('-', $externalId)[0],
             default => explode('-', $externalId)[1] ?? '',
         };
     }

@@ -20,11 +20,13 @@ $pickerLabels = [
     FrameworkCatalogue::ISO27001 => 'ISO 27001 Annex A controls',
     FrameworkCatalogue::CYBER_ESSENTIALS => 'Cyber Essentials requirements',
     FrameworkCatalogue::SOC2 => 'SOC 2 Trust Services Criteria',
+    FrameworkCatalogue::NIST_CSF => 'NIST CSF 2.0 outcomes',
 ];
 $pickerHints = [
     FrameworkCatalogue::ISO27001 => 'Filter Annex A, e.g. A.8.7 or malware',
     FrameworkCatalogue::CYBER_ESSENTIALS => 'Filter requirements, e.g. CE-UA or MFA',
     FrameworkCatalogue::SOC2 => 'Filter criteria, e.g. CC6.1 or access',
+    FrameworkCatalogue::NIST_CSF => 'Filter outcomes, e.g. PR.AA or backups',
 ];
 ?>
 <?php $form = ActiveForm::begin(['id' => 'control-form', 'options' => ['class' => 'gw-form gw-form--control']]); ?>

@@ -26,8 +26,8 @@ For real data, see [Production](#production); for the full setup, see [Developme
   and a flag when a risk relies on a control that is retired, not effective or overdue for testing
 * **Control Register**: controls with owner, type, status, target dates, effectiveness tests and a test schedule;
   links to risks, decisions, incidents (detected / failed / added in response), ATT&CK mitigations, and the
-  **ISO 27001:2022 Statement of Applicability**, **Cyber Essentials** and **SOC 2** readiness views (each can be switched
-  off in Admin › Settings). Controls can also be
+  **ISO 27001:2022 Statement of Applicability**, **Cyber Essentials** and **SOC 2** readiness views and a **NIST CSF 2.0**
+  profile (each can be switched off in Admin › Settings). Controls can also be
   **device checks** that every applicable device in the inventory is checked against
 * **Decision Log**: options, rationale, supersession chain, links to risks and incidents
 * **Incident Log**: NIST lifecycle, an incident timeline, the 72-hour regulator deadline with a countdown, response metrics
@@ -313,7 +313,7 @@ greywarden/
 * **Links**: risks (from either side; implemented controls are the existing controls behind the residual score, planned
   ones the treatment), decisions (that introduced or changed the control), incidents with a role (*detected or contained
   it*, *failed or was bypassed*, *added or improved in response*, set on the incident form), ATT&CK mitigations, and
-  ISO 27001 / Cyber Essentials / SOC 2 requirements. The free-text "Existing controls" / "Treatment plan" fields on risks stay
+  ISO 27001 / Cyber Essentials / SOC 2 / NIST CSF requirements. The free-text "Existing controls" / "Treatment plan" fields on risks stay
   as context.
 * **Weak controls**: a control is weak when it is retired, archived, tested partially effective or ineffective, overdue
   for testing, or past its target date. Open risks linked to one get a *Control issue* flag and appear under the
@@ -322,13 +322,16 @@ greywarden/
 * **Frameworks** (`framework_requirement`, loaded from `src/data/frameworks/`): the 93 ISO/IEC 27001:2022 Annex A controls
   (IDs, themes and titles only: the control text is ISO copyright), 27 Cyber Essentials requirements across its five
   themes (paraphrased from the NCSC *Requirements for IT infrastructure*; check them against the current version before an
-  assessment) and the 61 SOC 2 Trust Services Criteria (AICPA 2017 with the 2022 revised points of focus; paraphrased, as
-  the criteria text is AICPA copyright). Each requirement takes the best state of its linked controls: **Met** (implemented, not found wanting;
+  assessment), the 61 SOC 2 Trust Services Criteria (AICPA 2017 with the 2022 revised points of focus; paraphrased, as
+  the criteria text is AICPA copyright) and the 106 NIST CSF 2.0 subcategories (NIST's own text, generated from the CSF 2.0
+  reference export; US government work). Each requirement takes the best state of its linked controls: **Met** (implemented, not found wanting;
   *not tested* is shown when none has been tested effective) › **Partly met** (implementing, or tested partially effective /
   ineffective) › **Planned** › **Gap**. Requirements can be marked **not applicable** with a mandatory justification:
   that is the Statement of Applicability (*Compliance → ISO 27001 SoA*). *Compliance → Cyber Essentials* adds the device
   checks mapped to Cyber Essentials with pass / fail / not assessed counts across in-service devices.
   *Compliance → SOC 2* covers Security (the common criteria, CC1–CC9) plus the optional categories chosen in Settings.
+  *Compliance → NIST CSF 2.0* is the current profile: how far the controls achieve each outcome, grouped by category across
+  Govern, Identify, Protect, Detect, Respond and Recover.
 * **Switching frameworks off** (*Admin › Settings › Compliance frameworks*): every framework is on until an admin turns it
   off. A framework that is off disappears from the sidebar, the Frameworks page, the dashboard, search, the control form,
   view and PDF, and its pages return 404. Its applicability decisions and control mappings are kept (saving a control
@@ -559,7 +562,7 @@ make test     # PHPUnit: risk scoring/bands, residual validation, incident 72h d
               # matching, scoring, source parsers, offline investigation, blocklist rules and matching,
               # Google device export parsing, import upsert and stale-device detection (PHP + SQL parity),
               # control testing / effectiveness / schedule, weak-control risk flags (PHP + SQL parity),
-              # ISO 27001 / Cyber Essentials / SOC 2 roll-up, catalogue import and framework scope, incident control roles,
+              # ISO 27001 / Cyber Essentials / SOC 2 / NIST CSF roll-up, catalogue import and framework scope, incident control roles,
               # device checks: applicability, results, audit and compliance states (PHP + SQL parity).
               # Runs against DB_TEST_NAME inside transactions; no test touches the network.
 make smoke    # end-to-end HTTP checks for every page and role

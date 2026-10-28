@@ -186,7 +186,7 @@ class AccessControlTest extends FunctionalTestCase
     {
         $this->loginAs('viewer');
         foreach (['/risks/999999', '/controls/999999', '/decisions/999999', '/incidents/999999', '/devices/999999', '/intel/blocklist/999999',
-                     '/frameworks/nist-csf', '/frameworks/requirement/999999', '/attack/T9999', '/attack/mitigations/M9999',
+                     '/frameworks/pci-dss', '/frameworks/requirement/999999', '/attack/T9999', '/attack/mitigations/M9999',
                      '/intel/ip/999.1.1.1', '/intel/ip/192.0.2.099', '/intel/asn/AS99999999999', '/intel/indicator/999999',
                      '/attachments/999999', '/no-such-page'] as $url) {
             $this->get($url);
