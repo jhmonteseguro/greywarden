@@ -6,6 +6,8 @@ releases).
 
 ## [Unreleased]
 
+## [0.2.0-alpha] - 2026-10-28
+
 ### Added
 
 - `SPAMHAUS_DQS_KEY`: with a free Spamhaus Data Query Service key, the DNS blocklist check queries ZEN via
@@ -18,8 +20,8 @@ releases).
 - NCSC Cyber Assessment Framework 4.0 compliance module: the 41 contributing outcomes (Open Government Licence v3.0),
   mappable from controls, with an assessment view under *Compliance → NCSC CAF*.
 - *Admin › Settings › Compliance frameworks*: switch ISO 27001, Cyber Essentials, SOC 2, NIST CSF 2.0 and the NCSC CAF
-  on or off. A framework that
-  is off is hidden everywhere, but its applicability decisions and control mappings are kept. All are on by default.
+  on or off. A framework that is off is hidden everywhere, but its applicability decisions and control mappings are
+  kept. All are on by default.
 - Incidents record which security properties were affected (confidentiality, integrity, availability). Any
   combination can be ticked; the incident log shows them as C / I / A and can be filtered by each.
 
@@ -60,5 +62,6 @@ First public release.
 - Repository safeguards: git hooks with a leak check and signed-push rules, and CI with all test suites, a secret
   scan and a production image build.
 
-[Unreleased]: https://github.com/jhmonteseguro/greywarden/compare/v0.1.0-alpha...HEAD
+[Unreleased]: https://github.com/jhmonteseguro/greywarden/compare/v0.2.0-alpha...HEAD
+[0.2.0-alpha]: https://github.com/jhmonteseguro/greywarden/compare/v0.1.0-alpha...v0.2.0-alpha
 [0.1.0-alpha]: https://github.com/jhmonteseguro/greywarden/releases/tag/v0.1.0-alpha
