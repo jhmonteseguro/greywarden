@@ -515,7 +515,8 @@ class CloudImportTest extends DbTestCase
         $this->assertFalse(CloudAsset::find()->where(['source' => 'azure'])->exists());
 
         $actor = User::findOne($this->userId());
-        [$code, $out] = OutputCapture::run('cloud/import', [$file, 'provider' => 'azure', 'user' => $actor->username]);
+        // --user takes the email as well as the username, like the sign-in form
+        [$code, $out] = OutputCapture::run('cloud/import', [$file, 'provider' => 'azure', 'user' => $actor->email]);
         $this->assertSame(ExitCode::OK, $code, $out);
         $vm = CloudAsset::findOne(['name' => 'vm-web-01']);
         $this->assertSame($actor->id, (int) $vm->created_by);

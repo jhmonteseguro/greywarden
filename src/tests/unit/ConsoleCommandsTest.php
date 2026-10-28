@@ -178,8 +178,9 @@ class ConsoleCommandsTest extends DbTestCase
         $this->assertNotNull($device);
         $this->assertSame($actor->id, (int) $device->created_by);
 
-        // Re-import of the same export changes nothing
-        [$code, $out] = OutputCapture::run('device/import', [$file]);
+        // Re-import of the same export changes nothing; --user also takes the email
+        [$code, $out] = OutputCapture::run('device/import', [$file, 'user' => $actor->email]);
+        $this->assertSame(ExitCode::OK, $code, $out);
         $this->assertStringContainsString('0 created, 0 updated, 1 unchanged', $out);
     }
 

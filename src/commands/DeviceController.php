@@ -24,7 +24,7 @@ class DeviceController extends Controller
 {
     public $defaultAction = 'import';
 
-    /** @var string|null username recorded as the creator / in the audit trail */
+    /** @var string|null username or email (as at sign-in) of the user recorded as the creator / in the audit trail */
     public $user;
     /** @var bool roll everything back after reporting */
     public $dryRun = false;
@@ -55,9 +55,9 @@ class DeviceController extends Controller
 
         $actor = null;
         if ($this->user !== null) {
-            $actor = User::findByUsername($this->user);
+            $actor = User::findByLogin($this->user);
             if (!$actor) {
-                $this->stderr("User '{$this->user}' not found.\n", Console::FG_RED);
+                $this->stderr("User '{$this->user}' not found (give a username or email).\n", Console::FG_RED);
                 return ExitCode::DATAERR;
             }
         }

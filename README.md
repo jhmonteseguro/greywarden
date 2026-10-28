@@ -434,7 +434,7 @@ mobile devices and computers can be separate files), then:
 
 ```bash
 make import-devices FILE=devices.csv AS=jdoe DRY_RUN=1   # validate and report, nothing saved
-make import-devices FILE=devices.csv AS=jdoe             # import; AS= is recorded as creator and in the audit trail
+make import-devices FILE=devices.csv AS=jdoe             # import; AS= (username or email) is recorded as creator and in the audit trail
 ```
 
 * Devices are matched on the Google device ID (`source` + `source_id`), so importing a newer export **updates** the
@@ -465,7 +465,7 @@ format is detected from the content.
 
 ```bash
 make import-cloud FILE=aws.json PROVIDER=aws AS=jdoe DRY_RUN=1    # validate and report, nothing saved
-make import-cloud FILE=aws.json PROVIDER=aws AS=jdoe              # import; AS= is recorded as creator and in the audit trail
+make import-cloud FILE=aws.json PROVIDER=aws AS=jdoe              # import; AS= (username or email) is recorded as creator and in the audit trail
 make import-cloud FILE=ids.csv PROVIDER=aws AS=jdoe ACCOUNT=ACC-0003   # every asset into one existing account
 make sync-cloudflare AS=jdoe                                      # Cloudflare zones, with CLOUDFLARE_API_TOKEN
 ```

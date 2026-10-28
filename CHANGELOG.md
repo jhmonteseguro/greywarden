@@ -6,6 +6,11 @@ releases).
 
 ## [Unreleased]
 
+### Changed
+
+- `make import-devices`, `make import-cloud` and `make sync-cloudflare`: `AS=` (`--user`) accepts the user's email as
+  well as the username, like the sign-in form.
+
 ## [0.4.0-alpha] - 2026-10-28
 
 ### Added
