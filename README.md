@@ -7,6 +7,21 @@ built to grow into a security-operations dashboard.
 > releases. Take a backup before every upgrade (`scripts/deploy.sh` does). See [CHANGELOG.md](CHANGELOG.md),
 > [SECURITY.md](SECURITY.md) to report a vulnerability or verify a release, and [CONTRIBUTING.md](CONTRIBUTING.md).
 
+## Quick start
+
+Needs Docker with the Compose plugin.
+
+```bash
+git clone https://github.com/jhmonteseguro/greywarden.git && cd greywarden
+scripts/up.sh --seed      # creates .env, starts the stack, applies migrations, loads demo data
+```
+
+Open **http://127.0.0.1:8080** and sign in as `admin` / `ChangeMe!2026` (you must change it at first sign-in),
+or as `analyst` / `Greywarden!Demo1` to explore the demo data. Stop with `scripts/down.sh`.
+For real data, see [Production](#production); for the full setup, see [Development setup](#development-setup).
+
+## Features
+
 * **Risk Register**: 5×5 inherent and residual scoring, treatment, acceptance, a heatmap, overdue flags,
   and a flag when a risk relies on a control that is retired, not effective or overdue for testing
 * **Control Register**: controls with owner, type, status, target dates, effectiveness tests and a test schedule;
@@ -33,7 +48,7 @@ Composer and self-hosted. Nothing loads from a CDN at runtime, and there is no N
 
 ---
 
-## Quick start
+## Development setup
 
 ```bash
 cp .env.example .env      # adjust passwords if you like (works as-is for local dev)
