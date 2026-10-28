@@ -6,6 +6,11 @@ releases).
 
 ## [Unreleased]
 
+### Fixed
+
+- `make import-devices` without `AS=` no longer fails with *User 'as' not found*: make's built-in `AS` (the
+  assembler, `as`) was being passed as `--user`. The import now runs with no recorded user, as documented.
+
 ## [0.2.0-alpha] - 2026-10-28
 
 ### Added

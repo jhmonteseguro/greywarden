@@ -9,6 +9,10 @@ PHP_T   := $(DC) exec -T php
 DB_NAME ?= greywarden
 DB_TEST_NAME ?= greywarden_test
 BACKUP_DIR ?= backups
+# AS= is the import-devices actor; drop make's built-in AS (the assembler, "as")
+ifeq ($(origin AS),default)
+AS :=
+endif
 
 .DEFAULT_GOAL := help
 .PHONY: help env up down build rebuild restart ps logs shell composer yii migrate wait \
