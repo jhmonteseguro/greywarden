@@ -6,6 +6,18 @@ releases).
 
 ## [Unreleased]
 
+### Changed
+
+- Cloud import: subnets and individual disk / database snapshots (AWS EC2 and RDS snapshots, Azure and Google Cloud
+  disk snapshots) are no longer imported. Automated snapshots appear and expire daily and a cloud has dozens of
+  subnets, so they buried the register. Backup vaults are still imported (Google Cloud Backup and DR vaults are new),
+  and assets already imported are kept.
+
+### Fixed
+
+- AWS import from the Resource Explorer console CSV: resources without a Name tag were named "(not tagged)"; they are
+  now named after their ARN.
+
 ## [0.4.1-alpha] - 2026-10-28
 
 ### Changed

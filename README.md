@@ -510,12 +510,14 @@ Producing the exports (the AWS and Google CLIs page through the results themselv
 
 How the import works:
 
-* **Only security-relevant types are kept** (instances, clusters, functions, registries, networks, subnets, security
-  groups / NSGs / firewall rules, load balancers, gateways, VPNs, API gateways, public IPs, CDNs, buckets / storage
-  accounts, disks, snapshots and backup vaults, databases, warehouses, caches, queues, IAM roles / users / service
-  accounts, keys, secrets, certificates, DNS zones, WAF policies, repositories). Everything else (network interfaces,
-  route tables, log groups…) is skipped and counted by type at the end, so the register stays a register rather than a
-  CMDB. The mapping lives in `CloudTypeMap`.
+* **Only security-relevant types are kept** (instances, clusters, functions, registries, networks, security groups /
+  NSGs / firewall rules, load balancers, gateways, VPNs, API gateways, public IPs, CDNs, buckets / storage accounts,
+  disks, backup vaults, databases, warehouses, caches, queues, IAM roles / users / service accounts, keys, secrets,
+  certificates, DNS zones, WAF policies, repositories). Everything else (network interfaces, route tables, log groups,
+  subnets, individual disk and database snapshots…) is skipped and counted by type at the end, so the register stays a
+  register rather than a CMDB. Subnets and snapshots can still be added by hand. The mapping lives in `CloudTypeMap`.
+* **Untagged AWS resources** are named after their ARN (`export-reports` for a Lambda function): the console CSV's
+  `(not tagged)` in the Name column counts as no name.
 * **Accounts** are matched on the provider and the AWS account ID, Azure subscription ID or Google Cloud project ID
   (or project number). A missing account is created as *Production*, *Medium* criticality, *Internal*, and listed at
   the end so you can set its environment, owner and classification; its assets take its environment.

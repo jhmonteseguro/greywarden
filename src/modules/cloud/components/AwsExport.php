@@ -77,7 +77,7 @@ final class AwsExport extends CloudExport
             'type' => self::pick($row, 'resourcetype', 'type'),
             'region' => self::pick($row, 'region', 'awsregion'),
             'account' => self::pick($row, 'owningaccountid', 'accountid', 'awsaccountid', 'awsaccount', 'account'),
-            'name' => self::pick($row, 'tagname', 'name', 'resourcename'),
+            'name' => self::untagged(self::pick($row, 'tagname', 'name', 'resourcename')),
             'last_reported' => self::pick($row, 'lastreportedat', 'lastreported'),
             'public_ip' => self::pick($row, 'configurationpublicipaddress', 'configurationpublicip', 'publicipaddress', 'publicip'),
         ];
@@ -118,6 +118,12 @@ final class AwsExport extends CloudExport
         }
         $parts = preg_split('#[:/]#', $resource);
         return (string) end($parts) ?: $arn;
+    }
+
+    /** The console CSV writes "(not tagged)" in the Name column of resources without a Name tag: no name, so the ARN's is used */
+    private static function untagged(?string $name): ?string
+    {
+        return $name !== null && strcasecmp($name, '(not tagged)') === 0 ? null : $name;
     }
 
     /** Resource Explorer: Properties [{"Name": "tags", "Data": [{"Key", "Value"}]}] */

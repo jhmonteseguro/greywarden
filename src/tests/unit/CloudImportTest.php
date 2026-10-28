@@ -156,9 +156,10 @@ class CloudImportTest extends DbTestCase
 
     public function testAwsResourceExplorerCsvAndEdgeCases(): void
     {
-        [$instance, $function, $route] = self::parse('aws', 'aws-resource-explorer.csv');
+        [$instance, $function, $route, $queue] = self::parse('aws', 'aws-resource-explorer.csv');
         $this->assertSame('portal-web-01', $instance['attributes']['name'], '"Name" tag column');
         $this->assertSame('export-reports', $function['attributes']['name']);
+        $this->assertSame('billing-events', $queue['attributes']['name'], '"(not tagged)" is no name: the ARN\'s is used');
         $this->assertSame('ec2:route-table', $route['provider_type']);
 
         // Bare list (--query Resources), no account or region beyond the ARN, a non-ARN identifier, a row without any ID
@@ -306,6 +307,16 @@ class CloudImportTest extends DbTestCase
         $this->assertSame('database', CloudTypeMap::type('gcp', 'sqladmin.googleapis.com/Instance'));
         $this->assertSame('dns_zone', CloudTypeMap::type('cloudflare', 'zone'));
         $this->assertNull(CloudTypeMap::type('aws', 'ec2:network-interface'));
+        // Subnets and individual snapshots would bury the register; backup vaults stay
+        foreach (['aws' => ['ec2:subnet', 'AWS::EC2::Subnet', 'ec2:snapshot', 'rds:snapshot', 'rds:cluster-snapshot', 'AWS::RDS::DBSnapshot'],
+            'azure' => ['Microsoft.Network/virtualNetworks/subnets', 'Microsoft.Compute/snapshots'],
+            'gcp' => ['compute.googleapis.com/Subnetwork', 'compute.googleapis.com/Snapshot']] as $provider => $skipped) {
+            foreach ($skipped as $type) {
+                $this->assertNull(CloudTypeMap::type($provider, $type), "$provider $type");
+            }
+        }
+        $this->assertSame('backup', CloudTypeMap::type('aws', 'backup:backup-vault'));
+        $this->assertSame('backup', CloudTypeMap::type('gcp', 'backupdr.googleapis.com/BackupVault'));
         $this->assertNull(CloudTypeMap::type('github', 'repository'));
         $this->assertSame([], CloudTypeMap::forProvider('github'));
 

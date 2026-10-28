@@ -6,7 +6,10 @@ namespace app\modules\cloud\components;
  * Which provider resource types an import keeps, and as which CloudCatalogue
  * type. The Cloud Inventory is a security register, not a CMDB: types that
  * are not listed here (network interfaces, route tables, log groups...) are
- * skipped and counted in the import summary.
+ * skipped and counted in the import summary. Subnets and individual disk / DB
+ * snapshots are skipped too: automated snapshots come and go daily and a cloud
+ * has dozens of subnets, so they would bury the register (backup vaults stay;
+ * either can still be added by hand).
  *
  * Keys are lower-cased. AWS has two spellings: Resource Explorer's
  * "service:resource-type" and AWS Config's "AWS::Service::Type".
@@ -22,7 +25,6 @@ final class CloudTypeMap
             'lambda:function' => 'serverless', 'aws::lambda::function' => 'serverless',
             'ecr:repository' => 'container_registry', 'aws::ecr::repository' => 'container_registry',
             'ec2:vpc' => 'vpc', 'aws::ec2::vpc' => 'vpc',
-            'ec2:subnet' => 'subnet', 'aws::ec2::subnet' => 'subnet',
             'ec2:security-group' => 'security_group', 'aws::ec2::securitygroup' => 'security_group',
             'ec2:network-acl' => 'security_group', 'aws::ec2::networkacl' => 'security_group',
             'elasticloadbalancing:loadbalancer' => 'load_balancer', 'aws::elasticloadbalancing::loadbalancer' => 'load_balancer',
@@ -42,9 +44,6 @@ final class CloudTypeMap
             'elasticfilesystem:file-system' => 'file_share', 'aws::efs::filesystem' => 'file_share',
             'fsx:file-system' => 'file_share', 'aws::fsx::filesystem' => 'file_share',
             'backup:backup-vault' => 'backup', 'aws::backup::backupvault' => 'backup',
-            'ec2:snapshot' => 'backup', 'aws::ec2::snapshot' => 'backup',
-            'rds:snapshot' => 'backup', 'aws::rds::dbsnapshot' => 'backup',
-            'rds:cluster-snapshot' => 'backup', 'aws::rds::dbclustersnapshot' => 'backup',
             'rds:db' => 'database', 'aws::rds::dbinstance' => 'database',
             'rds:cluster' => 'database', 'aws::rds::dbcluster' => 'database',
             'dynamodb:table' => 'database', 'aws::dynamodb::table' => 'database',
@@ -90,7 +89,6 @@ final class CloudTypeMap
             'microsoft.network/frontdoors' => 'cdn',
             'microsoft.storage/storageaccounts' => 'bucket',
             'microsoft.compute/disks' => 'volume',
-            'microsoft.compute/snapshots' => 'backup',
             'microsoft.recoveryservices/vaults' => 'backup',
             'microsoft.dataprotection/backupvaults' => 'backup',
             'microsoft.sql/servers' => 'database',
@@ -124,7 +122,6 @@ final class CloudTypeMap
             'run.googleapis.com/service' => 'serverless',
             'artifactregistry.googleapis.com/repository' => 'container_registry',
             'compute.googleapis.com/network' => 'vpc',
-            'compute.googleapis.com/subnetwork' => 'subnet',
             'compute.googleapis.com/firewall' => 'security_group',
             'compute.googleapis.com/firewallpolicy' => 'security_group',
             'compute.googleapis.com/forwardingrule' => 'load_balancer',
@@ -139,7 +136,7 @@ final class CloudTypeMap
             'storage.googleapis.com/bucket' => 'bucket',
             'compute.googleapis.com/disk' => 'volume',
             'file.googleapis.com/instance' => 'file_share',
-            'compute.googleapis.com/snapshot' => 'backup',
+            'backupdr.googleapis.com/backupvault' => 'backup',
             'sqladmin.googleapis.com/instance' => 'database',
             'spanner.googleapis.com/instance' => 'database',
             'bigtableadmin.googleapis.com/instance' => 'database',
