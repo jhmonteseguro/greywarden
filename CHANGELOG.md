@@ -33,6 +33,15 @@ releases).
   recognises your own cloud assets' public addresses.
 - The demo data includes five cloud accounts, fifteen assets and three new cloud-check controls; the existing
   *Cloud storage guardrails* and *Supported operating systems* controls are also checked on buckets and instances.
+- **Cloud imports**: `make import-cloud FILE=… PROVIDER=aws|azure|gcp AS=<user> [ACCOUNT=ACC-…] [DRY_RUN=1]` reads an
+  AWS Resource Explorer or AWS Config export, an Azure Resource Graph export or a Google Cloud Asset Inventory export
+  (the CLI's JSON or the console's CSV) and creates or refreshes the matching cloud assets. Only security-relevant
+  resource types are imported (the rest are skipped and counted); missing accounts are created for review; assets are
+  matched on the provider's resource ID, so later exports update them and *Not seen recently* starts working; fields
+  edited in Greywarden are never overwritten. Greywarden stores no cloud credentials: the README lists the commands
+  that produce each export.
+- `make sync-cloudflare` adds and refreshes your Cloudflare zones as DNS zone assets, using the existing
+  `CLOUDFLARE_API_TOKEN` (needs Zone › Zone › Read).
 
 ## [0.3.0-alpha] - 2026-10-28
 

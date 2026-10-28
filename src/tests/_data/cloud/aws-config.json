@@ -1,0 +1,9 @@
+{
+    "Results": [
+        "{\"accountId\":\"444455556666\",\"awsRegion\":\"eu-west-2\",\"resourceId\":\"i-0dev0000000000001\",\"resourceName\":\"i-0dev0000000000001\",\"resourceType\":\"AWS::EC2::Instance\",\"arn\":\"arn:aws:ec2:eu-west-2:444455556666:instance/i-0dev0000000000001\",\"configurationItemCaptureTime\":\"2026-09-01T12:00:00.000Z\",\"tags\":[{\"key\":\"Name\",\"value\":\"dev-sandbox-01\",\"tag\":\"Name=dev-sandbox-01\"}],\"configuration\":{\"publicIpAddress\":\"198.51.100.20\"}}",
+        "{\"accountId\":\"444455556666\",\"awsRegion\":\"eu-west-2\",\"resourceId\":\"eipalloc-0123456789abcdef0\",\"resourceType\":\"AWS::EC2::EIP\",\"configuration\":{\"publicIp\":\"198.51.100.21\"}}",
+        "{\"accountId\":\"444455556666\",\"awsRegion\":\"eu-west-2\",\"resourceId\":\"sg-0123456789abcdef0\",\"resourceName\":\"dev-web-sg\",\"resourceType\":\"AWS::EC2::SecurityGroup\",\"arn\":\"arn:aws:ec2:eu-west-2:444455556666:security-group/sg-0123456789abcdef0\",\"tags\":[]}",
+        "{\"accountId\":\"444455556666\",\"awsRegion\":\"eu-west-2\",\"resourceId\":\"/aws/lambda/x\",\"resourceType\":\"AWS::Logs::LogGroup\"}"
+    ],
+    "QueryInfo": {"SelectFields": [{"Name": "accountId"}, {"Name": "awsRegion"}, {"Name": "resourceId"}, {"Name": "resourceName"}, {"Name": "resourceType"}, {"Name": "arn"}, {"Name": "configurationItemCaptureTime"}, {"Name": "tags"}, {"Name": "configuration.publicIpAddress"}, {"Name": "configuration.publicIp"}]}
+}

@@ -1,0 +1,3 @@
+accountId,awsRegion,resourceId,resourceName,resourceType,arn,configurationItemCaptureTime
+444455556666,eu-west-2,dev-artifacts,dev-artifacts,AWS::S3::Bucket,arn:aws:s3:::example-dev-artifacts,2026-09-01T12:00:00.000Z
+444455556666,eu-west-2,vpc-0f1e2d3c4b5a69788,,AWS::EC2::VPC,arn:aws:ec2:eu-west-2:444455556666:vpc/vpc-0f1e2d3c4b5a69788,2026-09-01T12:00:00.000Z

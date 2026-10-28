@@ -194,7 +194,7 @@ class CloudAsset extends DomainRecord
             ['os_version', 'string', 'max' => 64],
             ['owner_id', 'exist', 'targetClass' => User::class, 'targetAttribute' => 'id'],
             ['source', 'in', 'range' => array_keys(CloudCatalogue::providerOptions())],
-            ['source_id', 'string', 'max' => 128],
+            ['source_id', 'string', 'max' => 512],
             ['source_id', 'required', 'when' => fn() => (bool) $this->source, 'message' => 'A synced asset needs its source resource ID.'],
             ['source_id', 'unique', 'targetAttribute' => ['source', 'source_id'], 'skipOnEmpty' => true, 'message' => 'Another asset already has this source resource ID.'],
             [['first_seen_at', 'last_seen_at'], 'datetime', 'format' => 'php:Y-m-d H:i:s'],

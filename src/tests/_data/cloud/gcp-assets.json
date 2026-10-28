@@ -1,0 +1,7 @@
+[
+    {"name": "//cloudresourcemanager.googleapis.com/projects/123456789012", "assetType": "cloudresourcemanager.googleapis.com/Project", "project": "projects/123456789012", "displayName": "Example Prod", "location": "global", "state": "ACTIVE", "additionalAttributes": {"projectId": "example-prod-123456"}},
+    {"name": "//storage.googleapis.com/example-prod-exports", "assetType": "storage.googleapis.com/Bucket", "project": "projects/123456789012", "displayName": "example-prod-exports", "location": "europe-west2", "createTime": "2025-06-01T08:00:00Z", "updateTime": "2026-10-01T08:00:00Z"},
+    {"name": "//compute.googleapis.com/projects/example-prod-123456/zones/europe-west2-b/instances/web-1", "assetType": "compute.googleapis.com/Instance", "project": "projects/123456789012", "displayName": "web-1", "location": "europe-west2-b", "state": "TERMINATED", "createTime": "2025-06-02T08:00:00Z"},
+    {"name": "//compute.googleapis.com/projects/example-prod-123456/regions/europe-west2/addresses/web-ip", "assetType": "compute.googleapis.com/Address", "project": "projects/123456789012", "displayName": "web-ip", "location": "europe-west2", "additionalAttributes": {"address": "192.0.2.50"}},
+    {"name": "//compute.googleapis.com/projects/example-prod-123456/global/routes/default-route", "assetType": "compute.googleapis.com/Route", "project": "projects/123456789012", "location": "global"}
+]

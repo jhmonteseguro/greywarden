@@ -4,6 +4,8 @@ namespace tests\functional;
 
 use app\models\Attachment;
 use app\models\AuditLog;
+use app\modules\cloud\components\CloudExport;
+use app\modules\cloud\components\CloudImporter;
 use app\modules\cloud\models\CloudAccount;
 use app\modules\cloud\models\CloudAsset;
 use app\modules\control\models\Control;
@@ -349,5 +351,31 @@ class CloudFlowsTest extends FunctionalTestCase
             @unlink($tmp);
             FileHelper::removeDirectory(Yii::$app->params['attachments.path']);
         }
+    }
+
+    public function testImportedAssetsShowTheirSync(): void
+    {
+        // An Azure export: a new account, assets with long lower-cased resource IDs and OS details
+        $records = CloudExport::for('azure')->parse(file_get_contents(Yii::getAlias('@app/tests/_data/cloud/azure-resource-graph.json')));
+        $importer = new CloudImporter(date('Y-m-d H:i:s'));
+        $results = $importer->import($records, 'Imported in a functional test.');
+        $vm = $results[0]['asset'];
+        $this->assertSame(CloudImporter::CREATED, $results[0]['action']);
+
+        $this->loginAs('viewer');
+        $this->get("/cloud/assets/{$vm->id}");
+        $this->assertOk();
+        $this->assertSee('Synced from');
+        $this->assertSee('Microsoft Azure');
+        $this->assertSee('/subscriptions/00000000-0000-0000-0000-000000000001/resourcegroups/rg-prod/providers/microsoft.compute/virtualmachines/vm-web-01');
+        $this->assertSee('Ubuntu 22.04');
+
+        $account = $importer->createdAccounts[0];
+        $this->get("/cloud/accounts/{$account->id}");
+        $this->assertOk();
+        $this->assertSee('Azure subscription 00000000-0000-0000-0000-000000000001');
+        $this->assertSee('Created by the import');
+        $this->get('/cloud/assets?filter=all&provider=azure');
+        $this->assertSee('fn-orders');
     }
 }

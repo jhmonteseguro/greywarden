@@ -16,6 +16,8 @@ use RuntimeException;
  * parts of the expression are left alone.
  *
  * .env: CLOUDFLARE_API_TOKEN (Zone > Zone WAF > Edit), CLOUDFLARE_ZONE_ID.
+ * The Cloud Inventory's zone sync (`make sync-cloudflare`) reuses the token and
+ * also needs Zone > Zone > Read on the zones to list.
  */
 class Cloudflare
 {
@@ -27,6 +29,12 @@ class Cloudflare
     public static function isConfigured(): bool
     {
         return gw_env('CLOUDFLARE_API_TOKEN') && gw_env('CLOUDFLARE_ZONE_ID');
+    }
+
+    /** Only the API token: enough for read-only calls such as the zone sync (Zone > Zone > Read) */
+    public static function hasToken(): bool
+    {
+        return (bool) gw_env('CLOUDFLARE_API_TOKEN');
     }
 
     public static function ruleName(): string
@@ -111,6 +119,21 @@ class Cloudflare
     /** @throws RuntimeException */
     private static function call(string $method, string $path, ?array $body = null): array
     {
+        $data = self::api($method, $path, $body);
+        if (is_array($data['result'] ?? null)) {
+            return $data['result'];
+        }
+        throw new RuntimeException('Cloudflare: the response has no result.');
+    }
+
+    /**
+     * One Cloudflare API v4 request with the configured token. Returns the whole
+     * response ({success, result, result_info, ...}) so callers can paginate.
+     *
+     * @throws RuntimeException when the request fails or Cloudflare reports errors
+     */
+    public static function api(string $method, string $path, ?array $body = null): array
+    {
         $response = Http::fetchAll(['cf' => [
             'url' => self::API . $path,
             'method' => $method,
@@ -119,8 +142,8 @@ class Cloudflare
             'timeout' => 15,
         ]])['cf'];
         $data = Http::json($response);
-        if (($data['success'] ?? false) === true && is_array($data['result'] ?? null)) {
-            return $data['result'];
+        if (($data['success'] ?? false) === true) {
+            return $data;
         }
         $errors = array_map(static fn(array $e) => trim(($e['message'] ?? '') . (isset($e['code']) ? ' (' . $e['code'] . ')' : '')), $data['errors'] ?? []);
         throw new RuntimeException('Cloudflare: ' . ($errors ? implode('; ', $errors) : Http::errorText($response)));

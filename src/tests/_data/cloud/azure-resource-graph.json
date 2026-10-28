@@ -1,0 +1,12 @@
+{
+    "count": 5,
+    "data": [
+        {"id": "/subscriptions/00000000-0000-0000-0000-000000000001/resourceGroups/rg-prod/providers/Microsoft.Compute/virtualMachines/vm-web-01", "name": "vm-web-01", "type": "microsoft.compute/virtualmachines", "kind": "", "location": "uksouth", "subscriptionId": "00000000-0000-0000-0000-000000000001", "properties": {"timeCreated": "2025-03-01T09:30:00.0000000Z", "storageProfile": {"osDisk": {"osType": "Linux"}}, "extended": {"instanceView": {"osName": "ubuntu", "osVersion": "22.04"}}}},
+        {"id": "/subscriptions/00000000-0000-0000-0000-000000000001/resourceGroups/rg-prod/providers/Microsoft.Network/publicIPAddresses/pip-web", "name": "pip-web", "type": "microsoft.network/publicipaddresses", "location": "uksouth", "subscriptionId": "00000000-0000-0000-0000-000000000001", "properties": {"ipAddress": "203.0.113.40"}},
+        {"id": "/subscriptions/00000000-0000-0000-0000-000000000001/resourceGroups/rg-prod/providers/Microsoft.Web/sites/fn-orders", "name": "fn-orders", "type": "microsoft.web/sites", "kind": "functionapp,linux", "location": "uksouth", "subscriptionId": "00000000-0000-0000-0000-000000000001", "properties": {}},
+        {"id": "/subscriptions/00000000-0000-0000-0000-000000000001/resourceGroups/rg-prod/providers/Microsoft.Sql/servers/sql-prod/databases/orders", "name": "sql-prod/orders", "type": "microsoft.sql/servers/databases", "location": "uksouth", "subscriptionId": "00000000-0000-0000-0000-000000000001", "properties": {}},
+        {"id": "/subscriptions/00000000-0000-0000-0000-000000000001/resourceGroups/rg-prod/providers/Microsoft.Network/networkInterfaces/nic-web-01", "name": "nic-web-01", "type": "microsoft.network/networkinterfaces", "location": "uksouth", "subscriptionId": "00000000-0000-0000-0000-000000000001", "properties": {}}
+    ],
+    "skip_token": null,
+    "total_records": 5
+}

@@ -1,0 +1,45 @@
+{
+    "Count": {"Complete": true, "TotalResources": 5},
+    "Resources": [{
+        "Arn": "arn:aws:ec2:eu-west-2:111122223333:instance/i-0a1b2c3d4e5f60001",
+        "LastReportedAt": "2026-10-27T06:00:00Z",
+        "OwningAccountId": "111122223333",
+        "Properties": [{"Data": [{"Key": "Name", "Value": "portal-web-01"}, {"Key": "env", "Value": "prod"}], "LastReportedAt": "2026-10-01T10:00:00Z", "Name": "tags"}],
+        "Region": "eu-west-2",
+        "ResourceType": "ec2:instance",
+        "Service": "ec2"
+    }, {
+        "Arn": "arn:aws:s3:::example-customer-exports",
+        "LastReportedAt": "2026-10-26T06:00:00Z",
+        "OwningAccountId": "111122223333",
+        "Properties": [],
+        "Region": "eu-west-2",
+        "ResourceType": "s3:bucket",
+        "Service": "s3"
+    }, {
+        "Arn": "arn:aws:elasticloadbalancing:eu-west-2:111122223333:loadbalancer/app/customer-portal/50dc6c495c0c9188",
+        "LastReportedAt": "2026-10-27T06:00:00Z",
+        "OwningAccountId": "111122223333",
+        "Properties": [],
+        "Region": "eu-west-2",
+        "ResourceType": "elasticloadbalancing:loadbalancer/app",
+        "Service": "elasticloadbalancing"
+    }, {
+        "Arn": "arn:aws:iam::111122223333:role/service/ci-deploy",
+        "LastReportedAt": "2026-10-27T06:00:00Z",
+        "OwningAccountId": "111122223333",
+        "Properties": [],
+        "Region": "global",
+        "ResourceType": "iam:role",
+        "Service": "iam"
+    }, {
+        "Arn": "arn:aws:ec2:eu-west-2:111122223333:network-interface/eni-0123456789abcdef0",
+        "LastReportedAt": "2026-10-27T06:00:00Z",
+        "OwningAccountId": "111122223333",
+        "Properties": [],
+        "Region": "eu-west-2",
+        "ResourceType": "ec2:network-interface",
+        "Service": "ec2"
+    }],
+    "ViewArn": "arn:aws:resource-explorer-2:eu-west-2:111122223333:view/all-resources/EXAMPLE8-90ab-cdef-fedc-EXAMPLE11111"
+}

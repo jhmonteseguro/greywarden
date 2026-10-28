@@ -1,0 +1,3 @@
+name,asset_type,project,display_name,location,state,create_time
+//sqladmin.googleapis.com/projects/example-prod-123456/instances/orders-db,sqladmin.googleapis.com/Instance,projects/123456789012,orders-db,europe-west2,RUNNABLE,2025-07-01T08:00:00Z
+//pubsub.googleapis.com/projects/example-prod-123456/topics/orders,pubsub.googleapis.com/Topic,projects/123456789012,,global,,

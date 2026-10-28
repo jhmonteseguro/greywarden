@@ -35,7 +35,7 @@ For real data, see [Production](#production); for the full setup, see [Developme
 * **Cloud Inventory**: cloud accounts (AWS, Azure, Google Cloud, Cloudflare, Google Workspace, Microsoft 365, GitHub...)
   and the assets in them (instances, VPCs, security groups, buckets, databases, IAM roles, DNS zones, repositories...)
   with exposure, encryption, OS support and posture against **cloud checks** from the Control Register, linked to
-  risks, incidents and decisions
+  risks, incidents and decisions; imported from AWS, Azure and Google Cloud inventory exports and synced from Cloudflare
 * **Dashboard**: KPI tiles, residual heatmap, incident trend, device posture, a "needs attention" list,
   control effectiveness with progress against each framework switched on, recent activity
 * **MITRE ATT&CK** (Enterprise v20, bundled for offline use): techniques observed on incidents, threat techniques on risks,
@@ -179,6 +179,8 @@ Composer, Gii or the runtime create are owned by you. Uploaded files are stored 
 | `make smoke` | HTTP smoke test only: every page × every role, POST flows, lockout, CSRF (needs demo data). Refuses to run against the live database; `make test-all` runs it safely. Admin checks run as a temporary admin that is deleted afterwards |
 | `make attack-status` / `make attack-update` | show the loaded MITRE ATT&CK release / download the latest release from MITRE, refresh the bundled snapshot and import it |
 | `make import-devices FILE=devices.csv AS=<user> [DRY_RUN=1]` | import a Google Workspace device export (see [Device import](#device-import-google-workspace)) |
+| `make import-cloud FILE=resources.json PROVIDER=aws\|azure\|gcp AS=<user> [ACCOUNT=ACC-0003] [DRY_RUN=1]` | import an AWS, Azure or Google Cloud inventory export (see [Importing cloud assets](#importing-cloud-assets)) |
+| `make sync-cloudflare AS=<user> [DRY_RUN=1]` | add / refresh the Cloudflare zones as cloud assets, using `CLOUDFLARE_API_TOKEN` |
 | `make intel-status` / `make intel-update` | show the local threat-feed status / download every feed now (stale feeds also refresh automatically in the background) |
 | `make hooks` / `make leak-check [REV=<tag>]` | install the git hooks in `.githooks` / check the index (or a commit) for private files, terms and `.env` secrets (see [Leak check and git hooks](#leak-check-and-git-hooks)) |
 | `make deploy REF=<tag>` | production checkout only: deploy a signed release tag (see [Production](#production)) |
@@ -214,7 +216,8 @@ keys: it recreates the php container with the new `.env` (`make restart` does no
 
 *Add to Cloudflare* on the blocklist needs `CLOUDFLARE_API_TOKEN` (a token with **Zone › Zone WAF › Edit** on the
 zone) and `CLOUDFLARE_ZONE_ID`. The WAF custom rule it updates, `CLOUDFLARE_RULE_NAME` (default `Block Bad Actors`),
-must already exist in the zone.
+must already exist in the zone. `make sync-cloudflare` reuses the token to list zones, which also needs
+**Zone › Zone › Read** (no zone ID needed).
 
 Business rules live in `src/config/params.php`:
 
@@ -261,7 +264,8 @@ greywarden/
     │   ├── incident/   Incident, IncidentTimeline, IncidentSearch, components/IncidentMetrics
     │   ├── inventory/  Device, DeviceQuery, DeviceSearch, components/ (DevicePosture, DeviceCheck, DeviceChecks, DeviceImporter)
     │   ├── cloud/      CloudAccount, CloudAsset (+ Query / Search), components/ (CloudCatalogue, CloudCheck, CloudChecks,
-    │   │               CloudPosture), AccountController, AssetController
+    │   │               CloudPosture, CloudExport + Aws/Azure/GcpExport, CloudTypeMap, CloudImporter, CloudflareZones),
+    │   │               AccountController, AssetController
     │   ├── attack/     MITRE ATT&CK: AttackTactic/Technique/Mitigation, components/ (StixParser, CatalogueImporter,
     │   │               Catalogue, Coverage, DeviceAttack, CloudAttack, AttackText), widgets/ (TechniqueTags, KillChain,
     │   │               MitigationCoverage), matrix / technique / mitigation pages
@@ -452,6 +456,85 @@ make import-devices FILE=devices.csv AS=jdoe             # import; AS= is record
   `device.staleCriticalDays` the flag turns red.
 * The OS and version are checked against the built-in end-of-support catalogue (`OsLifecycle`). Windows 11 needs its
   feature update (the import names it from the build number). macOS with the frozen 10.15.7 value is unknown.
+
+### Importing cloud assets
+
+Greywarden never stores AWS, Azure or Google Cloud credentials: you run the provider's CLI (or console export) with
+your own read-only access and import the file. Each provider's JSON output and its console CSV are both accepted; the
+format is detected from the content.
+
+```bash
+make import-cloud FILE=aws.json PROVIDER=aws AS=jdoe DRY_RUN=1    # validate and report, nothing saved
+make import-cloud FILE=aws.json PROVIDER=aws AS=jdoe              # import; AS= is recorded as creator and in the audit trail
+make import-cloud FILE=ids.csv PROVIDER=aws AS=jdoe ACCOUNT=ACC-0003   # every asset into one existing account
+make sync-cloudflare AS=jdoe                                      # Cloudflare zones, with CLOUDFLARE_API_TOKEN
+```
+
+Producing the exports (the AWS and Google CLIs page through the results themselves; quote the queries as shown):
+
+* **AWS, Resource Explorer** (preferred: every Region, last-reported times, Name tags). Needs Resource Explorer set up
+  with an aggregator index for all Regions, and `resource-explorer-2:Search` (the `AWSResourceExplorerReadOnlyAccess`
+  policy). Run it in the aggregator index's Region:
+
+  ```bash
+  aws resource-explorer-2 list-resources --region eu-west-2 --output json > aws.json
+  ```
+
+  Or *Resource Explorer › Resource search › Export resources to CSV* in the console. `search --query-string` also
+  works but stops at 1,000 results.
+* **AWS, Config advanced query** (needs the configuration recorder; an aggregator covers several accounts):
+
+  ```bash
+  aws configservice select-resource-config --output json --expression \
+    "SELECT accountId, awsRegion, resourceId, resourceName, resourceType, arn, configurationItemCaptureTime, tags, configuration.publicIpAddress, configuration.publicIp" > aws.json
+  # several accounts / Regions: select-aggregate-resource-config --configuration-aggregator-name <name> --expression "..."
+  ```
+
+  The console's query editor can export the same query as CSV.
+* **Azure, Resource Graph** (Reader on the subscriptions; `az graph` installs its extension on first use). `--first`
+  returns at most 1,000 rows: pass the returned `skip_token` with `--skip-token` for the next page, one file per page.
+
+  ```bash
+  az graph query --first 1000 -o json -q "Resources | project id, name, type, kind, location, subscriptionId, properties" > azure.json
+  ```
+
+  Or run the query in *Resource Graph Explorer* and *Download as CSV* (up to 55,000 rows). The subscription is read
+  from each resource ID, so *Format results* can stay on.
+* **Google Cloud, Asset Inventory** (`cloudasset.assets.searchAllResources`, e.g. the *Cloud Asset Viewer* role):
+
+  ```bash
+  gcloud asset search-all-resources --scope=projects/example-prod-123456 --format=json > gcp.json
+  # or an organisation / folder: --scope=organizations/123456789012
+  # CSV: --format="csv(name,assetType,project,displayName,location,state,createTime)"
+  ```
+
+How the import works:
+
+* **Only security-relevant types are kept** (instances, clusters, functions, registries, networks, subnets, security
+  groups / NSGs / firewall rules, load balancers, gateways, VPNs, API gateways, public IPs, CDNs, buckets / storage
+  accounts, disks, snapshots and backup vaults, databases, warehouses, caches, queues, IAM roles / users / service
+  accounts, keys, secrets, certificates, DNS zones, WAF policies, repositories). Everything else (network interfaces,
+  route tables, log groups…) is skipped and counted by type at the end, so the register stays a register rather than a
+  CMDB. The mapping lives in `CloudTypeMap`.
+* **Accounts** are matched on the provider and the AWS account ID, Azure subscription ID or Google Cloud project ID
+  (or project number). A missing account is created as *Production*, *Medium* criticality, *Internal*, and listed at
+  the end so you can set its environment, owner and classification; its assets take its environment.
+  `ACCOUNT=ACC-0003` puts every row in that existing account instead.
+* **Assets** are matched on the provider's resource ID (ARN, Azure resource ID, Google full resource name), archived
+  ones included, so importing a newer export **updates** the same records; an asset entered by hand with the same
+  resource ID in the same account is adopted. An update only refreshes the region, resource ID and seen times and
+  fills the OS, public IPs and endpoints while empty. Name, type, environment, owner, status, criticality,
+  classification, *internet-facing*, encryption, cloud-check results and notes edited in Greywarden are never
+  overwritten, and an empty value in the export never clears a field.
+* **Last seen** is Resource Explorer's *last reported* time, or the import time for the other exports (their
+  timestamps record configuration changes, not that a resource still exists). Resources missing from later exports keep
+  their old last-seen time, so they show as *Not seen* after `cloud.staleDays`. **First seen** is the creation time
+  when the export has one.
+* Public IPs come from AWS Config (`configuration.publicIpAddress` / `publicIp`), Azure public IP resources and Google
+  address resources; private addresses are dropped. Azure virtual machines bring their OS (checked against the
+  end-of-support catalogue).
+* The Cloudflare sync adds one *DNS zone* asset per zone, in the Cloudflare account that owns it, internet-facing when
+  created. Paused, moved or pending zones are flagged in the output.
 
 ## Working in VS Code
 
