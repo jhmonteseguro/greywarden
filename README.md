@@ -196,11 +196,13 @@ All configuration comes from `.env`, which docker compose passes to the PHP cont
 * `DNS_PRIMARY` / `DNS_SECONDARY` (default `1.1.1.1` / `9.9.9.9`): the php container's upstream DNS servers.
   They are fixed because Docker otherwise copies the host's `resolv.conf` when the container starts. If that
   happens at boot before the network is up, every outbound lookup fails with "Could not resolve host" until
-  the container is restarted. Spamhaus ZEN refuses queries from public resolvers, but it refuses them through
-  most home routers too.
+  the container is restarted. Spamhaus ZEN refuses queries from public resolvers, and through most home routers
+  too. Set `SPAMHAUS_DQS_KEY` (a free [Data Query Service](https://www.spamhaus.com/data-access/free-data-query-service/)
+  key) to query ZEN via `zen.dq.spamhaus.net`, which works through any resolver. Without the key, ZEN shows as
+  *unavailable* rather than an error.
 
 Threat intel works without any keys. Free API keys add sources and raise the assessment confidence:
-`ABUSEIPDB_API_KEY`, `VIRUSTOTAL_API_KEY`, `ABUSECH_AUTH_KEY` (ThreatFox + URLhaus); `GREYNOISE_API_KEY`, `OTX_API_KEY`
+`ABUSEIPDB_API_KEY`, `VIRUSTOTAL_API_KEY`, `ABUSECH_AUTH_KEY` (ThreatFox + URLhaus), `SPAMHAUS_DQS_KEY`; `GREYNOISE_API_KEY`, `OTX_API_KEY`
 and `IPINFO_TOKEN` only raise rate limits. `INTEL_ENABLE_IPAPI=1` opts in to ip-api.com, whose free endpoint is
 non-commercial only. `INTEL_DISABLE=otx,dnsbl,...` switches sources or feeds off. Run `make up` after changing
 keys: it recreates the php container with the new `.env` (`make restart` does not reload `.env`).

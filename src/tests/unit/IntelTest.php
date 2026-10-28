@@ -213,6 +213,74 @@ class IntelTest extends DbTestCase
         $this->assertSame(count(DnsblSource::ZONES) - 1, $r->facts['dnsbl_total']);
     }
 
+    public function testDnsblSpamhausDqsKeyAndPublicResolverRefusal(): void
+    {
+        $rows = static fn(SourceResult $r) => array_column($r->lists['Blocklists']['rows'], null, 0);
+
+        // No key, public resolver: ZEN is unavailable (not an error); an unknown 127.255.255.x code is an error, not a listing
+        $queried = [];
+        Network::$fakeDns = static function (string $name) use (&$queried) {
+            $queried[] = $name;
+            return match (true) {
+                str_ends_with($name, 'zen.spamhaus.org') => [DnsblSource::REFUSED_PUBLIC],
+                str_ends_with($name, 'bl.spamcop.net') => ['127.255.255.250'],
+                default => [],
+            };
+        };
+        $r = (new DnsblSource())->collect(Indicator::ip('8.8.4.4'), [], []);
+        $this->assertContains('4.4.8.8.zen.spamhaus.org', $queried);
+        $this->assertSame(SourceResult::CLEAN, $r->status);
+        $this->assertSame('unavailable', $rows($r)['Spamhaus ZEN'][1]);
+        $this->assertStringContainsString('SPAMHAUS_DQS_KEY', $rows($r)['Spamhaus ZEN'][2]);
+        $this->assertSame(['SpamCop', 'error', 'refused (code 127.255.255.250)'], $rows($r)['SpamCop']);
+        $this->assertSame(count(DnsblSource::ZONES) - 2, $r->facts['dnsbl_total']);
+        $this->assertSame(0, $r->facts['dnsbl_listed']);
+
+        // PBL alone is policy, not a listing; nothing answering at all is an error
+        Network::$fakeDns = static fn(string $name) => str_ends_with($name, 'zen.spamhaus.org') ? ['127.0.0.10'] : [];
+        $r = (new DnsblSource())->collect(Indicator::ip('8.8.4.4'), [], []);
+        $this->assertSame(['Spamhaus ZEN', 'policy', 'PBL – end-user range (ISP policy)'], $rows($r)['Spamhaus ZEN']);
+        $this->assertSame(SourceResult::CLEAN, $r->status);
+        Network::$fakeDns = static fn() => ['127.255.255.255'];
+        $r = (new DnsblSource())->collect(Indicator::ip('8.8.4.4'), [], []);
+        $this->assertSame(SourceResult::ERROR, $r->status);
+        $this->assertSame('No blocklist answered', $r->summary);
+
+        try {
+            // With a DQS key ZEN goes to zen.dq.spamhaus.net, and a refusal there is a real error
+            putenv('SPAMHAUS_DQS_KEY=abc123def456ghi789jkl012mn');
+            $queried = [];
+            Network::$fakeDns = static function (string $name) use (&$queried) {
+                $queried[] = $name;
+                return str_ends_with($name, '.zen.dq.spamhaus.net') ? ['127.0.0.4'] : [];
+            };
+            $r = (new DnsblSource())->collect(Indicator::ip('8.8.4.4'), [], []);
+            $this->assertContains('4.4.8.8.abc123def456ghi789jkl012mn.zen.dq.spamhaus.net', $queried);
+            $this->assertNotContains('4.4.8.8.zen.spamhaus.org', $queried);
+            $this->assertSame(SourceResult::HIT, $r->status);
+            $this->assertSame('Spamhaus ZEN: XBL – exploited host (botnet, malware)', $r->signals[0]['label']);
+
+            Network::$fakeDns = static fn(string $name) => str_contains($name, 'spamhaus') ? [DnsblSource::REFUSED_PUBLIC] : [];
+            $r = (new DnsblSource())->collect(Indicator::ip('8.8.4.4'), [], []);
+            $this->assertSame('error', $rows($r)['Spamhaus ZEN'][1]);
+
+            // A malformed key is never put into a DNS name
+            putenv('SPAMHAUS_DQS_KEY=bad.key');
+            $queried = [];
+            Network::$fakeDns = static function (string $name) use (&$queried) {
+                $queried[] = $name;
+                return [];
+            };
+            $r = (new DnsblSource())->collect(Indicator::ip('8.8.4.4'), [], []);
+            $this->assertCount(count(DnsblSource::ZONES) - 1, $queried);
+            $this->assertEmpty(array_filter($queried, static fn($q) => str_contains($q, 'spamhaus')));
+            $this->assertSame('error', $rows($r)['Spamhaus ZEN'][1]);
+            $this->assertStringContainsString('malformed', $rows($r)['Spamhaus ZEN'][2]);
+        } finally {
+            putenv('SPAMHAUS_DQS_KEY');
+        }
+    }
+
     public function testInvestigatorRunsOfflineAndSkipsExternalForSpecialRanges(): void
     {
         $calls = 0;

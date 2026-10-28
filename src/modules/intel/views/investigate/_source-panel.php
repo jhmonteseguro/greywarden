@@ -55,7 +55,7 @@ $homepage = $source->homepage();
                     <thead><tr><?php foreach ($table['columns'] as $ci => $col): if ($ci === $keyCol) { continue; } ?><th scope="col"><?= Html::encode($col) ?></th><?php endforeach; ?></tr></thead>
                     <tbody>
                     <?php foreach ($table['rows'] as $row):
-                        $state = $resultCol !== false && in_array($row[$resultCol] ?? null, ['listed', 'match', 'clean', 'error', 'policy', 'not loaded'], true) ? str_replace(' ', '-', $row[$resultCol]) : null; ?>
+                        $state = $resultCol !== false && in_array($row[$resultCol] ?? null, ['listed', 'match', 'clean', 'error', 'policy', 'unavailable', 'not loaded'], true) ? str_replace(' ', '-', $row[$resultCol]) : null; ?>
                         <tr class="<?= $state ? 'gw-intel-row--' . $state : '' ?>">
                             <?php foreach ($row as $ci => $cell): if ($ci === $keyCol) { continue; } ?>
                                 <td><?php if ($ci === $resultCol && $state): ?><span class="gw-intel-result gw-intel-result--<?= $state ?>"><?= Html::encode($cell) ?></span><?php else: ?><?= IntelHtml::value($cell) ?><?php endif; ?></td>

@@ -10,6 +10,8 @@ use app\modules\intel\components\SourceResult;
 /**
  * DNS blocklists (IPv4): spam sources, botnet drones, open proxies, exploited hosts.
  * An A record in 127.0.0.0/8 means "listed"; the last octet says why.
+ * Spamhaus refuses queries arriving via public resolvers: with SPAMHAUS_DQS_KEY (free Data Query Service
+ * account) ZEN is queried as <key>.zen.dq.spamhaus.net instead, which works through any resolver.
  */
 class DnsblSource extends Source
 {
@@ -37,12 +39,14 @@ class DnsblSource extends Source
         'dnsbl-1.uceprotect.net' => ['UCEPROTECT level 1', 10, []],
     ];
 
-    /** Error answers (not listings) */
+    /** Error answers (not listings); anything else in 127.255.255.0/24 is an error too */
     public const ERRORS = [
         '127.255.255.252' => 'query syntax rejected',
         '127.255.255.254' => 'refused – queries via public / open resolvers are blocked; use your own recursive resolver',
         '127.255.255.255' => 'refused – query volume limit exceeded',
     ];
+
+    public const REFUSED_PUBLIC = '127.255.255.254';
 
     public function key(): string { return 'dnsbl'; }
     public function label(): string { return 'DNS blocklists'; }
@@ -50,7 +54,7 @@ class DnsblSource extends Source
     public function description(): string { return 'Spamhaus ZEN, SpamCop, Barracuda, DroneBL, PSBL, s5h, UCEPROTECT – spam, botnet, proxy and exploited-host listings.'; }
     public function homepage(): string { return 'https://www.spamhaus.org/zen/'; }
     public function supports(Indicator $indicator): bool { return $indicator->isIp() && $indicator->ipVersion() === 4; }
-    public function terms(): ?string { return 'Free for low-volume, non-commercial use; Spamhaus refuses queries through public resolvers.'; }
+    public function terms(): ?string { return 'Free for low-volume, non-commercial use; Spamhaus refuses queries through public resolvers (optional SPAMHAUS_DQS_KEY).'; }
     public function ttl(): int { return 3 * 3600; }
 
     public function collect(Indicator $indicator, array $responses, array $facts): SourceResult
@@ -60,8 +64,25 @@ class DnsblSource extends Source
         $listed = 0;
         $answered = 0;
         $result = SourceResult::clean('');
-        $all = Network::dnsMany(array_map(static fn($zone) => [$reversed . '.' . $zone, 'A'], array_combine(array_keys(self::ZONES), array_keys(self::ZONES))));
+        $dqsKey = gw_env('SPAMHAUS_DQS_KEY');
+        $dqsValid = $dqsKey === null || preg_match('/^[a-z0-9]{8,64}$/', $dqsKey);
+        $queries = [];
+        foreach (array_keys(self::ZONES) as $zone) {
+            $host = $zone;
+            if ($zone === 'zen.spamhaus.org' && $dqsKey !== null) {
+                if (!$dqsValid) {
+                    continue;
+                }
+                $host = $dqsKey . '.zen.dq.spamhaus.net';
+            }
+            $queries[$zone] = [$reversed . '.' . $host, 'A'];
+        }
+        $all = Network::dnsMany($queries);
         foreach (self::ZONES as $zone => [$name, $defaultWeight, $codes]) {
+            if (!array_key_exists($zone, $all)) {
+                $rows[] = [$name, 'error', 'SPAMHAUS_DQS_KEY is malformed (expected the lowercase letters and digits of a Spamhaus DQS key)'];
+                continue;
+            }
             $answers = $all[$zone];
             if (!$answers) {
                 $rows[] = [$name, 'clean', '—'];
@@ -69,9 +90,15 @@ class DnsblSource extends Source
                 continue;
             }
             $errors = array_values(array_intersect_key(self::ERRORS, array_flip($answers)));
-            $valid = array_filter($answers, static fn($a) => str_starts_with($a, '127.') && !isset(self::ERRORS[$a]));
+            $valid = array_filter($answers, static fn($a) => str_starts_with($a, '127.') && !str_starts_with($a, '127.255.255.'));
+            if (!$valid && $zone === 'zen.spamhaus.org' && $dqsKey === null && in_array(self::REFUSED_PUBLIC, $answers, true)) {
+                // Expected through public resolvers: not a fault, just not available without a DQS key
+                $rows[] = [$name, 'unavailable', 'refused via public resolver – set SPAMHAUS_DQS_KEY (free Spamhaus DQS key) or use your own recursive resolver'];
+                continue;
+            }
             if (!$valid) {
-                $rows[] = [$name, 'error', $errors[0] ?? ('unexpected answer ' . $answers[0] . ' (resolver rewrites NXDOMAIN?)')];
+                $code = current(array_filter($answers, static fn($a) => str_starts_with($a, '127.255.255.')));
+                $rows[] = [$name, 'error', $errors[0] ?? ($code ? 'refused (code ' . $code . ')' : 'unexpected answer ' . $answers[0] . ' (resolver rewrites NXDOMAIN?)')];
                 continue;
             }
             $answered++;

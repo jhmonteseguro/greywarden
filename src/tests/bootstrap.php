@@ -10,7 +10,7 @@ putenv('YII_ENV=test');
 // No credentials for external services: tests must never reach Cloudflare or a keyed intel API
 // (HTTP is faked as well; individual tests set their own fake values).
 foreach (['CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_ZONE_ID', 'CLOUDFLARE_RULE_NAME', 'ABUSEIPDB_API_KEY', 'VIRUSTOTAL_API_KEY',
-             'GREYNOISE_API_KEY', 'OTX_API_KEY', 'ABUSECH_AUTH_KEY', 'IPINFO_TOKEN', 'INTEL_ENABLE_IPAPI', 'INTEL_DISABLE', 'ADMIN_PASSWORD'] as $secret) {
+             'GREYNOISE_API_KEY', 'OTX_API_KEY', 'ABUSECH_AUTH_KEY', 'IPINFO_TOKEN', 'SPAMHAUS_DQS_KEY', 'INTEL_ENABLE_IPAPI', 'INTEL_DISABLE', 'ADMIN_PASSWORD'] as $secret) {
     putenv($secret);
 }
 

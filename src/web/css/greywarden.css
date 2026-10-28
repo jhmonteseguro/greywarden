@@ -1794,7 +1794,7 @@ a.gw-intel-flagchip:hover { color: var(--gw-text-strong); border-color: var(--gw
 .gw-intel-result--match { color: var(--gw-info-text); }
 .gw-intel-result--clean { color: var(--gw-low-text); }
 .gw-intel-result--error { color: var(--gw-warning-text); }
-.gw-intel-result--policy, .gw-intel-result--not-loaded { color: var(--gw-text-subtle); }
+.gw-intel-result--policy, .gw-intel-result--unavailable, .gw-intel-result--not-loaded { color: var(--gw-text-subtle); }
 .gw-intel-raw { margin-top: .9rem; }
 .gw-intel-raw > summary { display: inline-flex; align-items: center; gap: .4rem; cursor: pointer; font-size: var(--gw-fs-xs); font-weight: 500; color: var(--gw-text-muted); list-style: none; }
 .gw-intel-raw > summary::-webkit-details-marker { display: none; }

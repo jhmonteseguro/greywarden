@@ -6,6 +6,16 @@ releases).
 
 ## [Unreleased]
 
+### Added
+
+- `SPAMHAUS_DQS_KEY`: with a free Spamhaus Data Query Service key, the DNS blocklist check queries ZEN via
+  `zen.dq.spamhaus.net`, which works through public resolvers.
+
+### Fixed
+
+- Without a DQS key, Spamhaus ZEN refusing a public resolver now shows as *unavailable* with a hint, not as an
+  error. Unknown Spamhaus error codes (127.255.255.x) are reported as errors instead of being counted as listings.
+
 ### Removed
 
 - The committed `.vscode/` editor settings. Editor settings are now ignored and the leak check refuses `.vscode/`,
