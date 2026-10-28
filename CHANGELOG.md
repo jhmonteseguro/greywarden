@@ -6,6 +6,8 @@ releases).
 
 ## [Unreleased]
 
+## [0.3.0-alpha] - 2026-10-28
+
 ### Added
 
 - Unsupported operating system detection: devices are matched against a built-in catalogue of vendor end-of-support
@@ -83,6 +85,7 @@ First public release.
 - Repository safeguards: git hooks with a leak check and signed-push rules, and CI with all test suites, a secret
   scan and a production image build.
 
-[Unreleased]: https://github.com/jhmonteseguro/greywarden/compare/v0.2.0-alpha...HEAD
+[Unreleased]: https://github.com/jhmonteseguro/greywarden/compare/v0.3.0-alpha...HEAD
+[0.3.0-alpha]: https://github.com/jhmonteseguro/greywarden/compare/v0.2.0-alpha...v0.3.0-alpha
 [0.2.0-alpha]: https://github.com/jhmonteseguro/greywarden/compare/v0.1.0-alpha...v0.2.0-alpha
 [0.1.0-alpha]: https://github.com/jhmonteseguro/greywarden/releases/tag/v0.1.0-alpha
