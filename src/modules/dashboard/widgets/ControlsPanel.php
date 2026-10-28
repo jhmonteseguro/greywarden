@@ -9,7 +9,7 @@ use yii\helpers\Html;
 
 /**
  * Control Register at a glance: tested effectiveness of implemented controls,
- * and ISO 27001 / Cyber Essentials progress.
+ * and progress against each framework switched on in Admin › Settings.
  */
 class ControlsPanel extends PanelWidget
 {
@@ -20,7 +20,7 @@ class ControlsPanel extends PanelWidget
     protected function renderTools(): string
     {
         return Html::a('Control Register', ['/control/control/index'], ['class' => 'gw-panel__link'])
-            . Html::a('Frameworks', ['/control/framework/index'], ['class' => 'gw-panel__link']);
+            . (FrameworkCatalogue::enabled() ? Html::a('Frameworks', ['/control/framework/index'], ['class' => 'gw-panel__link']) : '');
     }
 
     protected function renderBody(): string
@@ -29,7 +29,7 @@ class ControlsPanel extends PanelWidget
         $effectiveness = array_map('intval', Control::find()->active()->implemented()
             ->select(['n' => 'COUNT(*)', 'effectiveness'])->groupBy('effectiveness')->indexBy('effectiveness')->column());
         $frameworks = [];
-        foreach (FrameworkCatalogue::frameworks() as $framework) {
+        foreach (FrameworkCatalogue::enabled() as $framework) {
             $frameworks[$framework] = FrameworkCoverage::summary(FrameworkCoverage::rows($framework));
         }
         return $this->render('controls', [

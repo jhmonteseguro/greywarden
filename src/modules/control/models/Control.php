@@ -89,7 +89,7 @@ class Control extends DomainRecord
     public $decisionIds = null;
     /** @var int[]|string|null ATT&CK mitigation ids (null = not submitted) */
     public $mitigationIds = null;
-    /** @var int[]|string|null ISO 27001 + Cyber Essentials requirement ids (null = not submitted) */
+    /** @var int[]|string|null framework requirement ids (null = not submitted; out-of-scope links are kept, see syncLink()) */
     public $requirementIds = null;
     /** @var string[]|string|null device types from the form (null = not submitted); stored in device_types */
     public $deviceTypeList = null;
@@ -368,10 +368,23 @@ class Control extends DomainRecord
         return $out;
     }
 
-    /** @return FrameworkRequirement[] the linked requirements of one framework */
+    /** @return FrameworkRequirement[] the linked requirements of one framework that are in scope (see FrameworkCatalogue) */
     public function requirementsOf(string $framework): array
     {
-        return array_values(array_filter($this->requirements, static fn(FrameworkRequirement $r) => $r->framework === $framework));
+        return array_values(array_filter($this->requirements, static fn(FrameworkRequirement $r) => $r->framework === $framework && $r->getIsInScope()));
+    }
+
+    /**
+     * The form only offers requirements in scope, so links to requirements of
+     * a framework that is switched off (or a SOC 2 category not chosen) are
+     * kept rather than dropped.
+     */
+    protected function syncLink(array $def, array $ids): void
+    {
+        if ($def['table'] === 'control_framework_requirement') {
+            $ids = array_merge($ids, FrameworkRequirement::idsOutOfScope($this->currentLinkIds($def)));
+        }
+        parent::syncLink($def, $ids);
     }
 
     // ---- Testing --------------------------------------------------------
@@ -564,7 +577,7 @@ class Control extends DomainRecord
     public function frameworkSummary(): array
     {
         $out = [];
-        foreach (FrameworkCatalogue::frameworks() as $framework) {
+        foreach (FrameworkCatalogue::enabled() as $framework) {
             $ids = array_map(static fn($r) => $r->external_id, $this->requirementsOf($framework));
             if ($ids) {
                 $out[$framework] = $ids;

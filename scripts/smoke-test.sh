@@ -99,6 +99,7 @@ B1=$(id_of intel_blocklist reference BLK-0001); B6=$(id_of intel_blocklist refer
 V1=$(id_of device asset_tag DEV-0001); V26=$(id_of device asset_tag DEV-0026); V38=$(id_of device asset_tag DEV-0038)
 C1=$(id_of control reference CTL-0001); C5=$(id_of control reference CTL-0005); C8=$(id_of control reference CTL-0008); C18=$(id_of control reference CTL-0018)
 REQ_ISO=$(sql "SELECT id FROM framework_requirement WHERE external_id='A.8.7'"); REQ_CE=$(sql "SELECT id FROM framework_requirement WHERE external_id='CE-UA-4'")
+REQ_SOC2=$(sql "SELECT id FROM framework_requirement WHERE external_id='CC6.1'"); REQ_SOC2_A=$(sql "SELECT id FROM framework_requirement WHERE external_id='A1.2'")
 # Manual device checks in force, as Device[checks][<id>]=<result> fields
 CHECKS=($(sql "SELECT id FROM control WHERE device_check='manual' AND status IN ('implementing','implemented') AND archived_at IS NULL ORDER BY id"))
 checks() { local r=$1; for c in "${CHECKS[@]}"; do echo "Device[checks][$c]=$r"; done; }
@@ -174,6 +175,7 @@ READ_PAGES=(
     /controls/$C1 /controls/$C5 /controls/$C8 /controls/$C18 "/risks?filter=control-issues"
     /frameworks /frameworks/iso27001 /frameworks/cyber-essentials "/frameworks/iso27001?state=gap" "/frameworks/cyber-essentials?state=met"
     /frameworks/requirement/$REQ_ISO /frameworks/requirement/$REQ_CE "/search?q=passkeys" "/search?q=Annex"
+    /frameworks/soc2 "/frameworks/soc2?state=met" /frameworks/requirement/$REQ_SOC2
     /attack "/attack?layer=risks" "/attack?show=mapped" "/attack?layer=risks&show=mapped" /attack/T1566 /attack/T1566.001 /attack/T1656
     /attack/mitigations /attack/mitigations/M1032 /attack/mitigations/M1055
     "/incidents?filter=all&technique=T1566" "/risks?filter=all&technique=phishing" "/decisions?mitigation=M1032" "/search?q=credential"
@@ -205,6 +207,8 @@ check viewer / 200
 grep -q 'gw-attention__group--control-tests-soon' "$BODY" && ok || bad "due-soon control tests missing from Needs attention"
 check analyst /search?q=CTL-0001 302
 check analyst /search?q=A.8.7 302
+check analyst /search?q=CC6.1 302
+check viewer /frameworks/requirement/$REQ_SOC2_A 404   # SOC 2 Availability is out of scope until chosen
 check viewer /frameworks/nist-csf 404
 check viewer /frameworks/requirement/999999 404
 check analyst /search?q=T1566.001 302
@@ -463,6 +467,17 @@ check guest /branding/logo 404
 post admin /admin/settings /admin/settings 302 \
     "BrandingForm[app_name]=" "BrandingForm[organisation]=" "BrandingForm[tagline]=Security operations console" \
     "BrandingForm[login_notice]=Restricted system · all access is monitored and audited" "BrandingForm[pdf_classification]=Confidential"
+
+# Admin: compliance frameworks (Cyber Essentials off and SOC 2 Availability in scope; restored afterwards)
+post admin /admin/settings /admin/settings 302 \
+    "ComplianceForm[frameworks][]=iso27001" "ComplianceForm[frameworks][]=soc2" "ComplianceForm[soc2_categories][]=availability"
+check viewer / 200
+! grep -q 'href="/frameworks/cyber-essentials"' "$BODY" && grep -q 'href="/frameworks/soc2"' "$BODY" && ok || bad "sidebar ignores the compliance framework switches"
+check viewer /frameworks/cyber-essentials 404
+check viewer /frameworks/requirement/$REQ_SOC2_A 200
+post admin /admin/settings /admin/settings 302 \
+    "ComplianceForm[frameworks][]=iso27001" "ComplianceForm[frameworks][]=cyber_essentials" "ComplianceForm[frameworks][]=soc2" "ComplianceForm[soc2_categories]="
+check viewer /frameworks/cyber-essentials 200
 
 # Login lockout: 5 bad passwords, then the right one is refused
 for i in 1 2 3 4 5; do

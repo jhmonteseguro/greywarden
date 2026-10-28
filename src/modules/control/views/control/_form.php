@@ -16,6 +16,16 @@ use app\widgets\ActiveForm;
 use yii\helpers\Html;
 
 $picker = static fn(string $placeholder) => ['multiple' => true, 'size' => 8, 'class' => 'form-select gw-multiselect', 'data-gw-picker' => $placeholder];
+$pickerLabels = [
+    FrameworkCatalogue::ISO27001 => 'ISO 27001 Annex A controls',
+    FrameworkCatalogue::CYBER_ESSENTIALS => 'Cyber Essentials requirements',
+    FrameworkCatalogue::SOC2 => 'SOC 2 Trust Services Criteria',
+];
+$pickerHints = [
+    FrameworkCatalogue::ISO27001 => 'Filter Annex A, e.g. A.8.7 or malware',
+    FrameworkCatalogue::CYBER_ESSENTIALS => 'Filter requirements, e.g. CE-UA or MFA',
+    FrameworkCatalogue::SOC2 => 'Filter criteria, e.g. CC6.1 or access',
+];
 ?>
 <?php $form = ActiveForm::begin(['id' => 'control-form', 'options' => ['class' => 'gw-form gw-form--control']]); ?>
 <?= $form->errorSummary($model, ['class' => 'alert alert-danger gw-error-summary']) ?>
@@ -52,17 +62,20 @@ $picker = static fn(string $placeholder) => ['multiple' => true, 'size' => 8, 'c
     </div>
 </fieldset>
 
+<?php if ($frameworks = FrameworkCatalogue::enabled()): ?>
 <fieldset class="gw-fieldset">
     <legend class="gw-fieldset__title">Frameworks</legend>
     <div class="row">
-        <div class="col-md-6"><?= $form->field($model, 'requirementIds')->listBox(FrameworkRequirement::selectOptions(FrameworkCatalogue::ISO27001), $picker('Filter Annex A, e.g. A.8.7 or malware') + ['id' => 'control-requirementids-iso'])
-            ->label('ISO 27001 Annex A controls') ?></div>
-        <div class="col-md-6"><?= $form->field($model, 'requirementIds')
-            ->listBox(FrameworkRequirement::selectOptions(FrameworkCatalogue::CYBER_ESSENTIALS), $picker('Filter requirements, e.g. CE-UA or MFA') + ['id' => 'control-requirementids-ce', 'unselect' => null])
-            ->label('Cyber Essentials requirements') ?></div>
+        <?php foreach ($frameworks as $i => $framework): ?>
+            <div class="col-md-6"><?= $form->field($model, 'requirementIds')
+                ->listBox(FrameworkRequirement::selectOptions($framework), $picker($pickerHints[$framework]) + ['id' => 'control-requirementids-' . FrameworkCatalogue::slug($framework)]
+                    + ($i > 0 ? ['unselect' => null] : []))
+                ->label($pickerLabels[$framework]) ?></div>
+        <?php endforeach; ?>
     </div>
-    <p class="form-text gw-field__hint">The ISO 27001 Statement of Applicability and the Cyber Essentials readiness view are built from these mappings.</p>
+    <p class="form-text gw-field__hint">The framework pages under Compliance are built from these mappings.</p>
 </fieldset>
+<?php endif; ?>
 
 <fieldset class="gw-fieldset">
     <legend class="gw-fieldset__title">MITRE ATT&amp;CK</legend>

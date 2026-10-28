@@ -54,8 +54,12 @@ $risks = $model->risks;
 $decisions = $model->decisions;
 $incidents = $model->getIncidentsByRole();
 $mitigations = $model->mitigations;
-$iso = $model->requirementsOf(FrameworkCatalogue::ISO27001);
-$ce = $model->requirementsOf(FrameworkCatalogue::CYBER_ESSENTIALS);
+$requirements = [];
+foreach (FrameworkCatalogue::enabled() as $framework) {
+    $requirements[$framework] = $model->requirementsOf($framework);
+}
+$requirementCount = array_sum(array_map('count', $requirements));
+$frameworkCol = count($requirements) < 3 ? 'col-lg-4' : 'col-lg-6 col-xxl-3';   // one column per framework, plus ATT&CK
 $incidentCount = array_sum(array_map('count', $incidents));
 
 ob_start(); ?>
@@ -230,9 +234,10 @@ ob_start(); ?>
 
 ob_start(); ?>
 <div class="row g-4">
-    <div class="col-lg-4"><?= LinkedRecords::widget(['title' => 'ISO 27001 Annex A', 'icon' => 'patch-check', 'models' => $iso, 'emptyText' => 'Not mapped.']) ?></div>
-    <div class="col-lg-4"><?= LinkedRecords::widget(['title' => 'Cyber Essentials', 'icon' => 'patch-check', 'models' => $ce, 'emptyText' => 'Not mapped.']) ?></div>
-    <div class="col-lg-4">
+    <?php foreach ($requirements as $framework => $linked): ?>
+        <div class="<?= $frameworkCol ?>"><?= LinkedRecords::widget(['title' => FrameworkCatalogue::shortLabel($framework), 'icon' => FrameworkCatalogue::icon($framework), 'models' => $linked, 'emptyText' => 'Not mapped.']) ?></div>
+    <?php endforeach; ?>
+    <div class="<?= $frameworkCol ?>">
         <section class="gw-linked">
             <h3 class="gw-linked__title"><i class="bi bi-shield-check" aria-hidden="true"></i> ATT&amp;CK mitigations <span class="gw-linked__count"><?= count($mitigations) ?></span></h3>
             <?= TechniqueTags::widget(['items' => $mitigations, 'emptyText' => 'None mapped.']) ?>
@@ -264,7 +269,7 @@ ob_start(); ?>
         ['label' => 'Testing (' . count($tests) . ')', 'content' => $testing, 'options' => ['id' => 'tab-testing'], 'active' => $test->hasErrors()],
         $deviceTab !== null ? ['label' => 'Device check', 'content' => $deviceTab, 'options' => ['id' => 'tab-devices']] : null,
         ['label' => 'Links (' . (count($risks) + count($decisions) + $incidentCount) . ')', 'content' => $links, 'options' => ['id' => 'tab-links']],
-        ['label' => 'Frameworks & ATT&CK (' . (count($iso) + count($ce) + count($mitigations)) . ')', 'content' => $frameworks, 'options' => ['id' => 'tab-frameworks']],
+        ['label' => 'Frameworks & ATT&CK (' . ($requirementCount + count($mitigations)) . ')', 'content' => $frameworks, 'options' => ['id' => 'tab-frameworks']],
         ['label' => 'Files (' . count($attachments) . ')', 'content' => Attachments::widget(['model' => $model, 'attachments' => $attachments]), 'options' => ['id' => 'tab-files']],
         ['label' => 'History', 'content' => AuditHistory::widget(['entityType' => 'control', 'entityId' => $model->id]), 'options' => ['id' => 'tab-history']],
     ])),

@@ -8,7 +8,8 @@ use yii\db\Query;
 
 /**
  * Rolls the Control Register up to framework requirements (the Statement of
- * Applicability for ISO 27001, readiness for Cyber Essentials).
+ * Applicability for ISO 27001, readiness for Cyber Essentials and SOC 2).
+ * Only requirements in scope count (see FrameworkCatalogue::scopeCondition()).
  *
  * A requirement takes the best state of its linked controls (see
  * Control::frameworkState()): met > partial > planned; with no control it is
@@ -37,13 +38,13 @@ final class FrameworkCoverage
     }
 
     /**
-     * @param int[]|null $requirementIds limit to these requirements
+     * @param int[]|null $requirementIds limit to these requirements (out-of-scope ones are left out)
      * @return array<int,array{requirement:FrameworkRequirement, state:string, controls:Control[], unverified:bool}>
      *         requirement id => row, in catalogue order
      */
     public static function rows(string $framework, ?array $requirementIds = null): array
     {
-        $requirements = FrameworkRequirement::find()->where(['framework' => $framework])
+        $requirements = FrameworkRequirement::find()->where(['framework' => $framework])->andWhere(FrameworkCatalogue::scopeCondition())
             ->andFilterWhere(['id' => $requirementIds])->orderBy('sort_order')->indexBy('id')->all();
         if (!$requirements) {
             return [];

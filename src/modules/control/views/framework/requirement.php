@@ -33,9 +33,11 @@ $this->params['actions'] = Rbac::canManage()
             <?php if ($model->description): ?>
                 <div class="gw-textblock gw-textblock--highlight"><div class="gw-textblock__body"><?= Html::encode($model->description) ?></div></div>
             <?php endif; ?>
-            <p class="gw-muted gw-small mb-0"><?= $model->framework === FrameworkCatalogue::ISO27001
-                ? 'Annex A control title only. See ISO/IEC 27001:2022 for the control and ISO/IEC 27002:2022 for implementation guidance.'
-                : 'Paraphrased from the NCSC Cyber Essentials requirements for IT infrastructure.' ?></p>
+            <p class="gw-muted gw-small mb-0"><?= match ($model->framework) {
+                FrameworkCatalogue::ISO27001 => 'Annex A control title only. See ISO/IEC 27001:2022 for the control and ISO/IEC 27002:2022 for implementation guidance.',
+                FrameworkCatalogue::SOC2 => 'Paraphrased. See the AICPA 2017 Trust Services Criteria for the criterion and its points of focus.',
+                default => 'Paraphrased from the NCSC Cyber Essentials requirements for IT infrastructure.',
+            } ?></p>
         </section>
         <?= LinkedRecords::widget(['title' => 'Implemented by', 'icon' => 'shield-shaded', 'models' => $controls,
             'emptyText' => 'No control is mapped to this requirement yet. Map one from the control\'s edit form.',
@@ -43,7 +45,7 @@ $this->params['actions'] = Rbac::canManage()
     </div>
     <div class="col-xl-4">
         <section class="gw-panel">
-            <h2 class="gw-panel__title"><?= $model->framework === FrameworkCatalogue::ISO27001 ? 'Applicability' : 'Scope' ?></h2>
+            <h2 class="gw-panel__title"><?= $model->framework === FrameworkCatalogue::CYBER_ESSENTIALS ? 'Scope' : 'Applicability' ?></h2>
             <?php if (Rbac::canManage()): ?>
                 <?php $form = ActiveForm::begin(['id' => 'requirement-form']); ?>
                 <?= $form->field($model, 'applicable')->checkbox() ?>

@@ -26,13 +26,14 @@ For real data, see [Production](#production); for the full setup, see [Developme
   and a flag when a risk relies on a control that is retired, not effective or overdue for testing
 * **Control Register**: controls with owner, type, status, target dates, effectiveness tests and a test schedule;
   links to risks, decisions, incidents (detected / failed / added in response), ATT&CK mitigations, and the
-  **ISO 27001:2022 Statement of Applicability** and **Cyber Essentials** readiness views. Controls can also be
+  **ISO 27001:2022 Statement of Applicability**, **Cyber Essentials** and **SOC 2** readiness views (each can be switched
+  off in Admin › Settings). Controls can also be
   **device checks** that every applicable device in the inventory is checked against
 * **Decision Log**: options, rationale, supersession chain, links to risks and incidents
 * **Incident Log**: NIST lifecycle, an incident timeline, the 72-hour regulator deadline with a countdown, response metrics
 * **Device Inventory**: lifecycle, network data, and posture against the device checks (pass / fail / not assessed)
 * **Dashboard**: KPI tiles, residual heatmap, incident trend, device posture, a "needs attention" list,
-  control effectiveness with ISO 27001 / Cyber Essentials progress, recent activity
+  control effectiveness with progress against each framework switched on, recent activity
 * **MITRE ATT&CK** (Enterprise v20, bundled for offline use): techniques observed on incidents, threat techniques on risks,
   mitigations implemented by controls or adopted by decisions, an ATT&CK matrix shaded by incidents or risks,
   mitigation coverage and gap analysis, device platforms and device checks mapped to mitigations, and a dashboard panel
@@ -255,7 +256,7 @@ greywarden/
     │   ├── attack/     MITRE ATT&CK: AttackTactic/Technique/Mitigation, components/ (StixParser, CatalogueImporter,
     │   │               Catalogue, Coverage, DeviceAttack, AttackText), widgets/ (TechniqueTags, KillChain,
     │   │               MitigationCoverage), matrix / technique / mitigation pages
-    │   └── admin/      users (UserForm, ResetPasswordForm), audit log, lookups, settings (BrandingForm)
+    │   └── admin/      users (UserForm, ResetPasswordForm), audit log, lookups, settings (BrandingForm, ComplianceForm)
     ├── tests/        PHPUnit: unit/ (models, components, commands) and functional/ (in-process HTTP through the
     │                 real controllers, RBAC and views; FunctionalTestCase). The bootstrap uses the test database only
     ├── views/        layouts/ (main, _sidebar, _topbar, _flash, auth), partials/, site/, account/, search/
@@ -312,20 +313,28 @@ greywarden/
 * **Links**: risks (from either side; implemented controls are the existing controls behind the residual score, planned
   ones the treatment), decisions (that introduced or changed the control), incidents with a role (*detected or contained
   it*, *failed or was bypassed*, *added or improved in response*, set on the incident form), ATT&CK mitigations, and
-  ISO 27001 / Cyber Essentials requirements. The free-text "Existing controls" / "Treatment plan" fields on risks stay
+  ISO 27001 / Cyber Essentials / SOC 2 requirements. The free-text "Existing controls" / "Treatment plan" fields on risks stay
   as context.
 * **Weak controls**: a control is weak when it is retired, archived, tested partially effective or ineffective, overdue
   for testing, or past its target date. Open risks linked to one get a *Control issue* flag and appear under the
   *Control issues* filter. Ineffective controls on High/Critical risks, overdue tests and planned controls past their target
   date appear in the dashboard's *Needs attention*.
 * **Frameworks** (`framework_requirement`, loaded from `src/data/frameworks/`): the 93 ISO/IEC 27001:2022 Annex A controls
-  (IDs, themes and titles only: the control text is ISO copyright) and 27 Cyber Essentials requirements across its five
+  (IDs, themes and titles only: the control text is ISO copyright), 27 Cyber Essentials requirements across its five
   themes (paraphrased from the NCSC *Requirements for IT infrastructure*; check them against the current version before an
-  assessment). Each requirement takes the best state of its linked controls: **Met** (implemented, not found wanting;
+  assessment) and the 61 SOC 2 Trust Services Criteria (AICPA 2017 with the 2022 revised points of focus; paraphrased, as
+  the criteria text is AICPA copyright). Each requirement takes the best state of its linked controls: **Met** (implemented, not found wanting;
   *not tested* is shown when none has been tested effective) › **Partly met** (implementing, or tested partially effective /
   ineffective) › **Planned** › **Gap**. Requirements can be marked **not applicable** with a mandatory justification:
   that is the Statement of Applicability (*Compliance → ISO 27001 SoA*). *Compliance → Cyber Essentials* adds the device
   checks mapped to Cyber Essentials with pass / fail / not assessed counts across in-service devices.
+  *Compliance → SOC 2* covers Security (the common criteria, CC1–CC9) plus the optional categories chosen in Settings.
+* **Switching frameworks off** (*Admin › Settings › Compliance frameworks*): every framework is on until an admin turns it
+  off. A framework that is off disappears from the sidebar, the Frameworks page, the dashboard, search, the control form,
+  view and PDF, and its pages return 404. Its applicability decisions and control mappings are kept (saving a control
+  never drops links the form does not show), so switching it back on restores everything. The same applies to SOC 2
+  categories (Availability, Confidentiality, Processing integrity, Privacy) left out of scope. Stored in the `setting`
+  table as `framework.<name>` (`1` / `0`) and `framework.soc2.categories`; changes are audited.
 * **Device checks**: a control with a *device check* applies to the device types (and ownership) you choose while it is
   implementing or implemented. *Manual* checks get a Pass / Fail / Not assessed select on the device form (`device_control`;
   no row = not assessed). *Patch age* checks pass when the device's *Last patched* date is within the control's maximum age.
@@ -550,7 +559,7 @@ make test     # PHPUnit: risk scoring/bands, residual validation, incident 72h d
               # matching, scoring, source parsers, offline investigation, blocklist rules and matching,
               # Google device export parsing, import upsert and stale-device detection (PHP + SQL parity),
               # control testing / effectiveness / schedule, weak-control risk flags (PHP + SQL parity),
-              # ISO 27001 / Cyber Essentials roll-up and catalogue import, incident control roles,
+              # ISO 27001 / Cyber Essentials / SOC 2 roll-up, catalogue import and framework scope, incident control roles,
               # device checks: applicability, results, audit and compliance states (PHP + SQL parity).
               # Runs against DB_TEST_NAME inside transactions; no test touches the network.
 make smoke    # end-to-end HTTP checks for every page and role

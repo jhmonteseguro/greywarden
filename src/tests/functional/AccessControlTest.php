@@ -63,6 +63,7 @@ class AccessControlTest extends FunctionalTestCase
             "/controls/$c1", "/controls/$c5",
             '/frameworks', '/frameworks/iso27001', '/frameworks/cyber-essentials', '/frameworks/iso27001?state=gap',
             '/frameworks/cyber-essentials?state=met', "/frameworks/requirement/$req", "/frameworks/requirement/$ce",
+            '/frameworks/soc2', '/frameworks/soc2?state=gap',
             '/attack', '/attack?layer=risks', '/attack?show=mapped', '/attack?layer=risks&show=mapped', '/attack/T1566', '/attack/T1566.001',
             '/attack/mitigations', '/attack/mitigations/M1032',
             '/intel', '/intel?sort=-last_score', '/intel/ip/203.0.113.66', '/intel/ip/198.51.100.23', '/intel/ip/10.20.30.40',

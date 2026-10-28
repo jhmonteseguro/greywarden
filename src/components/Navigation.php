@@ -2,10 +2,12 @@
 
 namespace app\components;
 
+use app\modules\control\components\FrameworkCatalogue;
 use Yii;
 
 /**
- * Sidebar navigation definition. Add new modules here.
+ * Sidebar navigation definition. Add new modules here. The Compliance section
+ * lists the frameworks switched on in Admin › Settings.
  * Each item: label, icon (bootstrap-icons name), url, permission, active (route prefix list),
  * activeParams (optional: query params that must also match, e.g. ['framework' => 'iso27001']).
  */
@@ -27,12 +29,11 @@ final class Navigation
             ],
             [
                 'label' => 'Compliance',
-                'items' => [
-                    ['label' => 'ISO 27001 SoA', 'icon' => 'patch-check', 'url' => ['/control/framework/view', 'framework' => 'iso27001'], 'permission' => Rbac::PERM_VIEW,
-                        'active' => ['control/framework/view/'], 'activeParams' => ['framework' => 'iso27001']],
-                    ['label' => 'Cyber Essentials', 'icon' => 'patch-check-fill', 'url' => ['/control/framework/view', 'framework' => 'cyber-essentials'], 'permission' => Rbac::PERM_VIEW,
-                        'active' => ['control/framework/view/'], 'activeParams' => ['framework' => 'cyber-essentials']],
-                ],
+                'items' => array_map(static fn(string $framework) => [
+                    'label' => FrameworkCatalogue::navLabel($framework), 'icon' => FrameworkCatalogue::icon($framework),
+                    'url' => ['/control/framework/view', 'framework' => FrameworkCatalogue::slug($framework)], 'permission' => Rbac::PERM_VIEW,
+                    'active' => ['control/framework/view/'], 'activeParams' => ['framework' => FrameworkCatalogue::slug($framework)],
+                ], FrameworkCatalogue::enabled()),
             ],
             [
                 'label' => 'Threat Intel',

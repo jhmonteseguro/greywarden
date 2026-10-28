@@ -11,8 +11,8 @@ use yii\db\ActiveRecord;
 use yii\db\Query;
 
 /**
- * An ISO 27001 Annex A control or a Cyber Essentials requirement, with its
- * Statement of Applicability entry (applicable + justification).
+ * An ISO 27001 Annex A control, a Cyber Essentials requirement or a SOC 2
+ * criterion, with its Statement of Applicability entry (applicable + justification).
  *
  * Mirrors the DomainRecord identity API (reference / title / view URL) so it
  * can be used in link definitions, audit snapshots and search results.
@@ -121,23 +121,29 @@ class FrameworkRequirement extends ActiveRecord
         return FrameworkCatalogue::shortLabel($this->framework);
     }
 
+    /** Shown at all: its framework is switched on (and, for SOC 2, its category is in scope) */
+    public function getIsInScope(): bool
+    {
+        return FrameworkCatalogue::inScope($this->framework, $this->group_code);
+    }
+
     public function getControls()
     {
         return $this->hasMany(Control::class, ['id' => 'control_id'])->viaTable('control_framework_requirement', ['requirement_id' => 'id'])
             ->orderBy(['control.reference' => SORT_ASC]);
     }
 
-    /** Options for a framework's requirement picker, grouped by theme */
+    /** Options for a framework's requirement picker, grouped by theme (requirements in scope only) */
     public static function selectOptions(string $framework): array
     {
         $options = [];
-        foreach (static::find()->where(['framework' => $framework])->orderBy('sort_order')->all() as $r) {
+        foreach (static::find()->where(['framework' => $framework])->andWhere(FrameworkCatalogue::scopeCondition())->orderBy('sort_order')->all() as $r) {
             $options[$r->group_name][$r->id] = $r->external_id . ' · ' . $r->title . ($r->applicable ? '' : ' (not applicable)');
         }
         return $options;
     }
 
-    /** Ids of requirements whose id or title matches, e.g. "A.8.7" or "malware" */
+    /** Ids of in-scope requirements whose id or title matches, e.g. "A.8.7" or "malware" */
     public static function idsMatching(string $term): array
     {
         $term = trim($term);
@@ -145,6 +151,22 @@ class FrameworkRequirement extends ActiveRecord
             return [];
         }
         return array_map('intval', (new Query())->select('id')->from(static::tableName())
-            ->where(['or', ['external_id' => $term], ['like', 'external_id', $term . '%', false], ['like', 'title', $term]])->column());
+            ->where(['or', ['external_id' => $term], ['like', 'external_id', $term . '%', false], ['like', 'title', $term]])
+            ->andWhere(FrameworkCatalogue::scopeCondition())->column());
+    }
+
+    /**
+     * The given requirement ids that are out of scope (framework switched off,
+     * or a SOC 2 category not chosen).
+     * @param int[] $ids
+     * @return int[]
+     */
+    public static function idsOutOfScope(array $ids): array
+    {
+        if (!$ids) {
+            return [];
+        }
+        return array_map('intval', (new Query())->select('id')->from(static::tableName())
+            ->where(['id' => $ids])->andWhere(['not', FrameworkCatalogue::scopeCondition()])->column());
     }
 }

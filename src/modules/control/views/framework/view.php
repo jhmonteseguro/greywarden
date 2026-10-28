@@ -1,6 +1,6 @@
 <?php
 /**
- * Statement of Applicability (ISO 27001) / readiness (Cyber Essentials).
+ * Statement of Applicability (ISO 27001) / readiness (Cyber Essentials, SOC 2).
  *
  * @var yii\web\View $this
  * @var string $framework
@@ -8,8 +8,10 @@
  * @var array $summary FrameworkCoverage::summary() of all rows
  * @var string $state current state filter ('' = all)
  * @var array|null $devices Cyber Essentials device readiness (see FrameworkController::deviceReadiness())
+ * @var string[]|null $soc2Scope SOC 2 Trust Services categories in scope
  */
 
+use app\components\Rbac;
 use app\helpers\Badge;
 use app\modules\control\components\FrameworkCatalogue;
 use app\modules\control\components\FrameworkCoverage;
@@ -18,8 +20,8 @@ use yii\helpers\Html;
 use yii\helpers\Url;
 
 $label = FrameworkCatalogue::label($framework);
-$isIso = $framework === FrameworkCatalogue::ISO27001;
-$this->title = $isIso ? 'ISO 27001 Statement of Applicability' : 'Cyber Essentials readiness';
+$isCe = $framework === FrameworkCatalogue::CYBER_ESSENTIALS;
+$this->title = FrameworkCatalogue::title($framework);
 $this->params['breadcrumbs'][] = ['label' => 'Control Register', 'url' => ['/control/control/index']];
 $this->params['breadcrumbs'][] = ['label' => 'Frameworks', 'url' => ['index']];
 $this->params['breadcrumbs'][] = FrameworkCatalogue::shortLabel($framework);
@@ -32,9 +34,15 @@ $filters = ['' => 'All'] + FrameworkCoverage::stateLabels();
         <section class="gw-panel">
             <h2 class="gw-panel__title"><?= Html::encode($label) ?></h2>
             <?= $this->render('_progress', ['framework' => $framework, 'summary' => $summary]) ?>
-            <?php if (!$isIso): ?>
+            <?php if ($isCe): ?>
                 <p class="gw-muted gw-small mb-0">Cyber Essentials is pass / fail: every requirement must be met across the whole scope.
                     Requirements are paraphrased; check them against the current NCSC requirements document before an assessment.</p>
+            <?php elseif ($soc2Scope !== null): ?>
+                <p class="gw-muted gw-small">Trust Services categories in scope:
+                    <strong><?= Html::encode(implode(', ', array_intersect_key(FrameworkCatalogue::soc2Categories(), array_flip($soc2Scope)))) ?></strong>.
+                    <?= Rbac::can(Rbac::PERM_SETTINGS) ? Html::a('Change in Settings', ['/admin/settings/index', '#' => 'compliance']) : 'An administrator can change them in Settings.' ?></p>
+                <p class="gw-muted gw-small mb-0">Criteria are paraphrased; see the AICPA 2017 Trust Services Criteria for the criteria text and points of focus.
+                    Criteria marked not applicable need a justification.</p>
             <?php else: ?>
                 <p class="gw-muted gw-small mb-0">Requirements marked not applicable need a justification. Control titles only: see ISO/IEC 27001:2022 and 27002:2022 for the control text.</p>
             <?php endif; ?>
@@ -88,7 +96,7 @@ $filters = ['' => 'All'] + FrameworkCoverage::stateLabels();
             <tr>
                 <th scope="col">ID</th>
                 <th scope="col">Requirement</th>
-                <th scope="col"><?= $isIso ? 'Applicable' : 'In scope' ?></th>
+                <th scope="col"><?= $isCe ? 'In scope' : 'Applicable' ?></th>
                 <th scope="col">Implemented by</th>
                 <th scope="col">Status</th>
             </tr>

@@ -17,8 +17,9 @@ use yii\web\NotFoundHttpException;
 use yii\web\Response;
 
 /**
- * ISO 27001 Statement of Applicability and Cyber Essentials readiness, rolled
- * up from the Control Register.
+ * ISO 27001 Statement of Applicability, Cyber Essentials and SOC 2 readiness,
+ * rolled up from the Control Register. Frameworks switched off in Admin ›
+ * Settings (and SOC 2 categories out of scope) are not found.
  */
 class FrameworkController extends Controller
 {
@@ -35,7 +36,7 @@ class FrameworkController extends Controller
     public function actionIndex(): string
     {
         $summaries = [];
-        foreach (FrameworkCatalogue::frameworks() as $framework) {
+        foreach (FrameworkCatalogue::enabled() as $framework) {
             $summaries[$framework] = FrameworkCoverage::summary(FrameworkCoverage::rows($framework));
         }
         return $this->render('index', ['summaries' => $summaries]);
@@ -44,7 +45,7 @@ class FrameworkController extends Controller
     public function actionView(string $framework, string $state = ''): string
     {
         $key = FrameworkCatalogue::fromSlug($framework);
-        if ($key === null) {
+        if ($key === null || !FrameworkCatalogue::isEnabled($key)) {
             throw new NotFoundHttpException('Framework not found.');
         }
         $rows = FrameworkCoverage::rows($key);
@@ -59,13 +60,14 @@ class FrameworkController extends Controller
             'summary' => $summary,
             'state' => $state,
             'devices' => $key === FrameworkCatalogue::CYBER_ESSENTIALS ? $this->deviceReadiness() : null,
+            'soc2Scope' => $key === FrameworkCatalogue::SOC2 ? FrameworkCatalogue::soc2Scope() : null,
         ]);
     }
 
     public function actionRequirement(int $id): Response|string
     {
         $model = FrameworkRequirement::findOne($id);
-        if (!$model) {
+        if (!$model || !$model->getIsInScope()) {
             throw new NotFoundHttpException('Requirement not found.');
         }
         if (Yii::$app->request->isPost) {

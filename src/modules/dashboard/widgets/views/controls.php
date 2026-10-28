@@ -16,9 +16,11 @@ use yii\helpers\Html;
 $labels = Control::effectivenessOptions();
 $order = [Control::EFFECTIVENESS_EFFECTIVE, Control::EFFECTIVENESS_PARTIAL, Control::EFFECTIVENESS_INEFFECTIVE, Control::EFFECTIVENESS_NOT_TESTED];
 $base = max(1, $implemented);
+// The implemented-controls column plus one per framework
+$col = match (count($frameworks)) { 0 => 'col-12', 1 => 'col-lg-6', 2 => 'col-lg-4', default => 'col-md-6 col-xxl-3' };
 ?>
 <div class="row g-4 gw-controls-panel">
-    <div class="col-lg-4">
+    <div class="<?= $col ?>">
         <h3 class="gw-controls-panel__heading">Implemented controls</h3>
         <div class="gw-framework-progress">
             <div class="gw-framework-progress__headline">
@@ -51,7 +53,7 @@ $base = max(1, $implemented);
         </div>
     </div>
     <?php foreach ($frameworks as $framework => $summary): ?>
-        <div class="col-lg-4">
+        <div class="<?= $col ?>">
             <h3 class="gw-controls-panel__heading"><?= Html::a(Html::encode(FrameworkCatalogue::label($framework)), ['/control/framework/view', 'framework' => FrameworkCatalogue::slug($framework)]) ?></h3>
             <?= $this->render('@app/modules/control/views/framework/_progress', ['framework' => $framework, 'summary' => $summary]) ?>
         </div>

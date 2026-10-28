@@ -61,9 +61,10 @@ class BrandingForm extends Model
         }
     }
 
+    /** Also labels the compliance settings: the audit log renders every "setting" entry through this form */
     public function attributeLabels(): array
     {
-        return [
+        return (new ComplianceForm())->attributeLabels() + [
             'app_name' => 'Display name',
             'organisation' => 'Organisation',
             'tagline' => 'Sign-in tagline',

@@ -28,11 +28,11 @@ $this->params['pdf.badges'] = Badge::status('control-status', $model->status, Co
 
 $tests = $model->tests;
 $incidents = $model->getIncidentsByRole();
-$frameworks = [
-    'ISO 27001 Annex A' => $model->requirementsOf(FrameworkCatalogue::ISO27001),
-    'Cyber Essentials' => $model->requirementsOf(FrameworkCatalogue::CYBER_ESSENTIALS),
-    'ATT&CK mitigations' => $model->mitigations,
-];
+$frameworks = [];
+foreach (FrameworkCatalogue::enabled() as $framework) {
+    $frameworks[FrameworkCatalogue::shortLabel($framework)] = $model->requirementsOf($framework);
+}
+$frameworks['ATT&CK mitigations'] = $model->mitigations;
 ?>
 <h2>Summary</h2>
 <?= $this->render('@app/views/pdf/_facts', ['facts' => array_filter([

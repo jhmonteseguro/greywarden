@@ -6,6 +6,7 @@ use app\components\Rbac;
 use app\modules\attack\models\AttackMitigation;
 use app\modules\attack\models\AttackTechnique;
 use app\modules\control\models\Control;
+use app\modules\control\components\FrameworkCatalogue;
 use app\modules\control\models\FrameworkRequirement;
 use app\modules\decision\models\Decision;
 use app\modules\incident\models\Incident;
@@ -46,7 +47,11 @@ class SearchController extends Controller
         if ($q !== '') {
             // Exact reference / asset tag / ATT&CK id match: jump straight to the record
             foreach ([Risk::class, Control::class, Decision::class, Incident::class, Device::class, BlocklistEntry::class, AttackTechnique::class, AttackMitigation::class, FrameworkRequirement::class] as $class) {
-                $exact = $class::find()->where([$class::referenceAttribute() => $q])->one();
+                $query = $class::find()->where([$class::referenceAttribute() => $q]);
+                if ($class === FrameworkRequirement::class) {
+                    $query->andWhere(FrameworkCatalogue::scopeCondition());   // not frameworks switched off
+                }
+                $exact = $query->one();
                 if ($exact) {
                     return $this->redirect($exact->getViewUrl());
                 }
@@ -59,8 +64,8 @@ class SearchController extends Controller
                 'controls' => ['label' => 'Controls', 'icon' => 'shield-shaded', 'items' => Control::find()
                     ->where(['or', ['like', 'reference', $q], ['like', 'title', $q], ['like', 'description', $q]])
                     ->orderBy(['archived_at' => SORT_ASC, 'id' => SORT_ASC])->limit(self::LIMIT)->all()],
-                'requirements' => ['label' => 'ISO 27001 / Cyber Essentials', 'icon' => 'patch-check', 'items' => FrameworkRequirement::find()
-                    ->where(['or', ['like', 'external_id', $q], ['like', 'title', $q]])
+                'requirements' => ['label' => implode(' / ', array_map([FrameworkCatalogue::class, 'shortLabel'], FrameworkCatalogue::enabled())), 'icon' => 'patch-check', 'items' => FrameworkRequirement::find()
+                    ->where(['or', ['like', 'external_id', $q], ['like', 'title', $q]])->andWhere(FrameworkCatalogue::scopeCondition())
                     ->orderBy(['framework' => SORT_DESC, 'sort_order' => SORT_ASC])->limit(self::LIMIT)->all()],
                 'decisions' => ['label' => 'Decisions', 'icon' => 'journal-check', 'items' => Decision::find()
                     ->where(['or', ['like', 'reference', $q], ['like', 'title', $q], ['like', 'decision_makers', $q]])
@@ -85,6 +90,9 @@ class SearchController extends Controller
                     : BlocklistEntry::find()->where(['or', ['like', 'reference', $q], ['like', 'value', $q], ['like', 'reason', $q]])
                         ->orderBy(['archived_at' => SORT_ASC, 'id' => SORT_DESC])->limit(self::LIMIT)->all()],
             ];
+            if (!FrameworkCatalogue::enabled()) {
+                unset($results['requirements']);
+            }
         }
         return $this->render('index', ['q' => $q, 'results' => $results, 'investigate' => $investigate]);
     }

@@ -10,6 +10,11 @@ releases).
 
 - `SPAMHAUS_DQS_KEY`: with a free Spamhaus Data Query Service key, the DNS blocklist check queries ZEN via
   `zen.dq.spamhaus.net`, which works through public resolvers.
+- SOC 2 compliance module: the 61 AICPA 2017 Trust Services Criteria (paraphrased), mappable from controls, with a
+  readiness view under *Compliance → SOC 2*. Security is always in scope; Availability, Confidentiality, Processing
+  integrity and Privacy are added in Admin › Settings.
+- *Admin › Settings › Compliance frameworks*: switch ISO 27001, Cyber Essentials and SOC 2 on or off. A framework that
+  is off is hidden everywhere, but its applicability decisions and control mappings are kept. All are on by default.
 
 ### Fixed
 
