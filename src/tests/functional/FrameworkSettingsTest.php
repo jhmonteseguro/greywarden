@@ -51,7 +51,7 @@ class FrameworkSettingsTest extends FunctionalTestCase
         $this->assertSee('id="complianceform-soc2_categories-privacy"');
         $this->assertNotSee('soc2_categories-security');   // Security is not optional
 
-        foreach (['iso27001', 'cyber-essentials', 'soc2', 'nist-csf'] as $slug) {
+        foreach (['iso27001', 'cyber-essentials', 'soc2', 'nist-csf', 'ncsc-caf'] as $slug) {
             $this->assertSee('href="/frameworks/' . $slug . '"');
         }
         $this->get('/frameworks/soc2');
@@ -145,7 +145,7 @@ class FrameworkSettingsTest extends FunctionalTestCase
         $this->loginAs('viewer');
         $this->get('/');
         $this->assertSee('href="/frameworks/nist-csf"');
-        // Implemented controls plus four frameworks: rows of three
+        // Implemented controls plus five frameworks: rows of three
         $this->assertMatchesRegularExpression('/class="col-md-6 col-xl-4">\s*<h3 class="gw-controls-panel__heading">Implemented/', $this->body);
 
         $this->get('/frameworks/nist-csf');
@@ -186,6 +186,50 @@ class FrameworkSettingsTest extends FunctionalTestCase
         $this->assertStatus(404);
     }
 
+    public function testNcscCafAssessment(): void
+    {
+        $control = $this->control(['B2.a', 'B4.d']);
+        $this->loginAs('viewer');
+        $this->get('/');
+        $this->assertSee('href="/frameworks/ncsc-caf"');
+
+        $this->get('/frameworks/ncsc-caf');
+        $this->assertOk();
+        $this->assertSee('NCSC CAF assessment');
+        $this->assertSee('NCSC Cyber Assessment Framework 4.0');
+        $this->assertSee('B4 System Security');
+        $this->assertSee('indicators of good practice');
+        $this->assertSee($control->reference);
+        $this->get('/frameworks/ncsc-caf?state=met');
+        $this->assertSee('Vulnerability Management');
+        $this->assertNotSee('Secure Configuration');
+
+        $this->get('/frameworks/requirement/' . $this->requirementId('A2.b'));
+        $this->assertOk();
+        $this->assertSee('Understanding Threat');
+        $this->assertSee('CAF 4.0 contributing outcome');
+        $this->get('/frameworks');
+        $this->assertSee('The 41 contributing outcomes');
+        $this->get('/search?q=B4.d');
+        $this->assertRedirect('/frameworks/requirement/' . $this->requirementId('B4.d'));
+
+        $this->get("/controls/{$control->id}");
+        $this->assertSee('href="/frameworks/requirement/' . $this->requirementId('B4.d') . '"');
+        $this->assertSee('NCSC CAF');
+
+        $this->loginAs('analyst');
+        $this->get('/controls/create');
+        $this->assertSee('id="control-requirementids-ncsc-caf"');
+        $this->assertSee('NCSC CAF contributing outcomes');
+
+        $this->loginAs('admin');
+        $this->save(['iso27001', 'nist_csf']);
+        $this->get('/frameworks/ncsc-caf');
+        $this->assertStatus(404);
+        $this->get('/frameworks/nist-csf');
+        $this->assertOk();
+    }
+
     public function testEveryFrameworkOff(): void
     {
         $this->loginAs('admin');
@@ -223,13 +267,13 @@ class FrameworkSettingsTest extends FunctionalTestCase
             $this->save(['iso27001']);
             $this->assertStatus(403);
         }
-        $this->assertSame(['iso27001', 'cyber_essentials', 'soc2', 'nist_csf'], FrameworkCatalogue::enabled());
+        $this->assertSame(['iso27001', 'cyber_essentials', 'soc2', 'nist_csf', 'ncsc_caf'], FrameworkCatalogue::enabled());
 
         // The branding form still saves on its own
         $this->loginAs('admin');
         $this->post('/admin/settings', ['BrandingForm' => ['app_name' => 'Acme', 'organisation' => '', 'tagline' => '', 'login_notice' => '', 'pdf_classification' => '']]);
         $this->assertRedirect('/admin/settings');
         $this->assertSame('Branding saved.', $this->flash('success'));
-        $this->assertSame(['iso27001', 'cyber_essentials', 'soc2', 'nist_csf'], FrameworkCatalogue::enabled());
+        $this->assertSame(['iso27001', 'cyber_essentials', 'soc2', 'nist_csf', 'ncsc_caf'], FrameworkCatalogue::enabled());
     }
 }

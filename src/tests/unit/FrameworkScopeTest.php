@@ -81,14 +81,40 @@ class FrameworkScopeTest extends DbTestCase
         $this->assertSame([$r->id], FrameworkRequirement::idsMatching('PR.AA-01'));
     }
 
+    public function testNcscCafCatalogueIsLoaded(): void
+    {
+        $count = static fn(array $where) => (int) FrameworkRequirement::find()->where(['framework' => FrameworkCatalogue::NCSC_CAF])->andWhere($where)->count();
+        $this->assertSame(41, $count([]), 'CAF 4.0: 41 contributing outcomes');
+        $this->assertSame(14, (int) FrameworkRequirement::find()->select('group_code')->distinct()->where(['framework' => FrameworkCatalogue::NCSC_CAF])->count());
+        foreach (['A' => 9, 'B' => 20, 'C' => 7, 'D' => 5] as $objective => $n) {
+            $this->assertSame($n, $count(['like', 'external_id', $objective . '%', false]), "objective $objective");
+        }
+
+        $r = $this->requirement('B4.d');
+        $this->assertSame('Vulnerability Management', $r->title);
+        $this->assertSame('B4', $r->group_code);
+        $this->assertSame('B4 System Security', $r->group_name);
+        $this->assertStringStartsWith('You manage known vulnerabilities', $r->description);
+        $this->assertSame('Understanding Threat', $this->requirement('A2.b')->title, 'new in CAF 4.0');
+        $this->assertStringStartsWith('Everything required to deliver', $this->requirement('A3.a')->description, 'sole outcome: the principle statement');
+        $this->assertSame('B4', FrameworkCatalogue::groupCode(FrameworkCatalogue::NCSC_CAF, 'B4.d'));
+
+        $this->assertSame(FrameworkCatalogue::NCSC_CAF, FrameworkCatalogue::fromSlug('ncsc-caf'));
+        $this->assertSame('NCSC CAF assessment', FrameworkCatalogue::title(FrameworkCatalogue::NCSC_CAF));
+        $this->assertSame('building-check', FrameworkCatalogue::icon(FrameworkCatalogue::NCSC_CAF));
+        $this->assertStringContainsString('4.0', FrameworkCatalogue::version(FrameworkCatalogue::NCSC_CAF));
+        $this->assertSame([$r->id], FrameworkRequirement::idsMatching('B4.d'));
+    }
+
     public function testFrameworksAreOnUntilSwitchedOff(): void
     {
-        $this->assertSame(['iso27001', 'cyber_essentials', 'soc2', 'nist_csf'], FrameworkCatalogue::enabled());
+        $this->assertSame(['iso27001', 'cyber_essentials', 'soc2', 'nist_csf', 'ncsc_caf'], FrameworkCatalogue::enabled());
         $this->assertFalse(FrameworkCatalogue::isEnabled('nope'));
 
-        $this->settings(['framework.cyber_essentials' => '0', 'framework.soc2' => '1', 'framework.nist_csf' => '0']);
+        $this->settings(['framework.cyber_essentials' => '0', 'framework.soc2' => '1', 'framework.nist_csf' => '0', 'framework.ncsc_caf' => '0']);
         $this->assertSame(['iso27001', 'soc2'], FrameworkCatalogue::enabled());
         $this->assertSame([], FrameworkCoverage::rows(FrameworkCatalogue::NIST_CSF));
+        $this->assertSame([], FrameworkCoverage::rows(FrameworkCatalogue::NCSC_CAF));
         $this->assertSame([], FrameworkCoverage::rows(FrameworkCatalogue::CYBER_ESSENTIALS));
         $this->assertSame([], FrameworkRequirement::selectOptions(FrameworkCatalogue::CYBER_ESSENTIALS));
         $this->assertSame([], FrameworkRequirement::idsMatching('CE-UA'));
@@ -157,7 +183,7 @@ class FrameworkScopeTest extends DbTestCase
     public function testComplianceFormSavesChangesAndAuditsThem(): void
     {
         $form = ComplianceForm::current();
-        $this->assertSame(['iso27001', 'cyber_essentials', 'soc2', 'nist_csf'], $form->frameworks);
+        $this->assertSame(['iso27001', 'cyber_essentials', 'soc2', 'nist_csf', 'ncsc_caf'], $form->frameworks);
         $this->assertSame([], $form->soc2_categories);
         $this->assertTrue($form->save(), 'saving unchanged settings is fine');
         $this->assertSame(0, (int) Setting::find()->count(), 'and stores nothing');
@@ -185,7 +211,8 @@ class FrameworkScopeTest extends DbTestCase
             [$rows['soc2_categories']['field'], $rows['soc2_categories']['old'], $rows['soc2_categories']['new']]);
         $this->assertArrayNotHasKey('cyber_essentials', $rows, 'unchanged frameworks are not logged');
 
-        $this->assertSame(['iso27001' => 'ISO/IEC 27001:2022', 'cyber_essentials' => 'Cyber Essentials', 'soc2' => 'SOC 2', 'nist_csf' => 'NIST CSF 2.0'],
+        $this->assertSame(['iso27001' => 'ISO/IEC 27001:2022', 'cyber_essentials' => 'Cyber Essentials', 'soc2' => 'SOC 2', 'nist_csf' => 'NIST CSF 2.0',
+            'ncsc_caf' => 'NCSC CAF 4.0'],
             ComplianceForm::frameworkOptions());
         $this->assertNotEmpty((new ComplianceForm())->attributeHints()['soc2_categories']);
     }

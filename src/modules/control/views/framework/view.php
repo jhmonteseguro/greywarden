@@ -1,6 +1,7 @@
 <?php
 /**
- * Statement of Applicability (ISO 27001) / readiness (Cyber Essentials, SOC 2) / profile (NIST CSF).
+ * Statement of Applicability (ISO 27001) / readiness (Cyber Essentials, SOC 2) / profile (NIST CSF) /
+ * assessment (NCSC CAF).
  *
  * @var yii\web\View $this
  * @var string $framework
@@ -46,6 +47,9 @@ $filters = ['' => 'All'] + FrameworkCoverage::stateLabels();
             <?php elseif ($framework === FrameworkCatalogue::NIST_CSF): ?>
                 <p class="gw-muted gw-small mb-0">Your current profile: how far the controls achieve each CSF 2.0 outcome. Outcomes outside your target profile
                     can be marked not applicable with a justification. See NIST CSWP 29 and its implementation examples for guidance.</p>
+            <?php elseif ($framework === FrameworkCatalogue::NCSC_CAF): ?>
+                <p class="gw-muted gw-small mb-0">Contributing outcomes, read as achieved (met), partially achieved (partly met) or not achieved (gap).
+                    Assess each against its indicators of good practice in the CAF 4.0 document. Outcomes marked not applicable need a justification.</p>
             <?php else: ?>
                 <p class="gw-muted gw-small mb-0">Requirements marked not applicable need a justification. Control titles only: see ISO/IEC 27001:2022 and 27002:2022 for the control text.</p>
             <?php endif; ?>

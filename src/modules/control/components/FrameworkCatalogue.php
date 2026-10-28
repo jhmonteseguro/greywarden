@@ -9,8 +9,8 @@ use yii\db\Query;
 
 /**
  * The bundled framework catalogues (data/frameworks): ISO/IEC 27001:2022
- * Annex A, Cyber Essentials, the SOC 2 Trust Services Criteria and the NIST
- * CSF 2.0 Core.
+ * Annex A, Cyber Essentials, the SOC 2 Trust Services Criteria, the NIST
+ * CSF 2.0 Core and the NCSC Cyber Assessment Framework.
  *
  * Each framework can be switched off in Admin › Settings, and SOC 2 is scoped
  * to the Trust Services categories chosen there (Security is always in). A
@@ -26,6 +26,7 @@ final class FrameworkCatalogue
     public const CYBER_ESSENTIALS = 'cyber_essentials';
     public const SOC2 = 'soc2';
     public const NIST_CSF = 'nist_csf';
+    public const NCSC_CAF = 'ncsc_caf';
 
     public const SOC2_SECURITY = 'security';
     public const SOC2_AVAILABILITY = 'availability';
@@ -52,6 +53,10 @@ final class FrameworkCatalogue
         self::NIST_CSF => [
             'label' => 'NIST CSF 2.0', 'short' => 'NIST CSF', 'file' => 'nist-csf-2.0.php', 'slug' => 'nist-csf',
             'nav' => 'NIST CSF 2.0', 'icon' => 'compass', 'title' => 'NIST CSF 2.0 profile',
+        ],
+        self::NCSC_CAF => [
+            'label' => 'NCSC CAF 4.0', 'short' => 'NCSC CAF', 'file' => 'ncsc-caf-4.0.php', 'slug' => 'ncsc-caf',
+            'nav' => 'NCSC CAF', 'icon' => 'building-check', 'title' => 'NCSC CAF assessment',
         ],
     ];
 
@@ -242,12 +247,12 @@ final class FrameworkCatalogue
         return $stats;
     }
 
-    /** "A.5.12" -> "5", "CE-FW-3" -> "FW", "CC6.1" -> "CC6", "GV.OC-01" -> "GV.OC" */
+    /** "A.5.12" -> "5", "CE-FW-3" -> "FW", "CC6.1" -> "CC6", "GV.OC-01" -> "GV.OC", "B4.d" -> "B4" */
     public static function groupCode(string $framework, string $externalId): string
     {
         return match ($framework) {
             self::ISO27001 => explode('.', $externalId)[1] ?? '',
-            self::SOC2 => explode('.', $externalId)[0],
+            self::SOC2, self::NCSC_CAF => explode('.', $externalId)[0],
             self::NIST_CSF => explode('-', $externalId)[0],
             default => explode('-', $externalId)[1] ?? '',
         };

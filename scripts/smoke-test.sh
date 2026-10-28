@@ -100,7 +100,7 @@ V1=$(id_of device asset_tag DEV-0001); V26=$(id_of device asset_tag DEV-0026); V
 C1=$(id_of control reference CTL-0001); C5=$(id_of control reference CTL-0005); C8=$(id_of control reference CTL-0008); C18=$(id_of control reference CTL-0018)
 REQ_ISO=$(sql "SELECT id FROM framework_requirement WHERE external_id='A.8.7'"); REQ_CE=$(sql "SELECT id FROM framework_requirement WHERE external_id='CE-UA-4'")
 REQ_SOC2=$(sql "SELECT id FROM framework_requirement WHERE external_id='CC6.1'"); REQ_SOC2_A=$(sql "SELECT id FROM framework_requirement WHERE external_id='A1.2'")
-REQ_NIST=$(sql "SELECT id FROM framework_requirement WHERE external_id='PR.AA-01'")
+REQ_NIST=$(sql "SELECT id FROM framework_requirement WHERE external_id='PR.AA-01'"); REQ_CAF=$(sql "SELECT id FROM framework_requirement WHERE external_id='B4.d'")
 # Manual device checks in force, as Device[checks][<id>]=<result> fields
 CHECKS=($(sql "SELECT id FROM control WHERE device_check='manual' AND status IN ('implementing','implemented') AND archived_at IS NULL ORDER BY id"))
 checks() { local r=$1; for c in "${CHECKS[@]}"; do echo "Device[checks][$c]=$r"; done; }
@@ -178,6 +178,7 @@ READ_PAGES=(
     /frameworks/requirement/$REQ_ISO /frameworks/requirement/$REQ_CE "/search?q=passkeys" "/search?q=Annex"
     /frameworks/soc2 "/frameworks/soc2?state=met" /frameworks/requirement/$REQ_SOC2
     /frameworks/nist-csf "/frameworks/nist-csf?state=gap" /frameworks/requirement/$REQ_NIST
+    /frameworks/ncsc-caf "/frameworks/ncsc-caf?state=met" /frameworks/requirement/$REQ_CAF
     /attack "/attack?layer=risks" "/attack?show=mapped" "/attack?layer=risks&show=mapped" /attack/T1566 /attack/T1566.001 /attack/T1656
     /attack/mitigations /attack/mitigations/M1032 /attack/mitigations/M1055
     "/incidents?filter=all&technique=T1566" "/risks?filter=all&technique=phishing" "/decisions?mitigation=M1032" "/search?q=credential"
@@ -211,6 +212,7 @@ check analyst /search?q=CTL-0001 302
 check analyst /search?q=A.8.7 302
 check analyst /search?q=CC6.1 302
 check analyst /search?q=PR.AA-01 302
+check analyst /search?q=B4.d 302
 check viewer /frameworks/requirement/$REQ_SOC2_A 404   # SOC 2 Availability is out of scope until chosen
 check viewer /frameworks/pci-dss 404
 check viewer /frameworks/requirement/999999 404
@@ -478,12 +480,14 @@ check viewer / 200
 ! grep -q 'href="/frameworks/cyber-essentials"' "$BODY" && grep -q 'href="/frameworks/soc2"' "$BODY" && ok || bad "sidebar ignores the compliance framework switches"
 check viewer /frameworks/cyber-essentials 404
 check viewer /frameworks/nist-csf 404
+check viewer /frameworks/ncsc-caf 404
 check viewer /frameworks/requirement/$REQ_SOC2_A 200
 post admin /admin/settings /admin/settings 302 \
     "ComplianceForm[frameworks][]=iso27001" "ComplianceForm[frameworks][]=cyber_essentials" "ComplianceForm[frameworks][]=soc2" \
-    "ComplianceForm[frameworks][]=nist_csf" "ComplianceForm[soc2_categories]="
+    "ComplianceForm[frameworks][]=nist_csf" "ComplianceForm[frameworks][]=ncsc_caf" "ComplianceForm[soc2_categories]="
 check viewer /frameworks/cyber-essentials 200
 check viewer /frameworks/nist-csf 200
+check viewer /frameworks/ncsc-caf 200
 
 # Login lockout: 5 bad passwords, then the right one is refused
 for i in 1 2 3 4 5; do

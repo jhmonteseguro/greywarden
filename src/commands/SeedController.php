@@ -311,10 +311,10 @@ class SeedController extends Controller
         $endpoints = ['laptop', 'desktop', 'server', 'vm'];
         $defs = [
             'disk_encrypted' => ['Full-disk encryption on devices', Control::CHECK_MANUAL, array_merge($endpoints, ['mobile', 'tablet']), ['M1041'], ['A.8.1', 'A.8.24']],
-            'av_edr_installed' => ['Anti-malware / EDR on endpoints', Control::CHECK_MANUAL, $endpoints, ['M1049', 'M1040'], ['A.8.7', 'CE-MP-1', 'CE-MP-2', 'CC6.8', 'DE.CM-09']],
+            'av_edr_installed' => ['Anti-malware / EDR on endpoints', Control::CHECK_MANUAL, $endpoints, ['M1049', 'M1040'], ['A.8.7', 'CE-MP-1', 'CE-MP-2', 'CC6.8', 'DE.CM-09', 'B2.b']],
             'mdm_enrolled' => ['Devices enrolled in MDM', Control::CHECK_MANUAL, ['laptop', 'desktop', 'mobile', 'tablet'], ['M1028', 'M1033'], ['A.8.1', 'A.8.9']],
             'firewall_enabled' => ['Host firewall enabled', Control::CHECK_MANUAL, $endpoints, ['M1037'], ['A.8.20', 'CE-FW-1', 'CE-FW-7']],
-            'patched' => ['Security updates applied promptly', Control::CHECK_PATCH_AGE, null, ['M1051'], ['A.8.8', 'CE-SU-3', 'CE-SU-4', 'CC7.1', 'PR.PS-02']],
+            'patched' => ['Security updates applied promptly', Control::CHECK_PATCH_AGE, null, ['M1051'], ['A.8.8', 'CE-SU-3', 'CE-SU-4', 'CC7.1', 'PR.PS-02', 'B4.d']],
         ];
         $this->as('jpatel');
         $ids = [];
@@ -337,7 +337,7 @@ class SeedController extends Controller
         return $ids;
     }
 
-    /** @return int[] framework requirement ids for "A.8.7" / "CE-UA-4" / "CC6.1" / "PR.AA-01" style ids */
+    /** @return int[] framework requirement ids for "A.8.7" / "CE-UA-4" / "CC6.1" / "PR.AA-01" / "B4.d" style ids */
     private function requirementIds(array $externalIds): array
     {
         return array_map('intval', FrameworkRequirement::find()->select('id')->where(['external_id' => $externalIds])->column());
@@ -973,52 +973,52 @@ class SeedController extends Controller
         $ids = static fn(array $records, array $needles) => array_values(array_filter(array_map(static fn($n) => $find($records, $n), $needles)));
 
         // [title, type, nature, status, owner, months between tests, implemented / target days, description,
-        //  ISO / CE / SOC 2 / NIST CSF requirements, ATT&CK mitigations, risks, decisions, tests [days ago, result, method]]
+        //  ISO / CE / SOC 2 / NIST CSF / CAF requirements, ATT&CK mitigations, risks, decisions, tests [days ago, result, method]]
         $rows = [
             ['Phishing-resistant MFA (FIDO2 / passkeys) for all staff', 'preventive', 'technical', 'implementing', 'jpatel', null, 45,
                 'Replaces SMS and app-push MFA with FIDO2 security keys and passkeys, which adversary-in-the-middle phishing kits cannot relay.',
-                ['A.5.17', 'A.8.5', 'CE-UA-4', 'CE-UA-7', 'CC6.1', 'PR.AA-03'], ['M1032'], ['email compromise', 'privileged access'], ['phishing-resistant MFA'], []],
+                ['A.5.17', 'A.8.5', 'CE-UA-4', 'CE-UA-7', 'CC6.1', 'PR.AA-03', 'B2.a'], ['M1032'], ['email compromise', 'privileged access'], ['phishing-resistant MFA'], []],
             ['Security awareness training and phishing simulation', 'preventive', 'administrative', 'implemented', 'analyst', 3, -300,
                 'Onboarding security module, annual refresher and monthly phishing simulations with targeted follow-up training.',
-                ['A.6.3', 'CC1.4', 'CC2.2', 'PR.AT-01'], ['M1017'], ['security awareness', 'email compromise'], [],
+                ['A.6.3', 'CC1.4', 'CC2.2', 'PR.AT-01', 'B6.b'], ['M1017'], ['security awareness', 'email compromise'], [],
                 [[200, 'effective', 'Phishing simulation: 4% click rate'], [110, 'partial', 'Phishing simulation: 11% click rate (QR-code lure)'], [20, 'effective', 'Phishing simulation: 3% click rate']]],
             ['Immutable offline backups with quarterly restore tests', 'corrective', 'technical', 'implemented', 'jpatel', 3, -500,
                 'Nightly backups to immutable object storage plus a weekly offline copy; a sample restore is tested each quarter.',
-                ['A.8.13', 'A.5.30', 'A1.2', 'A1.3', 'PR.DS-11', 'RC.RP-03'], ['M1053'], ['Backups not tested', 'power failure'], [],
+                ['A.8.13', 'A.5.30', 'A1.2', 'A1.3', 'PR.DS-11', 'RC.RP-03', 'B5.c'], ['M1053'], ['Backups not tested', 'power failure'], [],
                 [[120, 'effective', 'File server restore test'], [25, 'ineffective', 'ERP restore test: RTO missed by 9 hours']]],
             ['Privileged access management and separate admin accounts', 'preventive', 'technical', 'implemented', 'jpatel', 6, -260,
                 'Admins use separate accounts with just-in-time elevation; admin accounts cannot read email or browse the web.',
-                ['A.8.2', 'A.8.18', 'CE-UA-5', 'CE-UA-6', 'CC6.3', 'PR.AA-05'], ['M1026'], ['privileged access'], [],
+                ['A.8.2', 'A.8.18', 'CE-UA-5', 'CE-UA-6', 'CC6.3', 'PR.AA-05', 'B2.c'], ['M1026'], ['privileged access'], [],
                 [[150, 'effective', 'Review of admin group membership']]],
             ['Joiner, mover and leaver access process', 'preventive', 'administrative', 'implemented', 'analyst', 3, -700,
                 'HR triggers account creation and removal; managers approve access; leavers are disabled on their last day.',
-                ['A.5.16', 'A.5.18', 'A.6.5', 'CE-UA-1', 'CE-UA-2', 'CE-UA-3', 'CC6.2', 'CC6.3', 'PR.AA-01', 'PR.AA-05'], ['M1018'], ['Excessive access rights'], ['access reviews'],
+                ['A.5.16', 'A.5.18', 'A.6.5', 'CE-UA-1', 'CE-UA-2', 'CE-UA-3', 'CC6.2', 'CC6.3', 'PR.AA-01', 'PR.AA-05', 'B2.d'], ['M1018'], ['Excessive access rights'], ['access reviews'],
                 [[40, 'partial', 'Sample of 15 leavers: 2 accounts disabled late']]],
             ['Perimeter firewall rule review', 'preventive', 'technical', 'implemented', 'jpatel', 6, -900,
                 'Inbound rules are approved, documented and reviewed every six months; the admin interface is reachable from the management VLAN only.',
-                ['A.8.20', 'A.8.22', 'CE-FW-2', 'CE-FW-3', 'CE-FW-4', 'CE-FW-5', 'CE-FW-6', 'CC6.6', 'PR.IR-01'], ['M1037', 'M1035'], ['firewall administrator'], [],
+                ['A.8.20', 'A.8.22', 'CE-FW-2', 'CE-FW-3', 'CE-FW-4', 'CE-FW-5', 'CE-FW-6', 'CC6.6', 'PR.IR-01', 'B4.b'], ['M1037', 'M1035'], ['firewall administrator'], [],
                 [[95, 'effective', 'Rule base review, 4 stale rules removed']]],
             ['Email filtering and attachment sandboxing', 'detective', 'technical', 'implemented', 'jpatel', 12, -800,
                 'Inbound mail is scanned and detonated in a sandbox; links are rewritten and checked at click time.',
-                ['A.8.7', 'A.8.23', 'CE-MP-2', 'CC6.8', 'DE.CM-01'], ['M1049', 'M1021', 'M1031'], ['email compromise', 'security awareness'], [],
+                ['A.8.7', 'A.8.23', 'CE-MP-2', 'CC6.8', 'DE.CM-01', 'C1.c'], ['M1049', 'M1021', 'M1031'], ['email compromise', 'security awareness'], [],
                 [[230, 'effective', 'Vendor configuration review']]],
             ['Vulnerability scanning of internet-facing systems', 'detective', 'technical', 'implemented', 'jpatel', 1, -400,
                 'Weekly authenticated scans of the external estate; critical findings are ticketed against the patch SLA.',
-                ['A.8.8', 'CE-SU-1', 'CE-SU-2', 'CC7.1', 'ID.RA-01'], ['M1016'], ['Windows Server 2012', 'Expired TLS'], ['patch SLA'],
+                ['A.8.8', 'CE-SU-1', 'CE-SU-2', 'CC7.1', 'ID.RA-01', 'B4.d'], ['M1016'], ['Windows Server 2012', 'Expired TLS'], ['patch SLA'],
                 [[75, 'effective', 'Scan coverage check']]],
             ['Supplier security assessments', 'preventive', 'administrative', 'planned', 'analyst', null, -10,
                 'Security questionnaire and evidence review before onboarding a supplier with access to company data, repeated annually.',
-                ['A.5.19', 'A.5.20', 'A.5.21', 'A.5.22', 'CC9.2', 'GV.SC-06', 'GV.SC-07'], [], ['Payroll provider', 'Vendor remote access'], [], []],
+                ['A.5.19', 'A.5.20', 'A.5.21', 'A.5.22', 'CC9.2', 'GV.SC-06', 'GV.SC-07', 'A4.a'], [], ['Payroll provider', 'Vendor remote access'], [], []],
             ['Incident response plan and annual tabletop exercise', 'corrective', 'administrative', 'implemented', 'analyst', 12, -330,
                 'Documented runbooks with 72-hour regulator tracking in Greywarden; exercised once a year with the leadership team.',
-                ['A.5.24', 'A.5.25', 'A.5.26', 'A.5.27', 'A.5.28', 'A.6.8', 'CC7.3', 'CC7.4', 'CC7.5', 'RS.MA-01', 'ID.IM-02'], [], ['Breach notification'], [],
+                ['A.5.24', 'A.5.25', 'A.5.26', 'A.5.27', 'A.5.28', 'A.6.8', 'CC7.3', 'CC7.4', 'CC7.5', 'RS.MA-01', 'ID.IM-02', 'D1.a', 'D1.c'], [], ['Breach notification'], [],
                 [[300, 'effective', 'Ransomware tabletop exercise']]],
             ['Centralised logging and SIEM alerting', 'detective', 'technical', 'implementing', 'jpatel', null, 60,
                 'Endpoint, identity and firewall logs feed the SIEM with 12-month retention and tuned alert rules.',
-                ['A.8.15', 'A.8.16', 'A.8.17', 'CC7.2', 'PR.PS-04', 'DE.CM-09'], ['M1047'], ['Log retention'], ['log retention', 'SOC monitoring'], []],
+                ['A.8.15', 'A.8.16', 'A.8.17', 'CC7.2', 'PR.PS-04', 'DE.CM-09', 'C1.a', 'C1.b'], ['M1047'], ['Log retention'], ['log retention', 'SOC monitoring'], []],
             ['Cloud storage guardrails (Block Public Access, AWS Config)', 'preventive', 'technical', 'implemented', 'jpatel', 6, -120,
                 'Account-wide S3 Block Public Access and AWS Config rules that alert on public or unencrypted buckets.',
-                ['A.5.23', 'A.8.9', 'CE-SC-3', 'PR.PS-01'], ['M1022'], ['cloud storage'], [], []],
+                ['A.5.23', 'A.8.9', 'CE-SC-3', 'PR.PS-01', 'B4.b'], ['M1022'], ['cloud storage'], [], []],
             ['Password-only VPN access', 'preventive', 'technical', 'retired', 'jpatel', null, -1200,
                 'Legacy SSL VPN with password-only authentication. Retired in favour of MFA-protected remote access.',
                 ['A.8.5'], [], ['Vendor remote access'], [], []],

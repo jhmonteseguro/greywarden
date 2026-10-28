@@ -17,6 +17,7 @@ $intro = [
     FrameworkCatalogue::CYBER_ESSENTIALS => 'Readiness against the five technical control themes, including the device checks an assessor will sample.',
     FrameworkCatalogue::SOC2 => 'Readiness against the Trust Services Criteria: Security, plus the categories chosen for the report.',
     FrameworkCatalogue::NIST_CSF => 'Current profile against the CSF 2.0 outcomes across Govern, Identify, Protect, Detect, Respond and Recover.',
+    FrameworkCatalogue::NCSC_CAF => 'The 41 contributing outcomes of the Cyber Assessment Framework, across its four objectives and 14 principles.',
 ];
 ?>
 <?php if (!$summaries): ?>
