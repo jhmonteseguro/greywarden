@@ -24,6 +24,9 @@ return [
     'device.patchMaxAgeDays' => 30,
     'device.warrantyWarningDays' => 60,
     'device.staleDays' => 30,           // synced devices not seen for longer are flagged
+    'device.staleCriticalDays' => 90,   // ... and shown as missing (red) after this long
+    'device.osWarningDays' => 90,       // flag an OS this many days before its end of support
+    'device.osEndOfSupport' => [],      // extra/corrected OS end-of-support dates: regex (lower-case "os version") => 'Y-m-d'
 
     // Control Register: warn this many days before a control's next test is due
     'control.testDueSoonDays' => 14,

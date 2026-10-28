@@ -2,6 +2,7 @@
 
 namespace app\modules\dashboard\widgets;
 
+use app\modules\inventory\components\OsLifecycle;
 use app\modules\inventory\models\Device;
 
 /** Devices in service (status Active). */
@@ -15,6 +16,7 @@ class ActiveDevicesKpi extends KpiWidget
         $active = (int) Device::find()->active()->inService()->count();
         $total = (int) Device::find()->active()->count();
         $eol = (int) Device::find()->active()->inService()->pastEol()->count();
+        $unsupported = (int) Device::find()->active()->inService()->osSupport(OsLifecycle::UNSUPPORTED)->count();
         return [
             'value' => $active,
             'tone' => 'info',
@@ -22,6 +24,7 @@ class ActiveDevicesKpi extends KpiWidget
             'breakdown' => [
                 ['label' => 'In inventory', 'value' => $total, 'tone' => 'neutral'],
                 ['label' => 'Active past EOL', 'value' => $eol, 'tone' => $eol ? 'high' : 'neutral'],
+                ['label' => 'Unsupported OS', 'value' => $unsupported, 'tone' => $unsupported ? 'high' : 'neutral'],
             ],
         ];
     }

@@ -11,6 +11,7 @@ use app\modules\attack\widgets\TechniqueTags;
 use app\modules\incident\models\Incident;
 use app\modules\inventory\components\DeviceChecks;
 use app\modules\inventory\components\DevicePosture;
+use app\modules\inventory\components\OsLifecycle;
 use app\modules\inventory\models\Device;
 use app\modules\risk\models\Risk;
 use app\widgets\AuditHistory;
@@ -33,9 +34,10 @@ if ($model->isWarrantyExpiringSoon()) {
 if ($model->isPastEol()) {
     $flags[] = Badge::flag('eol', 'Past end-of-life');
 }
-if ($model->isStale()) {
-    $flags[] = Badge::flag('stale', 'Not seen for ' . $model->getLastSeenDays() . ' days');
-}
+$osSupport = $model->getOsSupport();
+$flags[] = Badge::osSupport($osSupport);
+$flags[] = Badge::lastSeen($model);
+$flags = array_filter($flags);
 $this->params['subtitle'] = '<span class="gw-ref gw-ref--lg">' . Html::encode($model->asset_tag) . '</span> '
     . Badge::status('device-status', $model->status, Device::statusOptions()) . ' '
     . ($model->isByod() ? Badge::render('ownership', $model->ownership, 'BYOD', ['title' => 'Personally owned device']) . ' ' : '')
@@ -78,6 +80,15 @@ ob_start(); ?>
                             ['attribute' => 'serial_number', 'contentOptions' => ['class' => 'gw-mono']],
                             'os',
                             ['attribute' => 'os_version', 'contentOptions' => ['class' => 'gw-mono']],
+                            [
+                                'label' => 'OS support',
+                                'format' => 'raw',
+                                'visible' => (bool) $model->os,
+                                'value' => $osSupport['endDate']
+                                    ? Html::encode(($osSupport['state'] === OsLifecycle::UNSUPPORTED ? 'Ended ' : 'Until ') . $fmt->asDate($osSupport['endDate']))
+                                        . ($osSupport['estimated'] ? ' <span class="gw-muted">(estimated)</span>' : '') . ' ' . Badge::osSupport($osSupport)
+                                    : '<span class="gw-muted">Unknown for this OS / version</span>',
+                            ],
                         ],
                     ]) ?>
                 </div>
@@ -121,7 +132,7 @@ ob_start(); ?>
                     'first_seen_at:datetime',
                     ['attribute' => 'last_seen_at', 'format' => 'raw', 'value' => $model->last_seen_at
                         ? $fmt->asDatetime($model->last_seen_at) . ' <span class="gw-muted">(' . $fmt->asRelativeTime($model->last_seen_at) . ')</span> '
-                            . ($model->isStale() ? Badge::flag('stale', 'Stale', sprintf('Not seen for more than %d days', Device::staleDays())) : '')
+                            . Badge::lastSeen($model)
                         : null],
                 ],
             ]) ?>

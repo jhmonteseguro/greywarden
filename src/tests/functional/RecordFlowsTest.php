@@ -372,6 +372,28 @@ class RecordFlowsTest extends FunctionalTestCase
         $this->assertNotEmpty(preg_grep('/^Severity changed from /', $bodies));
     }
 
+    public function testDeviceOsSupportAndLastSeenFlags(): void
+    {
+        $this->loginAs('viewer');
+        // The demo data has Windows 10 laptops and a Windows Server 2012 R2 server
+        $this->get('/devices?filter=unsupported-os');
+        $this->assertOk();
+        $this->assertSee('Windows Server 2012 R2');
+        $this->assertSee('data-value="os-unsupported"');
+        $this->assertNotSee('Windows Server 2022');
+
+        $old = Device::findOne(['os' => 'Windows Server 2012 R2']);
+        $this->get("/devices/{$old->id}");
+        $this->assertSee('OS support');
+        $this->assertSee('Unsupported OS');
+
+        Device::updateAll(['last_seen_at' => date('Y-m-d H:i:s', strtotime('-200 days')), 'source' => 'google', 'source_id' => 'fn-missing'], ['id' => $old->id]);
+        $this->get("/devices/{$old->id}");
+        $this->assertSee('data-value="missing"');
+        $this->get('/devices?filter=stale');
+        $this->assertSee('gw-text-danger');
+    }
+
     public function testHeatmapAndDashboard(): void
     {
         $this->loginAs('viewer');
@@ -380,6 +402,7 @@ class RecordFlowsTest extends FunctionalTestCase
         $this->get('/');
         $this->assertOk();
         $this->assertSee('gw-attention__group--stale-devices');
+        $this->assertSee('gw-attention__group--unsupported-os');
         $this->assertSee('gw-attention__group--control-tests-soon');
     }
 }

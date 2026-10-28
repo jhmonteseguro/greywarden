@@ -55,9 +55,9 @@ $today = date('Y-m-d');
                 if ($m->isPastEol($today)) {
                     $flags[] = Badge::flag('eol', 'Past EOL');
                 }
-                if ($m->isStale($today)) {
-                    $flags[] = Badge::flag('stale', 'Not seen ' . $m->getLastSeenDays($today) . 'd', sprintf('No sync from %s for more than %d days', $m->getSourceLabel(), Device::staleDays()));
-                }
+                $flags[] = Badge::osSupport($m->getOsSupport($today));
+                $flags[] = Badge::lastSeen($m, $today);
+                $flags = array_filter($flags);
                 $meta = array_filter([$m->hostname !== $m->name ? $m->hostname : null, trim($m->manufacturer . ' ' . $m->model), trim($m->os . ' ' . $m->os_version)]);
                 return Html::a(Html::encode($m->name), $m->getViewUrl(), ['class' => 'gw-title-link'])
                     . '<div class="gw-muted gw-small">' . Html::encode(implode(' · ', $meta)) . '</div>'
@@ -98,7 +98,22 @@ $today = date('Y-m-d');
                 return Badge::posture($p['state'], implode('; ', array_merge($p['failures'], $p['unknown'])) ?: null);
             },
         ],
-        ['attribute' => 'last_patched_at', 'format' => 'date', 'filter' => false],
+        [
+            'attribute' => 'last_patched_at',
+            'format' => 'raw',
+            'filter' => false,
+            'value' => static function (Device $m) {
+                if (!$m->last_patched_at) {
+                    return null;
+                }
+                // Red when the device fails a patch-age check
+                $fails = array_filter($m->getPosture()['items'], static fn($i) => $i['check']->isPatchAge() && $i['result'] === DevicePosture::RESULT_FAIL);
+                return Html::tag('span', Yii::$app->formatter->asDate($m->last_patched_at), array_filter([
+                    'class' => $fails ? 'gw-text-danger' : null,
+                    'title' => $fails ? reset($fails)['detail'] : null,
+                ]));
+            },
+        ],
         [
             'attribute' => 'last_seen_at',
             'format' => 'raw',
@@ -107,7 +122,7 @@ $today = date('Y-m-d');
             'value' => static function (Device $m) use ($today) {
                 $days = $m->getLastSeenDays($today);
                 return $days === null ? null : Html::tag('span', $days === 0 ? 'Today' : $days . 'd ago', [
-                    'class' => $m->isStale($today) ? 'gw-text-warning' : null,
+                    'class' => ($tone = $m->getLastSeenTone($today)) ? 'gw-text-' . $tone : null,
                     'title' => Yii::$app->formatter->asDatetime($m->last_seen_at),
                 ]);
             },

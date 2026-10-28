@@ -6,6 +6,17 @@ releases).
 
 ## [Unreleased]
 
+### Added
+
+- Unsupported operating system detection: devices are matched against a built-in catalogue of vendor end-of-support
+  dates (Windows, Windows Server, macOS, iOS/iPadOS, Android, Ubuntu, Debian, RHEL and rebuilds, CentOS, Amazon
+  Linux). The inventory and device page flag *Unsupported OS* (red) or *OS support ending* (amber, within
+  `device.osWarningDays`, default 90), the device page shows the end-of-support date (Apple and Android dates are
+  marked as estimated), and there is an *OS end of support* filter, an *Unsupported OS* count on the Active devices
+  KPI and a *Needs attention* group. Add or correct dates in `device.osEndOfSupport`.
+- Last seen is graded: amber after `device.staleDays` (30) and red, flagged *missing*, after
+  `device.staleCriticalDays` (90). The last-patched date is red when the device fails a patch-age check.
+
 ### Fixed
 
 - `make import-devices` without `AS=` no longer fails with *User 'as' not found*: make's built-in `AS` (the

@@ -53,7 +53,7 @@ class AccessControlTest extends FunctionalTestCase
             '/incidents?filter=all&sort=-severity', "/incidents?filter=all&month=$month", '/incidents?filter=all&technique=T1566',
             "/incidents/$i1", "/incidents/$i19",
             '/devices', '/devices?filter=active', '/devices?filter=mine', '/devices?filter=non-compliant', '/devices?filter=not-assessed',
-            '/devices?filter=warranty', '/devices?filter=eol', '/devices?filter=stale', '/devices?filter=byod', '/devices?filter=archived',
+            '/devices?filter=warranty', '/devices?filter=eol', '/devices?filter=stale', '/devices?filter=unsupported-os', '/devices?filter=byod', '/devices?filter=archived',
             "/devices?filter=active&control=$c5&result=fail", "/devices?filter=active&control=$c1&result=unknown",
             '/devices?filter=all&sort=-criticality&device_type=laptop', "/devices/$v1", "/devices/$v38",
             '/controls', '/controls?filter=mine', '/controls?filter=planned', '/controls?filter=implemented', '/controls?filter=test-due-soon',

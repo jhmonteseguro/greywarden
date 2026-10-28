@@ -6,6 +6,7 @@ use app\models\DomainQuery;
 use app\modules\inventory\components\DeviceCheck;
 use app\modules\inventory\components\DeviceChecks;
 use app\modules\inventory\components\DevicePosture;
+use app\modules\inventory\components\OsLifecycle;
 use yii\db\Expression;
 use yii\db\Query;
 
@@ -115,6 +116,31 @@ class DeviceQuery extends DomainQuery
     public function stale(?string $today = null): static
     {
         return $this->andWhere(['<', 'device.last_seen_at', DevicePosture::patchCutoff(Device::staleDays(), $today)]);
+    }
+
+    /** Synced devices whose last check-in is older than Device::staleCriticalDays() (mirror of Device::isMissing()) */
+    public function missing(?string $today = null): static
+    {
+        return $this->andWhere(['<', 'device.last_seen_at', DevicePosture::patchCutoff(Device::staleCriticalDays(), $today)]);
+    }
+
+    /**
+     * Devices whose OS is in the given OsLifecycle state(s). The OS is free text, so it is matched in
+     * PHP (OsLifecycle::evaluate()) over the distinct os / version pairs.
+     *
+     * @param string|string[] $states
+     */
+    public function osSupport(string|array $states, ?string $today = null): static
+    {
+        $pairs = (new Query())->select(['os', 'os_version'])->distinct()->from('device')
+            ->where(['not', ['os' => null]])->all(Device::getDb());
+        $cond = ['or'];
+        foreach ($pairs as $p) {
+            if (in_array(OsLifecycle::evaluate($p['os'], $p['os_version'], $today)['state'], (array) $states, true)) {
+                $cond[] = ['device.os' => $p['os'], 'device.os_version' => $p['os_version']];
+            }
+        }
+        return $this->andWhere(count($cond) > 1 ? $cond : '0=1');
     }
 
     public function pastEol(?string $today = null): static

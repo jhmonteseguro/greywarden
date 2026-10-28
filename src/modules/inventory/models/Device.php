@@ -9,6 +9,7 @@ use app\modules\control\models\Control;
 use app\modules\incident\models\Incident;
 use app\modules\inventory\components\DeviceChecks;
 use app\modules\inventory\components\DevicePosture;
+use app\modules\inventory\components\OsLifecycle;
 use app\modules\risk\models\Risk;
 use Yii;
 use yii\db\Query;
@@ -160,6 +161,12 @@ class Device extends DomainRecord
     public static function staleDays(): int
     {
         return (int) (Yii::$app->params['device.staleDays'] ?? 30);
+    }
+
+    /** ... and missing (shown in red) when older than this */
+    public static function staleCriticalDays(): int
+    {
+        return max(self::staleDays(), (int) (Yii::$app->params['device.staleCriticalDays'] ?? 90));
     }
 
     public static function sourceOptions(): array
@@ -475,6 +482,33 @@ class Device extends DomainRecord
     {
         $days = $this->getLastSeenDays($today);
         return $days !== null && $days > self::staleDays();
+    }
+
+    /** Synced devices not seen for more than Device::staleCriticalDays() */
+    public function isMissing(?string $today = null): bool
+    {
+        $days = $this->getLastSeenDays($today);
+        return $days !== null && $days > self::staleCriticalDays();
+    }
+
+    /** Last-seen colour: null (recent or not synced) | warning (stale) | danger (missing) */
+    public function getLastSeenTone(?string $today = null): ?string
+    {
+        return $this->isMissing($today) ? 'danger' : ($this->isStale($today) ? 'warning' : null);
+    }
+
+    /**
+     * @return array{state:string, endDate:string|null, estimated:bool, days:int|null}
+     * @see OsLifecycle::evaluate()
+     */
+    public function getOsSupport(?string $today = null): array
+    {
+        return OsLifecycle::evaluate($this->os, $this->os_version, $today);
+    }
+
+    public function isOsUnsupported(?string $today = null): bool
+    {
+        return $this->getOsSupport($today)['state'] === OsLifecycle::UNSUPPORTED;
     }
 
     public function getSourceLabel(): ?string

@@ -4,6 +4,7 @@ namespace app\modules\inventory\models;
 
 use app\modules\inventory\components\DeviceChecks;
 use app\modules\inventory\components\DevicePosture;
+use app\modules\inventory\components\OsLifecycle;
 use Yii;
 use yii\base\Model;
 use yii\data\ActiveDataProvider;
@@ -18,6 +19,7 @@ class DeviceSearch extends Model
         'not-assessed' => 'Not assessed',
         'byod' => 'BYOD',
         'stale' => 'Not seen recently',
+        'unsupported-os' => 'OS end of support',
         'warranty' => 'Warranty expiring',
         'eol' => 'Past end-of-life',
         'archived' => 'Archived',
@@ -107,6 +109,9 @@ class DeviceSearch extends Model
                 break;
             case 'stale':
                 $query->active()->inService()->stale();
+                break;
+            case 'unsupported-os':
+                $query->active()->inService()->osSupport([OsLifecycle::UNSUPPORTED, OsLifecycle::ENDING]);
                 break;
             case 'warranty':
                 $query->active()->warrantyExpiring();

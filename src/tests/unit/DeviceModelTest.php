@@ -6,6 +6,7 @@ use app\models\AuditLog;
 use app\modules\control\models\Control;
 use app\modules\inventory\components\DeviceChecks;
 use app\modules\inventory\components\DevicePosture;
+use app\modules\inventory\components\OsLifecycle;
 use app\modules\inventory\models\Device;
 use tests\DbTestCase;
 
@@ -153,6 +154,60 @@ class DeviceModelTest extends DbTestCase
         $this->assertTrue($device->isWarrantyExpired('2026-08-01'));
         $this->assertTrue($device->isPastEol('2026-06-30'));
         $this->assertFalse($device->isPastEol('2026-05-01'));
+    }
+
+    public function testLastSeenTones(): void
+    {
+        $today = '2026-10-28';
+        $device = $this->makeDevice();
+        $this->assertNull($device->getLastSeenTone($today), 'not synced');
+        $this->assertFalse($device->isMissing($today));
+        $device->last_seen_at = '2026-10-01 09:00:00';
+        $this->assertNull($device->getLastSeenTone($today), '27 days');
+        $device->last_seen_at = '2026-09-01 09:00:00';
+        $this->assertSame('warning', $device->getLastSeenTone($today), '57 days: stale');
+        $this->assertFalse($device->isMissing($today));
+        $device->last_seen_at = '2026-06-01 09:00:00';
+        $this->assertSame('danger', $device->getLastSeenTone($today), '149 days: missing');
+        $this->assertTrue($device->isMissing($today));
+
+        \Yii::$app->params['device.staleCriticalDays'] = 10; // never below the stale threshold
+        try {
+            $this->assertSame(Device::staleDays(), Device::staleCriticalDays());
+        } finally {
+            unset(\Yii::$app->params['device.staleCriticalDays']);
+        }
+        $this->assertSame(90, Device::staleCriticalDays());
+    }
+
+    public function testMissingAndOsSupportQueriesMatchPhpLogic(): void
+    {
+        $today = '2026-10-28';
+        $devices = [
+            'win10' => $this->makeDevice(['hostname' => 'win10', 'os' => 'Windows 10 Enterprise', 'os_version' => '22H2', 'last_seen_at' => '2026-10-27 10:00:00']),
+            'win11' => $this->makeDevice(['hostname' => 'win11', 'os' => 'Windows 11 Enterprise', 'os_version' => '23H2', 'last_seen_at' => '2026-09-01 10:00:00']),
+            'srv' => $this->makeDevice(['hostname' => 'srv', 'os' => 'Windows Server 2022', 'last_seen_at' => '2026-05-01 10:00:00']),
+            'linux' => $this->makeDevice(['hostname' => 'linux', 'os' => 'Linux']),
+            'blank' => $this->makeDevice(['hostname' => 'blank']),
+        ];
+        foreach ($devices as $d) {
+            $this->assertTrue($d->save(), json_encode($d->getErrors()));
+        }
+        $ids = array_map(static fn(Device $d) => $d->id, $devices);
+        $find = static fn() => Device::find()->where(['device.id' => $ids])->select('device.id');
+        $names = static fn(array $found) => array_keys(array_intersect($ids, array_map('intval', $found)));
+
+        $this->assertSame(['srv'], $names($find()->missing($today)->column()));
+        $this->assertSame(['win11', 'srv'], $names($find()->stale($today)->column()));
+        $this->assertSame(['win10'], $names($find()->osSupport(OsLifecycle::UNSUPPORTED, $today)->column()));
+        $this->assertSame(['win10', 'win11'], $names($find()->osSupport([OsLifecycle::UNSUPPORTED, OsLifecycle::ENDING], $today)->column()));
+        $this->assertSame(['srv'], $names($find()->osSupport(OsLifecycle::SUPPORTED, $today)->column()));
+        $this->assertSame([], $find()->osSupport('no-such-state', $today)->column());
+        foreach ($devices as $name => $d) {
+            $this->assertSame($name === 'win10', $d->isOsUnsupported($today), $name);
+            $this->assertSame($name === 'srv', $d->isMissing($today), $name);
+        }
+        $this->assertSame('2025-10-14', $devices['win10']->getOsSupport($today)['endDate']);
     }
 
     public function testPostureQueriesMatchPhpLogic(): void

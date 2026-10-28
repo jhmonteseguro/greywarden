@@ -3,6 +3,8 @@
 namespace app\helpers;
 
 use app\modules\attack\components\Coverage;
+use app\modules\inventory\components\OsLifecycle;
+use app\modules\inventory\models\Device;
 use yii\helpers\Html;
 
 /**
@@ -55,7 +57,7 @@ final class Badge
         'flag' => [
             'overdue' => 'danger', 'due-soon' => 'warning', 'expiring' => 'warning', 'expired' => 'danger',
             'eol' => 'danger', 'archived' => 'muted', 'met' => 'success', 'late' => 'danger', 'pending' => 'warning',
-            'deprecated' => 'muted', 'stale' => 'warning', 'weak-control' => 'warning', 'unverified' => 'neutral',
+            'deprecated' => 'muted', 'stale' => 'warning', 'missing' => 'danger', 'os-unsupported' => 'danger', 'os-ending' => 'warning', 'weak-control' => 'warning', 'unverified' => 'neutral',
         ],
         // ATT&CK mitigation adoption (app\modules\attack\components\Coverage)
         'mitigation-state' => ['implemented' => 'success', 'approved' => 'info', 'proposed' => 'warning', 'gap' => 'danger'],
@@ -197,6 +199,30 @@ final class Badge
     public static function flag(string $type, string $label, ?string $title = null): string
     {
         return self::render('flag', $type, $label, array_filter(['class' => 'gw-badge--flag', 'title' => $title]));
+    }
+
+    /** OS end-of-support flag from OsLifecycle::evaluate(); '' while supported or unknown */
+    public static function osSupport(array $support): string
+    {
+        if (!in_array($support['state'], [OsLifecycle::UNSUPPORTED, OsLifecycle::ENDING], true)) {
+            return '';
+        }
+        $date = \Yii::$app->formatter->asDate($support['endDate']) . ($support['estimated'] ? ' (estimated)' : '');
+        return $support['state'] === OsLifecycle::UNSUPPORTED
+            ? self::flag('os-unsupported', 'Unsupported OS', 'Security updates ended ' . $date)
+            : self::flag('os-ending', 'OS support ending', 'Security updates end ' . $date);
+    }
+
+    /** Last-seen flag for a synced device: 'missing' past Device::staleCriticalDays(), 'stale' past Device::staleDays() */
+    public static function lastSeen(Device $device, ?string $today = null): string
+    {
+        $tone = $device->getLastSeenTone($today);
+        if ($tone === null) {
+            return '';
+        }
+        $title = sprintf('No sync from %s for more than %d days', $device->getSourceLabel() ?? 'its source',
+            $tone === 'danger' ? Device::staleCriticalDays() : Device::staleDays());
+        return self::flag($tone === 'danger' ? 'missing' : 'stale', 'Not seen ' . $device->getLastSeenDays($today) . 'd', $title);
     }
 
     /** ATT&CK mitigation adoption state: implemented | approved | proposed | gap */

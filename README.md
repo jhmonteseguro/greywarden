@@ -218,7 +218,9 @@ Business rules live in `src/config/params.php`:
 * the 72h regulator window
 * the device patch threshold (`device.patchMaxAgeDays`, default 30)
 * the warranty warning window (60 days)
-* when a synced device counts as not seen recently (`device.staleDays`, default 30)
+* when a synced device counts as not seen recently (`device.staleDays`, default 30) or missing (`device.staleCriticalDays`, default 90)
+* how early an operating system's end of support is flagged (`device.osWarningDays`, default 90), and extra or
+  corrected end-of-support dates (`device.osEndOfSupport`: a regex matched against the lower-cased "os version" => `Y-m-d`)
 * the password policy and lockout thresholds (5 failures per username or 20 per IP within 15 minutes gives a 15-minute lockout)
 
 ## Architecture
@@ -436,7 +438,10 @@ make import-devices FILE=devices.csv AS=jdoe             # import; AS= is record
   devices show as **not assessed** until an analyst records the checks on the device form. Results recorded in
   Greywarden survive later imports.
 * **Last seen** comes from the export's *Last Sync*. In-service devices that haven't synced for `device.staleDays` show a
-  *Not seen* flag, appear under the *Not seen recently* filter and in the dashboard's *Needs attention* panel.
+  *Not seen* flag, appear under the *Not seen recently* filter and in the dashboard's *Needs attention* panel. After
+  `device.staleCriticalDays` the flag turns red.
+* The OS and version are checked against the built-in end-of-support catalogue (`OsLifecycle`). Windows 11 needs its
+  feature update (the import names it from the build number). macOS with the frozen 10.15.7 value is unknown.
 
 ## Working in VS Code
 

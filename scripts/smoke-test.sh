@@ -166,7 +166,7 @@ READ_PAGES=(
     /incidents "/incidents?filter=all" "/incidents?filter=mine" "/incidents?filter=regulator-overdue" "/incidents?filter=regulator-pending"
     "/incidents?filter=all&sort=-severity" "/incidents?filter=all&month=$(date +%Y-%m)" "/incidents?filter=all&impact=confidentiality" /incidents/$I1 /incidents/$I13 /incidents/$I17 /incidents/$I19
     /devices "/devices?filter=active" "/devices?filter=mine" "/devices?filter=non-compliant" "/devices?filter=not-assessed" "/devices?filter=warranty" "/devices?filter=eol"
-    "/devices?filter=active&control=$C5&result=fail" "/devices?filter=active&control=$C1&result=unknown" "/devices?filter=stale" "/devices?filter=all&sort=-last_seen_at"
+    "/devices?filter=active&control=$C5&result=fail" "/devices?filter=active&control=$C1&result=unknown" "/devices?filter=stale" "/devices?filter=unsupported-os" "/devices?filter=all&sort=-last_seen_at"
     "/devices?filter=all&sort=-criticality&device_type=laptop" /devices/$V1 /devices/$V26 /devices/$V38
     "/?heatmap=inherent"
     # Control Register and frameworks
@@ -208,6 +208,9 @@ check viewer "/controls?filter=test-due-soon" 200
 grep -q 'data-value="due-soon"' "$BODY" && ok || bad "no due-soon control test flagged (demo data has one)"
 check viewer / 200
 grep -q 'gw-attention__group--control-tests-soon' "$BODY" && ok || bad "due-soon control tests missing from Needs attention"
+grep -q 'gw-attention__group--unsupported-os' "$BODY" && ok || bad "unsupported-OS devices missing from Needs attention"
+check viewer "/devices?filter=unsupported-os" 200
+grep -q 'data-value="os-unsupported"' "$BODY" && ok || bad "no unsupported OS flagged (demo data has Windows 10 / Server 2012 R2)"
 check analyst /search?q=CTL-0001 302
 check analyst /search?q=A.8.7 302
 check analyst /search?q=CC6.1 302

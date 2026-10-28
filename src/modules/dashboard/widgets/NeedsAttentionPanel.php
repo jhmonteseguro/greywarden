@@ -5,6 +5,7 @@ namespace app\modules\dashboard\widgets;
 use app\helpers\RiskMatrix;
 use app\modules\control\models\Control;
 use app\modules\incident\models\Incident;
+use app\modules\inventory\components\OsLifecycle;
 use app\modules\inventory\models\Device;
 use app\modules\risk\models\Risk;
 use Yii;
@@ -112,6 +113,15 @@ class NeedsAttentionPanel extends PanelWidget
                 'query' => Device::find()->active()->inService()->notAssessed()->orderBy([new Expression("FIELD(criticality, 'critical','high','medium','low')"), 'asset_tag' => SORT_ASC]),
                 'url' => ['/inventory/device/index', 'filter' => 'not-assessed'],
                 'meta' => static fn(Device $d) => count($d->getPosture()['unknown']) . ' check(s) without a result',
+            ],
+            [
+                'key' => 'unsupported-os',
+                'label' => 'Devices on an unsupported OS',
+                'icon' => 'exclamation-octagon',
+                'query' => Device::find()->active()->inService()->osSupport(OsLifecycle::UNSUPPORTED, $today)
+                    ->orderBy([new Expression("FIELD(criticality, 'critical','high','medium','low')"), 'asset_tag' => SORT_ASC]),
+                'url' => ['/inventory/device/index', 'filter' => 'unsupported-os'],
+                'meta' => static fn(Device $d) => trim($d->os . ' ' . $d->os_version) . ' · ended ' . Yii::$app->formatter->asDate($d->getOsSupport()['endDate']),
             ],
             [
                 'key' => 'stale-devices',
