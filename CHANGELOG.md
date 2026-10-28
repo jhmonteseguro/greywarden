@@ -6,6 +6,8 @@ releases).
 
 ## [Unreleased]
 
+## [0.5.0-alpha] - 2026-10-28
+
 ### Added
 
 - Incident PDF report for management and non-technical staff: a PDF button on every incident produces an interim report
@@ -155,7 +157,8 @@ First public release.
 - Repository safeguards: git hooks with a leak check and signed-push rules, and CI with all test suites, a secret
   scan and a production image build.
 
-[Unreleased]: https://github.com/jhmonteseguro/greywarden/compare/v0.4.2-alpha...HEAD
+[Unreleased]: https://github.com/jhmonteseguro/greywarden/compare/v0.5.0-alpha...HEAD
+[0.5.0-alpha]: https://github.com/jhmonteseguro/greywarden/compare/v0.4.2-alpha...v0.5.0-alpha
 [0.4.2-alpha]: https://github.com/jhmonteseguro/greywarden/compare/v0.4.1-alpha...v0.4.2-alpha
 [0.4.1-alpha]: https://github.com/jhmonteseguro/greywarden/compare/v0.4.0-alpha...v0.4.1-alpha
 [0.4.0-alpha]: https://github.com/jhmonteseguro/greywarden/compare/v0.3.0-alpha...v0.4.0-alpha
