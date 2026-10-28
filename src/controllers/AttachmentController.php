@@ -14,7 +14,7 @@ use yii\web\Response;
 use yii\web\UploadedFile;
 
 /**
- * Files attached to risks, controls, decisions and incidents.
+ * Files attached to risks, controls, decisions, incidents, cloud accounts and cloud assets.
  *
  * Access: download -> records.view; upload / remove -> records.manage, and
  * only while the owning record is not archived. Files are only ever served

@@ -6,6 +6,7 @@
 
 use app\models\User;
 use app\modules\attack\models\AttackMitigation;
+use app\modules\cloud\components\CloudCatalogue;
 use app\modules\control\components\FrameworkCatalogue;
 use app\modules\control\models\Control;
 use app\modules\control\models\FrameworkRequirement;
@@ -62,6 +63,39 @@ $pickerHints = [
         <div class="col-12" data-gw-depends="#control-device_check" data-gw-value="manual,patch_age,os_support">
             <?= $form->field($model, 'deviceTypeList')->inline()->checkboxList(Device::typeOptions()) ?>
             <?= $form->field($model, 'device_ownership')->inline()->radioList(Control::deviceOwnershipOptions()) ?>
+        </div>
+    </div>
+</fieldset>
+
+<fieldset class="gw-fieldset gw-cloud-check-scope">
+    <legend class="gw-fieldset__title">Cloud check</legend>
+    <div class="row">
+        <div class="col-md-6"><?= $form->field($model, 'cloud_check')->dropDownList(Control::cloudCheckOptions(), ['prompt' => '— Not checked on cloud assets —']) ?></div>
+        <div class="col-12" data-gw-depends="#control-cloud_check" data-gw-value="manual,os_support,encryption">
+            <?php $scope = array_flip((array) $model->cloudScopeList); ?>
+            <div class="mb-3 gw-field<?= $model->hasErrors('cloudScopeList') ? ' has-error' : '' ?>">
+                <span class="form-label gw-field__label"><?= Html::encode($model->getAttributeLabel('cloudScopeList')) ?></span>
+                <?= Html::hiddenInput(Html::getInputName($model, 'cloudScopeList'), '') ?>
+                <div class="row gw-cloud-scope">
+                    <div class="col-sm-6 col-lg-3">
+                        <div class="form-check"><?= Html::checkbox(Html::getInputName($model, 'cloudScopeList') . '[]', isset($scope[CloudCatalogue::SCOPE_ACCOUNT]), [
+                            'value' => CloudCatalogue::SCOPE_ACCOUNT, 'id' => 'control-cloudscope-account', 'class' => 'form-check-input']) ?>
+                            <label class="form-check-label" for="control-cloudscope-account"><strong><?= Html::encode(CloudCatalogue::scopeOptions()[CloudCatalogue::SCOPE_ACCOUNT]) ?></strong></label></div>
+                    </div>
+                    <?php foreach (CloudCatalogue::groupedTypeOptions() as $category => $types): ?>
+                        <div class="col-sm-6 col-lg-3">
+                            <div class="gw-muted gw-small mb-1"><?= Html::encode($category) ?></div>
+                            <?php foreach ($types as $type => $label): ?>
+                                <div class="form-check"><?= Html::checkbox(Html::getInputName($model, 'cloudScopeList') . '[]', isset($scope[$type]), [
+                                    'value' => $type, 'id' => 'control-cloudscope-' . $type, 'class' => 'form-check-input']) ?>
+                                    <label class="form-check-label" for="control-cloudscope-<?= Html::encode($type) ?>"><?= Html::encode($label) ?></label></div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+                <div class="form-text gw-field__hint"><?= Html::encode($model->getAttributeHint('cloudScopeList')) ?></div>
+                <?php if ($model->hasErrors('cloudScopeList')): ?><div class="invalid-feedback d-block"><?= Html::encode($model->getFirstError('cloudScopeList')) ?></div><?php endif; ?>
+            </div>
         </div>
     </div>
 </fieldset>

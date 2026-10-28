@@ -3,6 +3,9 @@
 namespace app\modules\control\controllers;
 
 use app\components\Rbac;
+use app\modules\cloud\components\CloudChecks;
+use app\modules\cloud\models\CloudAccount;
+use app\modules\cloud\models\CloudAsset;
 use app\modules\control\components\FrameworkCatalogue;
 use app\modules\control\components\FrameworkCoverage;
 use app\modules\control\models\FrameworkRequirement;
@@ -60,6 +63,7 @@ class FrameworkController extends Controller
             'summary' => $summary,
             'state' => $state,
             'devices' => $key === FrameworkCatalogue::CYBER_ESSENTIALS ? $this->deviceReadiness() : null,
+            'cloud' => $key === FrameworkCatalogue::CYBER_ESSENTIALS ? $this->cloudReadiness() : null,
             'soc2Scope' => $key === FrameworkCatalogue::SOC2 ? FrameworkCatalogue::soc2Scope() : null,
         ]);
     }
@@ -109,5 +113,35 @@ class FrameworkController extends Controller
             $checks[$id] = $row;
         }
         return ['total' => (int) Device::find()->active()->inService()->count(), 'checks' => $checks];
+    }
+
+    /**
+     * In-service cloud assets and accounts against the cloud checks mapped to a Cyber Essentials
+     * requirement (Cyber Essentials covers IaaS, PaaS and SaaS in scope).
+     * @return array{total:int, checks:array<int,array{check:\app\modules\cloud\components\CloudCheck, pass:int, fail:int, unknown:int, requirements:string[]}>}
+     */
+    private function cloudReadiness(): array
+    {
+        $requirements = (new \yii\db\Query())->select(['l.control_id', 'r.external_id'])->from(['l' => 'control_framework_requirement'])
+            ->innerJoin(['r' => 'framework_requirement'], 'r.id = l.requirement_id')
+            ->where(['r.framework' => FrameworkCatalogue::CYBER_ESSENTIALS, 'l.control_id' => array_keys(CloudChecks::all()) ?: [0]])
+            ->orderBy('r.sort_order')->all();
+        $byControl = [];
+        foreach ($requirements as $r) {
+            $byControl[(int) $r['control_id']][] = $r['external_id'];
+        }
+        $checks = [];
+        foreach (CloudChecks::all() as $id => $check) {
+            if (!isset($byControl[$id])) {
+                continue;
+            }
+            $row = ['check' => $check, 'requirements' => $byControl[$id], 'accounts' => $check->assetTypes() === []];
+            foreach ([DevicePosture::RESULT_PASS => 'pass', DevicePosture::RESULT_FAIL => 'fail', DevicePosture::RESULT_UNKNOWN => 'unknown'] as $result => $k) {
+                $row[$k] = ($check->assetTypes() !== [] ? (int) CloudAsset::find()->active()->inService()->checkResult($check, $result)->count() : 0)
+                    + ($check->appliesToAccounts() ? (int) CloudAccount::find()->active()->inService()->checkResult($check, $result)->count() : 0);
+            }
+            $checks[$id] = $row;
+        }
+        return ['total' => (int) CloudAsset::find()->active()->inService()->count(), 'checks' => $checks];
     }
 }

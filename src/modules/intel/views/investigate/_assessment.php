@@ -91,6 +91,9 @@ $counts = $report->statusCounts();
             <?php foreach ($local->devices as $d): ?>
                 <?= Html::a('<i class="bi bi-pc-display"></i> Your asset · ' . Html::encode($d->asset_tag), $d->getViewUrl(), ['class' => 'gw-intel-flagchip gw-intel-flagchip--asset']) ?>
             <?php endforeach; ?>
+            <?php foreach ($local->cloudAssets as $ca): ?>
+                <?= Html::a('<i class="bi bi-cloud"></i> Your cloud asset · ' . Html::encode($ca->reference), $ca->getViewUrl(), ['class' => 'gw-intel-flagchip gw-intel-flagchip--asset', 'title' => $ca->name]) ?>
+            <?php endforeach; ?>
             <?php foreach (array_slice($local->incidents, 0, 3) as $inc): ?>
                 <?= Html::a('<i class="bi bi-fire"></i> In ' . Html::encode($inc->reference), $inc->getViewUrl(), ['class' => 'gw-intel-flagchip gw-intel-flagchip--incident', 'title' => $inc->title]) ?>
             <?php endforeach; ?>

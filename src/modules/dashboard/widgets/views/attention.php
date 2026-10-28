@@ -23,6 +23,11 @@ $tones = [
     'not-assessed' => 'info',
     'risk-review' => 'medium',
     'stale-devices' => 'medium',
+    'cloud-exposed' => 'critical',
+    'cloud-non-compliant' => 'high',
+    'cloud-accounts' => 'high',
+    'cloud-unsupported-os' => 'high',
+    'stale-cloud' => 'medium',
     'warranty' => 'info',
 ];
 ?>

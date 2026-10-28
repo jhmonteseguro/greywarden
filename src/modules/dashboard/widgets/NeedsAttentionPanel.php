@@ -3,6 +3,8 @@
 namespace app\modules\dashboard\widgets;
 
 use app\helpers\RiskMatrix;
+use app\modules\cloud\models\CloudAccount;
+use app\modules\cloud\models\CloudAsset;
 use app\modules\control\models\Control;
 use app\modules\incident\models\Incident;
 use app\modules\inventory\components\OsLifecycle;
@@ -130,6 +132,50 @@ class NeedsAttentionPanel extends PanelWidget
                 'query' => Device::find()->active()->inService()->stale($today)->orderBy(['last_seen_at' => SORT_DESC]),
                 'url' => ['/inventory/device/index', 'filter' => 'stale', 'sort' => '-last_seen_at'],
                 'meta' => static fn(Device $d) => 'Last seen ' . Yii::$app->formatter->asRelativeTime($d->last_seen_at),
+            ],
+            [
+                'key' => 'cloud-exposed',
+                'label' => 'Internet-facing cloud assets failing checks',
+                'icon' => 'globe2',
+                'query' => CloudAsset::find()->active()->inService()->internetFacing()->nonCompliant()
+                    ->orderBy([new Expression("FIELD(cloud_asset.criticality, 'critical','high','medium','low')"), 'cloud_asset.reference' => SORT_ASC]),
+                'url' => ['/cloud/asset/index', 'filter' => 'internet-facing'],
+                'meta' => static fn(CloudAsset $a) => implode(', ', array_slice($a->getPosture()['failures'], 0, 2)),
+            ],
+            [
+                'key' => 'cloud-non-compliant',
+                'label' => 'Non-compliant cloud assets',
+                'icon' => 'cloud-slash',
+                'query' => CloudAsset::find()->active()->inService()->nonCompliant()
+                    ->orderBy([new Expression("FIELD(cloud_asset.criticality, 'critical','high','medium','low')"), 'cloud_asset.reference' => SORT_ASC]),
+                'url' => ['/cloud/asset/index', 'filter' => 'non-compliant'],
+                'meta' => static fn(CloudAsset $a) => implode(', ', array_slice($a->getPosture()['failures'], 0, 2)),
+            ],
+            [
+                'key' => 'cloud-accounts',
+                'label' => 'Cloud accounts failing checks',
+                'icon' => 'cloud-slash',
+                'query' => CloudAccount::find()->active()->inService()->nonCompliant()
+                    ->orderBy([new Expression("FIELD(cloud_account.criticality, 'critical','high','medium','low')"), 'cloud_account.reference' => SORT_ASC]),
+                'url' => ['/cloud/account/index', 'filter' => 'non-compliant'],
+                'meta' => static fn(CloudAccount $a) => implode(', ', array_slice($a->getPosture()['failures'], 0, 2)),
+            ],
+            [
+                'key' => 'cloud-unsupported-os',
+                'label' => 'Cloud instances on an unsupported OS',
+                'icon' => 'exclamation-octagon',
+                'query' => CloudAsset::find()->active()->inService()->osSupport(OsLifecycle::UNSUPPORTED, $today)
+                    ->orderBy([new Expression("FIELD(cloud_asset.criticality, 'critical','high','medium','low')"), 'cloud_asset.reference' => SORT_ASC]),
+                'url' => ['/cloud/asset/index', 'filter' => 'unsupported-os'],
+                'meta' => static fn(CloudAsset $a) => trim($a->os . ' ' . $a->os_version) . ' · ended ' . Yii::$app->formatter->asDate($a->getOsSupport()['endDate']),
+            ],
+            [
+                'key' => 'stale-cloud',
+                'label' => sprintf('Cloud assets not seen (%d+ days)', CloudAsset::staleDays()),
+                'icon' => 'cloud-slash',
+                'query' => CloudAsset::find()->active()->inService()->stale($today)->orderBy(['cloud_asset.last_seen_at' => SORT_DESC]),
+                'url' => ['/cloud/asset/index', 'filter' => 'stale', 'sort' => '-last_seen_at'],
+                'meta' => static fn(CloudAsset $a) => 'Last seen ' . Yii::$app->formatter->asRelativeTime($a->last_seen_at),
             ],
             [
                 'key' => 'warranty',

@@ -59,6 +59,8 @@ class AuditLog extends ActiveRecord
             'decision' => ['Decision', \app\modules\decision\models\Decision::class, '/decision/decision/view'],
             'incident' => ['Incident', \app\modules\incident\models\Incident::class, '/incident/incident/view'],
             'device' => ['Device', \app\modules\inventory\models\Device::class, '/inventory/device/view'],
+            'cloud_account' => ['Cloud account', \app\modules\cloud\models\CloudAccount::class, '/cloud/account/view'],
+            'cloud_asset' => ['Cloud asset', \app\modules\cloud\models\CloudAsset::class, '/cloud/asset/view'],
             'user' => ['User', User::class, '/admin/user/view'],
             'lookup' => ['Lookup', Lookup::class, '/admin/lookup/update'],
             'setting' => ['Settings', \app\modules\admin\models\BrandingForm::class, '/admin/settings/index'],

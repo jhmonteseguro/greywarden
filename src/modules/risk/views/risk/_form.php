@@ -8,6 +8,7 @@ use app\helpers\RiskMatrix;
 use app\models\Lookup;
 use app\models\User;
 use app\modules\attack\models\AttackTechnique;
+use app\modules\cloud\models\CloudAsset;
 use app\modules\control\models\Control;
 use app\modules\decision\models\Decision;
 use app\modules\incident\models\Incident;
@@ -118,9 +119,10 @@ $bands = Json::encode(RiskMatrix::bands());
 <fieldset class="gw-fieldset">
     <legend class="gw-fieldset__title">Links</legend>
     <div class="row">
-        <div class="col-md-4"><?= $form->field($model, 'deviceIds')->listBox(Device::selectOptions($model->deviceIds ?? []), ['multiple' => true, 'size' => 8, 'class' => 'form-select gw-multiselect']) ?></div>
-        <div class="col-md-4"><?= $form->field($model, 'incidentIds')->listBox(Incident::selectOptions($model->incidentIds ?? []), ['multiple' => true, 'size' => 8, 'class' => 'form-select gw-multiselect']) ?></div>
-        <div class="col-md-4"><?= $form->field($model, 'decisionIds')->listBox(Decision::selectOptions($model->decisionIds ?? []), ['multiple' => true, 'size' => 8, 'class' => 'form-select gw-multiselect']) ?></div>
+        <div class="col-md-6 col-xl-3"><?= $form->field($model, 'deviceIds')->listBox(Device::selectOptions($model->deviceIds ?? []), ['multiple' => true, 'size' => 8, 'class' => 'form-select gw-multiselect']) ?></div>
+        <div class="col-md-6 col-xl-3"><?= $form->field($model, 'cloudAssetIds')->listBox(CloudAsset::selectOptions($model->cloudAssetIds ?? []), ['multiple' => true, 'size' => 8, 'class' => 'form-select gw-multiselect', 'data-gw-picker' => 'Filter cloud assets…']) ?></div>
+        <div class="col-md-6 col-xl-3"><?= $form->field($model, 'incidentIds')->listBox(Incident::selectOptions($model->incidentIds ?? []), ['multiple' => true, 'size' => 8, 'class' => 'form-select gw-multiselect']) ?></div>
+        <div class="col-md-6 col-xl-3"><?= $form->field($model, 'decisionIds')->listBox(Decision::selectOptions($model->decisionIds ?? []), ['multiple' => true, 'size' => 8, 'class' => 'form-select gw-multiselect']) ?></div>
     </div>
     <p class="form-text gw-field__hint">Hold Ctrl / Cmd to select multiple.</p>
 </fieldset>

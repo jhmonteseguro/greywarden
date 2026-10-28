@@ -9,6 +9,7 @@ use app\helpers\RiskMatrix;
 use app\components\Rbac;
 use app\models\Attachment;
 use app\modules\attack\widgets\TechniqueTags;
+use app\modules\cloud\models\CloudAsset;
 use app\modules\control\models\Control;
 use app\modules\decision\models\Decision;
 use app\modules\incident\models\Incident;
@@ -42,6 +43,7 @@ $this->params['actions'] = RecordActions::widget(['model' => $model, 'pdf' => tr
 $fmt = Yii::$app->formatter;
 
 $devices = $model->devices;
+$cloudAssets = $model->cloudAssets;
 $incidents = $model->incidents;
 $decisions = $model->decisions;
 $techniques = $model->techniques;
@@ -176,6 +178,8 @@ ob_start(); ?>
 <div class="row g-4">
     <div class="col-lg-4"><?= LinkedRecords::widget(['title' => 'Affected devices', 'icon' => 'pc-display', 'models' => $devices,
         'extra' => static fn(Device $d) => Badge::status('device-status', $d->status, Device::statusOptions())]) ?></div>
+    <div class="col-lg-4"><?= LinkedRecords::widget(['title' => 'Affected cloud assets', 'icon' => 'cloud', 'models' => $cloudAssets,
+        'extra' => static fn(CloudAsset $a) => Badge::status('cloud-status', $a->status, CloudAsset::statusOptions())]) ?></div>
     <div class="col-lg-4"><?= LinkedRecords::widget(['title' => 'Related incidents', 'icon' => 'fire', 'models' => $incidents,
         'extra' => static fn(Incident $i) => Badge::severity($i->severity) . ' ' . Badge::status('incident-status', $i->status, Incident::statusOptions())]) ?></div>
     <div class="col-lg-4"><?= LinkedRecords::widget(['title' => 'Related decisions', 'icon' => 'journal-check', 'models' => $decisions,
@@ -197,7 +201,7 @@ ob_start(); ?>
             'canEdit' => Rbac::canManage() && !$model->getIsArchived(),
             'editUrl' => ['update', 'id' => $model->id],
         ]), 'options' => ['id' => 'tab-attack']],
-        ['label' => 'Links (' . (count($devices) + count($incidents) + count($decisions)) . ')', 'content' => $links, 'options' => ['id' => 'tab-links']],
+        ['label' => 'Links (' . (count($devices) + count($cloudAssets) + count($incidents) + count($decisions)) . ')', 'content' => $links, 'options' => ['id' => 'tab-links']],
         ['label' => 'Files (' . count($attachments) . ')', 'content' => Attachments::widget(['model' => $model, 'attachments' => $attachments]), 'options' => ['id' => 'tab-files']],
         ['label' => 'History', 'content' => AuditHistory::widget(['entityType' => 'risk', 'entityId' => $model->id]), 'options' => ['id' => 'tab-history']],
     ],

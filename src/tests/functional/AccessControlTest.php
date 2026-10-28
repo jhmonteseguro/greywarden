@@ -36,6 +36,10 @@ class AccessControlTest extends FunctionalTestCase
         $c1 = $this->id('control', 'reference', 'CTL-0001');
         $c5 = $this->id('control', 'reference', 'CTL-0005');
         $b1 = $this->id('intel_blocklist', 'reference', 'BLK-0001');
+        $cld1 = $this->id('cloud_asset', 'reference', 'CLD-0001');
+        $cld10 = $this->id('cloud_asset', 'reference', 'CLD-0010');
+        $acc1 = $this->id('cloud_account', 'reference', 'ACC-0001');
+        $acc4 = $this->id('cloud_account', 'reference', 'ACC-0004');
         $req = $this->id('framework_requirement', 'external_id', 'A.8.7');
         $ce = $this->id('framework_requirement', 'external_id', 'CE-UA-4');
         $month = date('Y-m');
@@ -56,6 +60,13 @@ class AccessControlTest extends FunctionalTestCase
             '/devices?filter=warranty', '/devices?filter=eol', '/devices?filter=stale', '/devices?filter=unsupported-os', '/devices?filter=byod', '/devices?filter=archived',
             "/devices?filter=active&control=$c5&result=fail", "/devices?filter=active&control=$c1&result=unknown",
             '/devices?filter=all&sort=-criticality&device_type=laptop', "/devices/$v1", "/devices/$v38",
+            '/cloud/assets', '/cloud/assets?filter=active', '/cloud/assets?filter=mine', '/cloud/assets?filter=non-compliant', '/cloud/assets?filter=not-assessed',
+            '/cloud/assets?filter=internet-facing', '/cloud/assets?filter=stale', '/cloud/assets?filter=unsupported-os', '/cloud/assets?filter=archived',
+            '/cloud/assets?filter=all&sort=-criticality&provider=aws&resource_type=bucket&environment=production', "/cloud/assets?account_id=$acc1&sort=account_id",
+            "/cloud/assets/$cld1", "/cloud/assets/$cld10",
+            '/cloud/accounts', '/cloud/accounts?filter=active', '/cloud/accounts?filter=mine', '/cloud/accounts?filter=non-compliant',
+            '/cloud/accounts?filter=not-assessed', '/cloud/accounts?filter=archived', '/cloud/accounts?sort=-criticality&provider=aws', "/cloud/accounts/$acc1", "/cloud/accounts/$acc4",
+            '/controls?filter=cloud-checks', '/search?q=CLD', '/search?q=111122223333',
             '/controls', '/controls?filter=mine', '/controls?filter=planned', '/controls?filter=implemented', '/controls?filter=test-due-soon',
             '/controls?filter=test-overdue', '/controls?filter=weak', '/controls?filter=not-tested', '/controls?filter=target-overdue',
             '/controls?filter=device-checks', '/controls?filter=retired', '/controls?filter=archived', '/controls?requirement=A.8.7',
@@ -81,9 +92,12 @@ class AccessControlTest extends FunctionalTestCase
         $i1 = $this->id('incident', 'reference', 'INC-0001');
         $v1 = $this->id('device', 'asset_tag', 'DEV-0001');
         $b1 = $this->id('intel_blocklist', 'reference', 'BLK-0001');
+        $cld1 = $this->id('cloud_asset', 'reference', 'CLD-0001');
+        $acc1 = $this->id('cloud_account', 'reference', 'ACC-0001');
         return [
             '/risks/create', "/risks/$r1/update", '/controls/create', "/controls/$c1/update", '/decisions/create', "/decisions/$d1/update",
             '/incidents/create', "/incidents/$i1/update", '/devices/create', "/devices/$v1/update",
+            '/cloud/assets/create', "/cloud/assets/create?account=$acc1", "/cloud/assets/$cld1/update", '/cloud/accounts/create', "/cloud/accounts/$acc1/update",
             '/intel/blocklist/create', '/intel/blocklist/create?value=192.0.2.99', "/intel/blocklist/$b1/update",
         ];
     }
@@ -185,7 +199,7 @@ class AccessControlTest extends FunctionalTestCase
     public function testMissingRecordsAre404(): void
     {
         $this->loginAs('viewer');
-        foreach (['/risks/999999', '/controls/999999', '/decisions/999999', '/incidents/999999', '/devices/999999', '/intel/blocklist/999999',
+        foreach (['/risks/999999', '/controls/999999', '/decisions/999999', '/incidents/999999', '/devices/999999', '/cloud/assets/999999', '/cloud/accounts/999999', '/intel/blocklist/999999',
                      '/frameworks/pci-dss', '/frameworks/requirement/999999', '/attack/T9999', '/attack/mitigations/M9999',
                      '/intel/ip/999.1.1.1', '/intel/ip/192.0.2.099', '/intel/asn/AS99999999999', '/intel/indicator/999999',
                      '/attachments/999999', '/no-such-page'] as $url) {

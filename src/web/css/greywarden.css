@@ -986,6 +986,8 @@ select[multiple].form-select, .gw-multiselect { min-height: 10rem; padding: .35r
 /* 11. Dashboard ------------------------------------------------------------------- */
 .gw-kpis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; margin-bottom: 1rem; }
 @media (min-width: 768px) { .gw-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--gw-gap); } }
+/* Ten tiles: two rows of five on wide screens */
+@media (min-width: 1200px) { .gw-kpis { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
 .gw-kpis__item { min-width: 0; }
 .gw-kpi {
     --gw-kpi-color: var(--gw-neutral);
@@ -1046,6 +1048,7 @@ a.gw-kpi:hover .gw-kpi__go, a.gw-kpi:focus-visible .gw-kpi__go { opacity: 1; tra
 .gw-panel > .gw-panel__title:first-child + .gw-detail { margin-top: -.45rem; }
 /* Trend chart grows with its row; the attention queue scrolls instead of stretching the row */
 .gw-dashboard-panel--incident-trend > .gw-panel__body, .gw-dashboard-panel--device-posture > .gw-panel__body { display: flex; flex-direction: column; }
+.gw-dashboard-panel--cloud-posture .gw-chart { min-height: 220px; }
 .gw-dashboard-panel--incident-trend .gw-chart, .gw-dashboard-panel--device-posture .gw-chart { flex: 1; min-height: 300px; height: auto !important; } /* overrides the widget's inline height */
 .gw-dashboard-panel--attention > .gw-panel__body { max-height: 560px; overflow-y: auto; margin-right: -.5rem; padding-right: .5rem; }
 .gw-dashboard-panel--activity { --gw-panel-py: .25rem; }

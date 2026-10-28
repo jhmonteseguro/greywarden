@@ -2,6 +2,7 @@
 
 namespace app\modules\intel\components;
 
+use app\modules\cloud\models\CloudAsset;
 use app\modules\incident\models\Incident;
 use app\modules\intel\models\BlocklistEntry;
 use app\modules\inventory\models\Device;
@@ -9,7 +10,7 @@ use yii\db\Query;
 
 /**
  * What Greywarden itself knows about an indicator: blocklist entries covering
- * it, own devices with the address, and incidents that mention it.
+ * it, own devices and cloud assets with the address, and incidents that mention it.
  */
 final class LocalContext
 {
@@ -17,6 +18,8 @@ final class LocalContext
     public array $blocks = [];
     /** @var Device[] */
     public array $devices = [];
+    /** @var CloudAsset[] */
+    public array $cloudAssets = [];
     /** @var Incident[] */
     public array $incidents = [];
 
@@ -30,6 +33,10 @@ final class LocalContext
             $c->devices = array_values(array_filter(
                 Device::find()->where(['like', 'ip_addresses', $indicator->value])->orderBy(['archived_at' => SORT_ASC, 'asset_tag' => SORT_ASC])->limit(20)->all(),
                 static fn(Device $d) => in_array($indicator->value, array_map(static fn($ip) => IpAddress::normalize($ip), $d->getIpList()), true)
+            ));
+            $c->cloudAssets = array_values(array_filter(
+                CloudAsset::find()->where(['like', 'public_ips', $indicator->value])->orderBy(['archived_at' => SORT_ASC, 'reference' => SORT_ASC])->limit(20)->all(),
+                static fn(CloudAsset $a) => in_array($indicator->value, array_map(static fn($ip) => IpAddress::normalize($ip), $a->getIpList()), true)
             ));
         }
         $c->incidents = self::incidentsMentioning($indicator->value);

@@ -43,6 +43,9 @@ $this->params['pdf.badges'] = Badge::status('decision-status', $model->status, D
     'extra' => static fn(Risk $r) => Badge::score($r->getCurrentScore())]) ?>
 <?= $this->render('@app/views/pdf/_records', ['title' => 'Related incidents', 'models' => $model->incidents, 'extraLabel' => 'Severity',
     'extra' => static fn(Incident $i) => Badge::severity($i->severity)]) ?>
+<?php if ($model->cloudAssets): ?>
+    <?= $this->render('@app/views/pdf/_records', ['title' => 'Related cloud assets', 'models' => $model->cloudAssets]) ?>
+<?php endif; ?>
 <?php if ($model->supersedes): ?>
     <?= $this->render('@app/views/pdf/_records', ['title' => 'Supersedes', 'models' => $model->supersedes]) ?>
 <?php endif; ?>

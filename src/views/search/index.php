@@ -10,6 +10,8 @@ use app\helpers\Badge;
 use app\modules\attack\components\AttackText;
 use app\modules\attack\models\AttackMitigation;
 use app\modules\attack\models\AttackTechnique;
+use app\modules\cloud\models\CloudAccount;
+use app\modules\cloud\models\CloudAsset;
 use app\modules\control\models\Control;
 use app\modules\control\models\FrameworkRequirement;
 use app\modules\decision\models\Decision;
@@ -22,7 +24,7 @@ use yii\helpers\Html;
 $this->title = $q === '' ? 'Search' : 'Search results';
 $this->params['breadcrumbs'][] = 'Search';
 $total = array_sum(array_map(static fn($g) => count($g['items']), $results));
-$this->params['subtitle'] = $q === '' ? 'Enter a reference, title, hostname, serial number, IP address or ATT&CK id (e.g. T1566).'
+$this->params['subtitle'] = $q === '' ? 'Enter a reference, title, hostname, serial number, IP address, cloud resource ID or ATT&CK id (e.g. T1566).'
     : Html::encode(sprintf('%d result(s) for “%s”', $total, $q));
 ?>
 <form class="gw-search-page" action="" method="get" role="search">
@@ -77,6 +79,12 @@ $this->params['subtitle'] = $q === '' ? 'Enter a reference, title, hostname, ser
                         } elseif ($item instanceof Device) {
                             echo '<span class="gw-muted">' . Html::encode(trim($item->getTypeLabel() . ' · ' . $item->serial_number, ' ·')) . '</span> '
                                 . Badge::status('device-status', $item->status, Device::statusOptions());
+                        } elseif ($item instanceof CloudAsset) {
+                            echo '<span class="gw-muted">' . Html::encode(trim($item->getTypeLabel() . ' · ' . ($item->account->name ?? ''), ' ·')) . '</span> '
+                                . Badge::status('cloud-status', $item->status, CloudAsset::statusOptions());
+                        } elseif ($item instanceof CloudAccount) {
+                            echo '<span class="gw-muted">' . Html::encode($item->getProviderSummary()) . '</span> '
+                                . Badge::status('cloud-status', $item->status, CloudAccount::statusOptions());
                         }
                         if ($item->getIsArchived() && !$item instanceof BlocklistEntry) {
                             echo ' ' . Badge::flag('archived', 'Archived');

@@ -32,6 +32,10 @@ For real data, see [Production](#production); for the full setup, see [Developme
 * **Decision Log**: options, rationale, supersession chain, links to risks and incidents
 * **Incident Log**: NIST lifecycle, an incident timeline, the 72-hour regulator deadline with a countdown, response metrics
 * **Device Inventory**: lifecycle, network data, and posture against the device checks (pass / fail / not assessed)
+* **Cloud Inventory**: cloud accounts (AWS, Azure, Google Cloud, Cloudflare, Google Workspace, Microsoft 365, GitHub...)
+  and the assets in them (instances, VPCs, security groups, buckets, databases, IAM roles, DNS zones, repositories...)
+  with exposure, encryption, OS support and posture against **cloud checks** from the Control Register, linked to
+  risks, incidents and decisions
 * **Dashboard**: KPI tiles, residual heatmap, incident trend, device posture, a "needs attention" list,
   control effectiveness with progress against each framework switched on, recent activity
 * **MITRE ATT&CK** (Enterprise v20, bundled for offline use): techniques observed on incidents, threat techniques on risks,
@@ -219,6 +223,7 @@ Business rules live in `src/config/params.php`:
 * the device patch threshold (`device.patchMaxAgeDays`, default 30)
 * the warranty warning window (60 days)
 * when a synced device counts as not seen recently (`device.staleDays`, default 30) or missing (`device.staleCriticalDays`, default 90)
+* the same for synced cloud assets (`cloud.staleDays`, default 30; `cloud.staleCriticalDays`, default 90)
 * how early an operating system's end of support is flagged (`device.osWarningDays`, default 90), and extra or
   corrected end-of-support dates (`device.osEndOfSupport`: a regex matched against the lower-cased "os version" => `Y-m-d`)
 * the password policy and lockout thresholds (5 failures per username or 20 per IP within 15 minutes gives a 15-minute lockout)
@@ -255,8 +260,10 @@ greywarden/
     │   ├── decision/   Decision, DecisionSearch, DecisionController
     │   ├── incident/   Incident, IncidentTimeline, IncidentSearch, components/IncidentMetrics
     │   ├── inventory/  Device, DeviceQuery, DeviceSearch, components/ (DevicePosture, DeviceCheck, DeviceChecks, DeviceImporter)
+    │   ├── cloud/      CloudAccount, CloudAsset (+ Query / Search), components/ (CloudCatalogue, CloudCheck, CloudChecks,
+    │   │               CloudPosture), AccountController, AssetController
     │   ├── attack/     MITRE ATT&CK: AttackTactic/Technique/Mitigation, components/ (StixParser, CatalogueImporter,
-    │   │               Catalogue, Coverage, DeviceAttack, AttackText), widgets/ (TechniqueTags, KillChain,
+    │   │               Catalogue, Coverage, DeviceAttack, CloudAttack, AttackText), widgets/ (TechniqueTags, KillChain,
     │   │               MitigationCoverage), matrix / technique / mitigation pages
     │   └── admin/      users (UserForm, ResetPasswordForm), audit log, lookups, settings (BrandingForm, ComplianceForm)
     ├── tests/        PHPUnit: unit/ (models, components, commands) and functional/ (in-process HTTP through the
@@ -269,10 +276,10 @@ greywarden/
 
 ### Key concepts
 
-* **Domain records** (`Risk`, `Control`, `Decision`, `Incident`, `Device`) extend `models/DomainRecord`, which attaches:
+* **Domain records** (`Risk`, `Control`, `Decision`, `Incident`, `Device`, `CloudAccount`, `CloudAsset`) extend `models/DomainRecord`, which attaches:
   * timestamps and blameable (`created_at/updated_at/created_by/updated_by`)
   * the `AuditBehavior`
-  * reference generation (prefix `RSK`, `CTL`, `DEC`, `INC`, `DEV`; asset tags can be overridden)
+  * reference generation (prefix `RSK`, `CTL`, `DEC`, `INC`, `DEV`, `ACC`, `CLD`; asset tags can be overridden)
   * archive / restore (`archived_at/archived_by`)
   * many-to-many link syncing (`linkDefinitions()`), with link changes included in the audit diff. A link can be
     scoped to rows of a shared table with `where` (incident ↔ control links carry a `role`)

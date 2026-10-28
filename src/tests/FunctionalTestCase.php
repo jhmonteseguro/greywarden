@@ -5,6 +5,7 @@ namespace tests;
 use app\components\Actor;
 use app\components\Rbac;
 use app\models\User;
+use app\modules\cloud\components\CloudChecks;
 use app\modules\intel\components\Http;
 use app\modules\intel\components\Network;
 use app\modules\inventory\components\DeviceChecks;
@@ -52,6 +53,7 @@ abstract class FunctionalTestCase extends DbTestCase
         parent::setUpBeforeClass();
         self::$serverBackup = $_SERVER;
         DeviceChecks::reset();
+        CloudChecks::reset();
         Yii::$app->db->beginTransaction();
         if (static::$seed) {
             [$code, $out] = OutputCapture::run('seed/demo');
@@ -73,6 +75,7 @@ abstract class FunctionalTestCase extends DbTestCase
         }
         Actor::override(null);
         DeviceChecks::reset();
+        CloudChecks::reset();
         $_SERVER = self::$serverBackup;
         parent::tearDownAfterClass();
     }

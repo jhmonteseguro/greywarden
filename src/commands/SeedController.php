@@ -8,6 +8,10 @@ use app\models\Lookup;
 use app\models\User;
 use app\modules\attack\models\AttackMitigation;
 use app\modules\attack\models\AttackTechnique;
+use app\modules\cloud\components\CloudCatalogue;
+use app\modules\cloud\components\CloudChecks;
+use app\modules\cloud\models\CloudAccount;
+use app\modules\cloud\models\CloudAsset;
 use app\modules\control\models\Control;
 use app\modules\control\models\ControlTest;
 use app\modules\control\models\FrameworkRequirement;
@@ -108,7 +112,7 @@ class SeedController extends Controller
     public function actionDemo(): int
     {
         mt_srand(20261009);
-        $hasData = Risk::find()->exists() || Device::find()->exists() || Incident::find()->exists() || Decision::find()->exists();
+        $hasData = Risk::find()->exists() || Device::find()->exists() || Incident::find()->exists() || Decision::find()->exists() || CloudAccount::find()->exists();
         if ($hasData && !$this->reset) {
             $this->stderr("Domain data already exists. Re-run with --reset=1 to wipe and reseed.\n", Console::FG_YELLOW);
             return ExitCode::OK;
@@ -137,6 +141,7 @@ class SeedController extends Controller
             $risks = $this->seedRisks($devices, $incidents, $decisions);
             $this->linkDecisions($decisions, $incidents);
             $controls = $this->seedControls($checks, $risks, $decisions, $incidents);
+            [$accounts, $assets, $cloudControls] = $this->seedCloud($checks, $risks, $decisions, $incidents);
             $blocks = $this->seedIntel($incidents);
             $tx->commit();
         } catch (\Throwable $e) {
@@ -151,8 +156,8 @@ class SeedController extends Controller
         Actor::override(null);
         Yii::$app->cache->flush();
 
-        $this->stdout(sprintf("Seeded %d risks, %d controls, %d decisions, %d incidents, %d devices, %d blocklist entries.\n",
-            count($risks), $controls, count($decisions), count($incidents), count($devices), $blocks), Console::FG_GREEN);
+        $this->stdout(sprintf("Seeded %d risks, %d controls, %d decisions, %d incidents, %d devices, %d cloud accounts, %d cloud assets, %d blocklist entries.\n",
+            count($risks), $controls + $cloudControls, count($decisions), count($incidents), count($devices), $accounts, $assets, $blocks), Console::FG_GREEN);
         $this->stdout(sprintf("Demo users (password from DEMO_PASSWORD): analyst, jpatel (analysts), viewer (read-only).\n"));
         return ExitCode::OK;
     }
@@ -163,18 +168,20 @@ class SeedController extends Controller
     {
         $db = Yii::$app->db;
         foreach (['risk_device', 'risk_incident', 'risk_decision', 'decision_incident', 'incident_device', 'incident_timeline',
+                     'risk_cloud_asset', 'incident_cloud_asset', 'decision_cloud_asset', 'cloud_asset_control', 'cloud_account_control',
                      'incident_attack_technique', 'risk_attack_technique', 'decision_attack_mitigation',
                      'device_control', 'incident_control', 'risk_control', 'decision_control', 'control_attack_mitigation',
                      'control_framework_requirement', 'control_test'] as $t) {
             $db->createCommand()->delete($t)->execute();
         }
         $db->createCommand()->update('decision', ['superseded_by_id' => null])->execute();
-        foreach (['intel_blocklist', 'intel_note', 'intel_indicator', 'risk', 'incident', 'decision', 'device', 'control'] as $t) {
+        foreach (['intel_blocklist', 'intel_note', 'intel_indicator', 'risk', 'incident', 'decision', 'device', 'cloud_asset', 'cloud_account', 'control'] as $t) {
             $db->createCommand()->delete($t)->execute();
         }
         $db->createCommand()->update('framework_requirement', ['applicable' => 1, 'justification' => null, 'updated_at' => null, 'updated_by' => null])->execute();
-        $db->createCommand()->delete('audit_log', ['entity_type' => ['risk', 'incident', 'decision', 'device', 'blocklist', 'indicator', 'control', 'requirement']])->execute();
+        $db->createCommand()->delete('audit_log', ['entity_type' => ['risk', 'incident', 'decision', 'device', 'cloud_account', 'cloud_asset', 'blocklist', 'indicator', 'control', 'requirement']])->execute();
         DeviceChecks::reset();
+        CloudChecks::reset();
         $this->stdout("Existing domain data removed.\n");
     }
 
@@ -183,7 +190,7 @@ class SeedController extends Controller
     {
         $db = Yii::$app->db;
         if ($db->driverName === 'mysql') {
-            foreach (['risk', 'incident', 'decision', 'device', 'incident_timeline', 'intel_blocklist', 'intel_note', 'intel_indicator', 'control', 'control_test'] as $t) {
+            foreach (['risk', 'incident', 'decision', 'device', 'cloud_account', 'cloud_asset', 'incident_timeline', 'intel_blocklist', 'intel_note', 'intel_indicator', 'control', 'control_test'] as $t) {
                 $db->createCommand("ALTER TABLE {{{$t}}} AUTO_INCREMENT = 1")->execute();
             }
         }
@@ -1126,6 +1133,144 @@ class SeedController extends Controller
             }
         }
         return $count;
+    }
+
+    // ---- Cloud Inventory ----------------------------------------------------
+
+    /**
+     * Cloud accounts and assets, cloud-check controls (two existing controls gain a
+     * cloud check) with mixed results, and links to the public-bucket incident,
+     * the cloud storage risk and the Cloudflare decision.
+     * @return array{0:int, 1:int, 2:int} accounts, assets, new controls
+     */
+    private function seedCloud(array $checks, array $risks, array $decisions, array $incidents): array
+    {
+        $find = static fn(array $records, string $needle) => array_values(array_filter(
+            $records, static fn($r) => stripos($r->title, $needle) !== false))[0] ?? null;
+
+        // Cloud checks: two existing controls extend to the cloud, three are new
+        $this->as('jpatel');
+        $guardrails = Control::find()->where(['like', 'title', 'Cloud storage guardrails'])->one();
+        $guardrails->cloud_check = Control::CHECK_MANUAL;
+        $guardrails->cloudScopeList = ['bucket'];
+        $this->save($guardrails);
+        $os = Control::findOne($checks['os_supported']);
+        $os->cloud_check = Control::CHECK_OS_SUPPORT;
+        $os->cloudScopeList = ['instance'];
+        $this->save($os);
+        $new = [];
+        foreach ([
+            'encryption' => ['Encryption at rest for cloud data stores', Control::CHECK_ENCRYPTION,
+                array_merge(CloudCatalogue::typesIn('storage'), CloudCatalogue::typesIn('data')),
+                'Buckets, volumes, backups and managed databases are encrypted at rest with provider- or customer-managed keys.',
+                ['M1041'], ['A.8.24', 'CC6.1', 'PR.DS-01', 'B3.b']],
+            'root_mfa' => ['MFA on cloud root and admin accounts', Control::CHECK_MANUAL, [CloudCatalogue::SCOPE_ACCOUNT],
+                'Root / global admin accounts use hardware MFA, have no access keys and are only used for break-glass.',
+                ['M1032', 'M1026'], ['A.5.17', 'A.8.2', 'A.8.5', 'CE-UA-4', 'CC6.1', 'PR.AA-03', 'B2.a']],
+            'audit_logging' => ['Cloud audit logging enabled', Control::CHECK_MANUAL, [CloudCatalogue::SCOPE_ACCOUNT],
+                'CloudTrail / activity logs / Workspace audit logs are enabled in every account and sent to the SIEM.',
+                ['M1047'], ['A.8.15', 'CC7.2', 'DE.CM-09', 'C1.a']],
+        ] as $key => [$title, $method, $scope, $description, $mitigations, $requirements]) {
+            $control = $this->save(new Control([
+                'title' => $title,
+                'description' => $description,
+                'control_type' => 'preventive',
+                'nature' => 'technical',
+                'status' => Control::STATUS_IMPLEMENTED,
+                'owner_id' => $this->users['jpatel'],
+                'implemented_on' => self::d(-180),
+                'test_frequency_months' => 6,
+                'cloud_check' => $method,
+                'cloudScopeList' => $scope,
+                'requirementIds' => $this->requirementIds($requirements),
+                'mitigationIds' => $this->attackIds(AttackMitigation::class, $mitigations),
+            ]));
+            $this->backdate($control, self::d(-180) . ' 10:00:00');
+            $new[$key] = $control->id;
+        }
+
+        // [name, provider, identifier, environment, owner, criticality, classification, MFA, audit logging]
+        $accounts = [];
+        foreach ([
+            'aws-prod' => ['Production (AWS)', 'aws', '111122223333', 'production', 'jpatel', 'critical', 'confidential', 'pass', 'pass'],
+            'aws-dev' => ['Development (AWS)', 'aws', '444455556666', 'development', 'jpatel', 'medium', 'internal', 'fail', ''],
+            'cloudflare' => ['Cloudflare', 'cloudflare', '0123456789abcdef0123456789abcdef', 'production', 'jpatel', 'high', 'internal', 'pass', 'pass'],
+            'workspace' => ['Google Workspace', 'google_workspace', 'example.com', 'production', 'analyst', 'high', 'confidential', 'pass', 'pass'],
+            'github' => ['GitHub organisation', 'github', 'example-org', 'production', 'jpatel', 'high', 'confidential', '', 'pass'],
+        ] as $key => [$name, $provider, $identifier, $env, $owner, $criticality, $classification, $mfa, $logging]) {
+            $this->as($owner);
+            $account = $this->save(new CloudAccount([
+                'name' => $name, 'provider' => $provider, 'account_identifier' => $identifier, 'environment' => $env,
+                'owner_id' => $this->users[$owner], 'status' => CloudAccount::STATUS_ACTIVE, 'criticality' => $criticality,
+                'data_classification' => $classification, 'checks' => [$new['root_mfa'] => $mfa, $new['audit_logging'] => $logging],
+            ]));
+            $this->backdate($account, self::d(-300) . ' 09:00:00');
+            $accounts[$key] = $account;
+        }
+
+        // [account, name, type, region, resource id, internet-facing, public IPs, endpoints, encryption, os, version, criticality,
+        //  classification, status, bucket public-access result, days since last sync (null = not synced)]
+        $rows = [
+            ['aws-prod', 'customer-portal-alb', 'load_balancer', 'eu-west-2', 'arn:aws:elasticloadbalancing:eu-west-2:111122223333:loadbalancer/app/customer-portal/50dc6c495c0c9188',
+                true, '203.0.113.10, 203.0.113.11', 'portal.example.com', 'unknown', null, null, 'critical', 'confidential', 'active', '', 1],
+            ['aws-prod', 'portal-web-01', 'instance', 'eu-west-2', 'arn:aws:ec2:eu-west-2:111122223333:instance/i-0a1b2c3d4e5f60001',
+                false, null, null, 'yes', 'Amazon Linux', '2023', 'high', 'confidential', 'active', '', 1],
+            ['aws-prod', 'portal-web-02', 'instance', 'eu-west-2', 'arn:aws:ec2:eu-west-2:111122223333:instance/i-0a1b2c3d4e5f60002',
+                false, null, null, 'yes', 'Ubuntu', '18.04 LTS', 'high', 'confidential', 'active', '', 1],
+            ['aws-prod', 'customer-exports', 'bucket', 'eu-west-2', 'arn:aws:s3:::example-customer-exports',
+                false, null, null, 'yes', null, null, 'critical', 'restricted', 'active', 'pass', 1],
+            ['aws-prod', 'erp-db', 'database', 'eu-west-2', 'arn:aws:rds:eu-west-2:111122223333:db:erp-db',
+                false, null, null, 'yes', null, null, 'critical', 'restricted', 'active', '', 1],
+            ['aws-prod', 'prod-vpc', 'vpc', 'eu-west-2', 'arn:aws:ec2:eu-west-2:111122223333:vpc/vpc-0f1e2d3c4b5a69788',
+                false, null, null, 'unknown', null, null, 'high', 'internal', 'active', '', 1],
+            ['aws-prod', 'portal-alb-sg', 'security_group', 'eu-west-2', 'arn:aws:ec2:eu-west-2:111122223333:security-group/sg-0123456789abcdef0',
+                true, null, null, 'unknown', null, null, 'high', 'internal', 'active', '', 1],
+            ['aws-prod', 'backup-vault', 'backup', 'eu-west-2', 'arn:aws:backup:eu-west-2:111122223333:backup-vault:prod-vault',
+                false, null, null, 'yes', null, null, 'critical', 'restricted', 'active', '', 1],
+            ['aws-prod', 'ci-deploy-role', 'iam_role', 'global', 'arn:aws:iam::111122223333:role/ci-deploy',
+                false, null, null, 'unknown', null, null, 'high', 'internal', 'active', '', 1],
+            ['aws-prod', 'legacy-reports', 'bucket', 'eu-west-1', 'arn:aws:s3:::example-legacy-reports',
+                true, null, 'example-legacy-reports.s3.eu-west-1.amazonaws.com', 'no', null, null, 'medium', 'confidential', 'active', 'fail', 45],
+            ['aws-dev', 'dev-sandbox-01', 'instance', 'eu-west-2', 'arn:aws:ec2:eu-west-2:444455556666:instance/i-0dev0000000000001',
+                true, '198.51.100.40', null, 'unknown', 'Windows Server', '2012 R2', 'low', 'internal', 'stopped', '', null],
+            ['aws-dev', 'dev-artifacts', 'bucket', 'eu-west-2', 'arn:aws:s3:::example-dev-artifacts',
+                false, null, null, 'unknown', null, null, 'low', 'internal', 'active', '', null],
+            ['cloudflare', 'example.com', 'dns_zone', 'global', '023e105f4ecef8ad9ca31a8372d0c353',
+                true, null, 'example.com', 'unknown', null, null, 'high', 'public', 'active', '', null],
+            ['cloudflare', 'Portal WAF ruleset', 'waf', 'global', 'portal-waf-custom-rules',
+                true, null, 'portal.example.com', 'unknown', null, null, 'high', 'internal', 'active', '', null],
+            ['github', 'infrastructure', 'repository', 'global', 'example-org/infrastructure',
+                false, null, null, 'unknown', null, null, 'high', 'confidential', 'active', '', null],
+        ];
+        $this->as('jpatel');
+        $assets = [];
+        foreach ($rows as [$acc, $name, $type, $region, $resourceId, $exposed, $ips, $endpoints, $encryption, $os, $version, $criticality, $classification, $status, $public, $seen]) {
+            $asset = $this->save(new CloudAsset([
+                'account_id' => $accounts[$acc]->id, 'name' => $name, 'resource_type' => $type, 'region' => $region, 'resource_id' => $resourceId,
+                'internet_facing' => $exposed, 'public_ips' => $ips, 'public_endpoints' => $endpoints, 'encryption_at_rest' => $encryption,
+                'os' => $os, 'os_version' => $version, 'criticality' => $criticality, 'data_classification' => $classification, 'status' => $status,
+                'owner_id' => $this->users['jpatel'],
+                'source' => $seen === null ? null : 'aws', 'source_id' => $seen === null ? null : $resourceId,
+                'first_seen_at' => $seen === null ? null : self::d(-200) . ' 06:00:00',
+                'last_seen_at' => $seen === null ? null : self::d(-$seen) . ' 06:00:00',
+                'checks' => $type === 'bucket' ? [$guardrails->id => $public] : [],
+            ]));
+            $this->backdate($asset, self::d(-200) . ' 09:00:00');
+            $assets[$name] = $asset;
+        }
+
+        // Links (recorded on the risk / incident / decision side; inserted directly so their histories stay as seeded)
+        $db = Yii::$app->db;
+        $link = static function (string $table, string $column, ?ActiveRecord $owner, array $names) use ($db, $assets) {
+            if ($owner) {
+                $db->createCommand()->batchInsert($table, [$column, 'cloud_asset_id', 'created_at'],
+                    array_map(static fn($n) => [$owner->id, $assets[$n]->id, Actor::now()], $names))->execute();
+            }
+        };
+        $link('incident_cloud_asset', 'incident_id', $find($incidents, 'Publicly accessible S3'), ['customer-exports']);
+        $link('risk_cloud_asset', 'risk_id', $find($risks, 'Misconfigured cloud storage'), ['customer-exports', 'legacy-reports', 'dev-artifacts']);
+        $link('decision_cloud_asset', 'decision_id', $find($decisions, 'Cloudflare for DDoS'), ['customer-portal-alb', 'Portal WAF ruleset', 'example.com']);
+        return [count($accounts), count($assets), count($new)];
     }
 
     private function linkDecisions(array $decisions, array $incidents): void

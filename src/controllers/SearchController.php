@@ -5,6 +5,8 @@ namespace app\controllers;
 use app\components\Rbac;
 use app\modules\attack\models\AttackMitigation;
 use app\modules\attack\models\AttackTechnique;
+use app\modules\cloud\models\CloudAccount;
+use app\modules\cloud\models\CloudAsset;
 use app\modules\control\models\Control;
 use app\modules\control\components\FrameworkCatalogue;
 use app\modules\control\models\FrameworkRequirement;
@@ -46,7 +48,7 @@ class SearchController extends Controller
         $investigate = $q !== '' && !ctype_digit($q) ? Indicator::parse($q) : null;
         if ($q !== '') {
             // Exact reference / asset tag / ATT&CK id match: jump straight to the record
-            foreach ([Risk::class, Control::class, Decision::class, Incident::class, Device::class, BlocklistEntry::class, AttackTechnique::class, AttackMitigation::class, FrameworkRequirement::class] as $class) {
+            foreach ([Risk::class, Control::class, Decision::class, Incident::class, Device::class, CloudAsset::class, CloudAccount::class, BlocklistEntry::class, AttackTechnique::class, AttackMitigation::class, FrameworkRequirement::class] as $class) {
                 $query = $class::find()->where([$class::referenceAttribute() => $q]);
                 if ($class === FrameworkRequirement::class) {
                     $query->andWhere(FrameworkCatalogue::scopeCondition());   // not frameworks switched off
@@ -79,6 +81,14 @@ class SearchController extends Controller
                         ['like', 'assigned_to', $q], ['like', 'assigned_email', $q], ['like', 'ip_addresses', $q], ['like', 'mac_address', $q],
                     ])
                     ->orderBy(['archived_at' => SORT_ASC, 'asset_tag' => SORT_ASC])->limit(self::LIMIT)->all()],
+                'cloud-assets' => ['label' => 'Cloud assets', 'icon' => 'cloud', 'items' => CloudAsset::find()
+                    ->where(['or',
+                        ['like', 'reference', $q], ['like', 'name', $q], ['like', 'resource_id', $q], ['like', 'public_ips', $q], ['like', 'public_endpoints', $q],
+                    ])
+                    ->orderBy(['archived_at' => SORT_ASC, 'reference' => SORT_ASC])->limit(self::LIMIT)->all()],
+                'cloud-accounts' => ['label' => 'Cloud accounts', 'icon' => 'cloud-check', 'items' => CloudAccount::find()
+                    ->where(['or', ['like', 'reference', $q], ['like', 'name', $q], ['like', 'account_identifier', $q]])
+                    ->orderBy(['archived_at' => SORT_ASC, 'reference' => SORT_ASC])->limit(self::LIMIT)->all()],
                 'techniques' => ['label' => 'ATT&CK techniques', 'icon' => 'crosshair', 'items' => AttackTechnique::find()->with('parent')
                     ->where(['or', ['like', 'external_id', $q], ['like', 'name', $q]])
                     ->orderBy(['is_deprecated' => SORT_ASC, 'is_subtechnique' => SORT_ASC, 'external_id' => SORT_ASC])->limit(self::LIMIT)->all()],

@@ -10,6 +10,7 @@ use app\helpers\Dt;
 use app\components\Rbac;
 use app\models\Attachment;
 use app\modules\attack\widgets\TechniqueTags;
+use app\modules\cloud\models\CloudAsset;
 use app\modules\control\models\Control;
 use app\modules\incident\models\Incident;
 use app\modules\inventory\models\Device;
@@ -36,6 +37,7 @@ $this->params['actions'] = RecordActions::widget(['model' => $model]);
 $fmt = Yii::$app->formatter;
 
 $devices = $model->devices;
+$cloudAssets = $model->cloudAssets;
 $risks = $model->risks;
 $decisions = $model->decisions;
 $techniques = $model->techniques;
@@ -103,6 +105,8 @@ ob_start(); ?>
 <div class="row g-4">
     <div class="col-lg-4"><?= LinkedRecords::widget(['title' => 'Affected devices', 'icon' => 'pc-display', 'models' => $devices,
         'extra' => static fn(Device $d) => Badge::criticality($d->criticality)]) ?></div>
+    <div class="col-lg-4"><?= LinkedRecords::widget(['title' => 'Affected cloud assets', 'icon' => 'cloud', 'models' => $cloudAssets,
+        'extra' => static fn(CloudAsset $a) => Badge::criticality($a->criticality)]) ?></div>
     <div class="col-lg-4"><?= LinkedRecords::widget(['title' => 'Related risks', 'icon' => 'exclamation-triangle', 'models' => $risks,
         'extra' => static fn(Risk $r) => Badge::score($r->getCurrentScore())]) ?></div>
     <div class="col-lg-4"><?= LinkedRecords::widget(['title' => 'Related decisions', 'icon' => 'journal-check', 'models' => $decisions,
@@ -130,7 +134,7 @@ ob_start(); ?>
             'canEdit' => Rbac::canManage() && !$model->getIsArchived(),
             'editUrl' => ['update', 'id' => $model->id],
         ]), 'options' => ['id' => 'tab-attack']],
-        ['label' => 'Links (' . (count($devices) + count($risks) + count($decisions) + $controlCount) . ')', 'content' => $links, 'options' => ['id' => 'tab-links']],
+        ['label' => 'Links (' . (count($devices) + count($cloudAssets) + count($risks) + count($decisions) + $controlCount) . ')', 'content' => $links, 'options' => ['id' => 'tab-links']],
         ['label' => 'Files (' . count($attachments) . ')', 'content' => Attachments::widget(['model' => $model, 'attachments' => $attachments]), 'options' => ['id' => 'tab-files']],
         ['label' => 'History', 'content' => AuditHistory::widget(['entityType' => 'incident', 'entityId' => $model->id]), 'options' => ['id' => 'tab-history']],
     ],

@@ -6,6 +6,34 @@ releases).
 
 ## [Unreleased]
 
+### Added
+
+- **Cloud Inventory**: a register of cloud accounts (AWS accounts, Azure subscriptions, Google Cloud projects and SaaS
+  tenants such as Google Workspace, Microsoft 365, GitHub and Cloudflare; references `ACC-0001`...) and the cloud
+  assets in them (`CLD-0001`...): instances, container clusters, serverless functions, VPCs, subnets, security groups,
+  load balancers, gateways, buckets, volumes, backups, databases, queues, IAM roles and users, keys, secrets,
+  certificates, DNS zones, domains, CDNs, WAF policies, repositories and SaaS integrations. Each asset records its
+  region, resource ID (ARN), environment, owner, criticality, data classification, whether it is internet-facing,
+  its public IPs and endpoints, encryption at rest and, for instances, the OS (unsupported images are flagged like
+  devices). Filters for non-compliant, not assessed, internet-facing, not seen recently, OS end of support and
+  archived; an account that still has assets cannot be deleted. Accounts and assets take Files (evidence) and have
+  a full history.
+- **Cloud checks** in the Control Register: a control can be checked on cloud assets of chosen resource types and / or
+  on cloud accounts, recorded per record (pass / fail), from an instance's OS (*Supported OS*) or from the asset's
+  *Encrypted at rest* answer. Assets and accounts get a posture (compliant / non-compliant / not assessed), the
+  control page shows the results with links to the matching assets, and the Cyber Essentials page lists the cloud
+  checks mapped to its requirements. Compliance stays rolled up through controls, as for devices.
+- Risks and incidents can name **affected cloud assets** and decisions **related cloud assets** (also in the risk
+  and decision PDFs); the asset page lists them, with the ATT&CK techniques observed on its incidents and its
+  Enterprise ATT&CK platforms (IaaS, SaaS, Office Suite, Identity Provider, Containers, plus the guest OS).
+- The dashboard has *Cloud assets* and *Cloud compliance* tiles (two rows of five on wide screens), a *Cloud posture*
+  chart, and *Needs attention* groups for internet-facing cloud assets failing checks, non-compliant cloud assets and
+  accounts, cloud instances on an unsupported OS and cloud assets not seen recently. Global search finds accounts
+  and assets (reference, name, resource ID, account identifier, public IP or endpoint), and an IP investigation
+  recognises your own cloud assets' public addresses.
+- The demo data includes five cloud accounts, fifteen assets and three new cloud-check controls; the existing
+  *Cloud storage guardrails* and *Supported operating systems* controls are also checked on buckets and instances.
+
 ## [0.3.0-alpha] - 2026-10-28
 
 ### Added

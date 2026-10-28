@@ -11,6 +11,7 @@
  *  - tooltips                           Bootstrap tooltips for heatmap cells, icon buttons and titled badges
  *  - [data-gw-depends][data-gw-value]  shows a block only when the referenced select/checkbox matches
  *  - [data-gw-check-types][data-gw-check-ownership]  device form: shows a device check only when it applies
+ *  - [data-gw-cloud-types]  cloud asset form: shows a cloud check only when it applies to the resource type
  *  - [data-gw-score]                    live L x I score preview on the risk form
  *  - [data-gw-countdown]                live countdown to an ISO deadline (regulator 72h)
  *  - #hash on view pages                opens the matching Bootstrap tab (e.g. #tab-history)
@@ -202,6 +203,21 @@
         };
         type.addEventListener('change', update);
         document.querySelectorAll('input[name="Device[ownership]"]').forEach(function (r) { r.addEventListener('change', update); });
+        update();
+    }
+
+    // ---- Cloud checks: show only those that apply to the asset's resource type ----
+    function initCloudChecks() {
+        var blocks = document.querySelectorAll('[data-gw-cloud-types]');
+        var type = document.getElementById('cloudasset-resource_type');
+        if (!blocks.length || !type) { return; }
+        var update = function () {
+            blocks.forEach(function (block) {
+                var types = block.getAttribute('data-gw-cloud-types');
+                block.hidden = !!types && types.split(',').indexOf(type.value) === -1;
+            });
+        };
+        type.addEventListener('change', update);
         update();
     }
 
@@ -499,6 +515,7 @@
         initGrids();
         initDepends();
         initDeviceChecks();
+        initCloudChecks();
         initScorePreview();
         initCountdowns();
         initTabs();

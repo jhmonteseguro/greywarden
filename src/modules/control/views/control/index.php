@@ -44,6 +44,9 @@ $today = date('Y-m-d');
                 if ($m->device_check) {
                     $flags[] = Badge::render('control-type', 'device-check', 'Device check', ['title' => $m->getDeviceScopeLabel(), 'icon' => 'pc-display']);
                 }
+                if ($m->cloud_check) {
+                    $flags[] = Badge::render('control-type', 'cloud-check', 'Cloud check', ['title' => $m->getCloudScopeLabel(), 'icon' => 'cloud']);
+                }
                 if ($flag = $m->testFlag($today)) {
                     $flags[] = $flag;
                 }

@@ -25,6 +25,8 @@ final class Navigation
                     ['label' => 'Decision Log', 'icon' => 'journal-check', 'url' => ['/decision/decision/index'], 'permission' => Rbac::PERM_VIEW, 'active' => ['decision/']],
                     ['label' => 'Incident Log', 'icon' => 'fire', 'url' => ['/incident/incident/index'], 'permission' => Rbac::PERM_VIEW, 'active' => ['incident/']],
                     ['label' => 'Device Inventory', 'icon' => 'pc-display', 'url' => ['/inventory/device/index'], 'permission' => Rbac::PERM_VIEW, 'active' => ['inventory/']],
+                    ['label' => 'Cloud Inventory', 'icon' => 'cloud', 'url' => ['/cloud/asset/index'], 'permission' => Rbac::PERM_VIEW, 'active' => ['cloud/asset/']],
+                    ['label' => 'Cloud Accounts', 'icon' => 'cloud-check', 'url' => ['/cloud/account/index'], 'permission' => Rbac::PERM_VIEW, 'active' => ['cloud/account/']],
                 ],
             ],
             [

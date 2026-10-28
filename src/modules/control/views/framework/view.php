@@ -9,6 +9,7 @@
  * @var array $summary FrameworkCoverage::summary() of all rows
  * @var string $state current state filter ('' = all)
  * @var array|null $devices Cyber Essentials device readiness (see FrameworkController::deviceReadiness())
+ * @var array|null $cloud Cyber Essentials cloud readiness (see FrameworkController::cloudReadiness())
  * @var string[]|null $soc2Scope SOC 2 Trust Services categories in scope
  */
 
@@ -82,6 +83,29 @@ $filters = ['' => 'All'] + FrameworkCoverage::stateLabels();
                     </table>
                 <?php endif; ?>
             </section>
+            <?php if ($cloud !== null && $cloud['checks']): ?>
+            <section class="gw-panel gw-panel--flush gw-cloud-readiness">
+                <h2 class="gw-panel__title"><i class="bi bi-cloud" aria-hidden="true"></i> Cloud checks in scope
+                    <span class="gw-panel__count"><?= (int) $cloud['total'] ?> cloud assets</span></h2>
+                <table class="table gw-coverage__table">
+                    <thead><tr><th scope="col">Check</th><th scope="col" class="text-end">Pass</th><th scope="col" class="text-end">Fail</th><th scope="col" class="text-end">Not assessed</th></tr></thead>
+                    <tbody>
+                    <?php foreach ($cloud['checks'] as $id => $c): ?>
+                        <tr>
+                            <td><?= Html::a(Html::encode($c['check']->reference), ['/control/control/view', 'id' => $id], ['class' => 'gw-ref']) ?>
+                                <?= Html::encode($c['check']->title) ?>
+                                <div class="gw-muted gw-small gw-mono"><?= Html::encode(implode(', ', $c['requirements'])) ?></div></td>
+                            <?php foreach (['pass', 'fail', 'unknown'] as $k): ?>
+                                <td class="text-end gw-mono"><?= $c[$k]
+                                    ? Html::a($c[$k], [$c['accounts'] ? '/cloud/account/index' : '/cloud/asset/index', 'filter' => 'active', 'control' => $id, 'result' => $k], ['class' => $k === 'pass' ? null : 'gw-text-warning'])
+                                    : '<span class="gw-null">0</span>' ?></td>
+                            <?php endforeach; ?>
+                        </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </section>
+            <?php endif; ?>
         </div>
     <?php endif; ?>
 </div>

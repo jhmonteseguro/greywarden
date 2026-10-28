@@ -98,13 +98,14 @@ I1=$(id_of incident reference INC-0001); I13=$(id_of incident reference INC-0013
 B1=$(id_of intel_blocklist reference BLK-0001); B6=$(id_of intel_blocklist reference BLK-0006)
 V1=$(id_of device asset_tag DEV-0001); V26=$(id_of device asset_tag DEV-0026); V38=$(id_of device asset_tag DEV-0038)
 C1=$(id_of control reference CTL-0001); C5=$(id_of control reference CTL-0005); C8=$(id_of control reference CTL-0008); C18=$(id_of control reference CTL-0018)
+CLD1=$(id_of cloud_asset reference CLD-0001); CLD10=$(id_of cloud_asset reference CLD-0010); ACC1=$(id_of cloud_account reference ACC-0001); ACC2=$(id_of cloud_account reference ACC-0002)
 REQ_ISO=$(sql "SELECT id FROM framework_requirement WHERE external_id='A.8.7'"); REQ_CE=$(sql "SELECT id FROM framework_requirement WHERE external_id='CE-UA-4'")
 REQ_SOC2=$(sql "SELECT id FROM framework_requirement WHERE external_id='CC6.1'"); REQ_SOC2_A=$(sql "SELECT id FROM framework_requirement WHERE external_id='A1.2'")
 REQ_NIST=$(sql "SELECT id FROM framework_requirement WHERE external_id='PR.AA-01'"); REQ_CAF=$(sql "SELECT id FROM framework_requirement WHERE external_id='B4.d'")
 # Manual device checks in force, as Device[checks][<id>]=<result> fields
 CHECKS=($(sql "SELECT id FROM control WHERE device_check='manual' AND status IN ('implementing','implemented') AND archived_at IS NULL ORDER BY id"))
 checks() { local r=$1; for c in "${CHECKS[@]}"; do echo "Device[checks][$c]=$r"; done; }
-if [[ -z "$R1" || -z "$I19" || -z "$V38" || -z "$B1" || -z "$C18" || -z "$REQ_ISO" ]]; then echo "Demo data missing - run: make seed"; exit 1; fi
+if [[ -z "$R1" || -z "$I19" || -z "$V38" || -z "$B1" || -z "$C18" || -z "$REQ_ISO" || -z "$CLD10" || -z "$ACC2" ]]; then echo "Demo data missing - run: make seed"; exit 1; fi
 
 # ---------------------------------------------------------------- temporary admin + cleanup
 SMOKE_USER="smoke.user.$$"
@@ -168,6 +169,12 @@ READ_PAGES=(
     /devices "/devices?filter=active" "/devices?filter=mine" "/devices?filter=non-compliant" "/devices?filter=not-assessed" "/devices?filter=warranty" "/devices?filter=eol"
     "/devices?filter=active&control=$C5&result=fail" "/devices?filter=active&control=$C1&result=unknown" "/devices?filter=stale" "/devices?filter=unsupported-os" "/devices?filter=all&sort=-last_seen_at"
     "/devices?filter=all&sort=-criticality&device_type=laptop" /devices/$V1 /devices/$V26 /devices/$V38
+    # Cloud Inventory
+    /cloud/assets "/cloud/assets?filter=active" "/cloud/assets?filter=mine" "/cloud/assets?filter=non-compliant" "/cloud/assets?filter=not-assessed"
+    "/cloud/assets?filter=internet-facing" "/cloud/assets?filter=stale" "/cloud/assets?filter=unsupported-os" "/cloud/assets?filter=archived"
+    "/cloud/assets?filter=all&sort=-last_seen_at&provider=aws&category=storage" "/cloud/assets?account_id=$ACC1" /cloud/assets/$CLD1 /cloud/assets/$CLD10
+    /cloud/accounts "/cloud/accounts?filter=non-compliant" "/cloud/accounts?filter=not-assessed" "/cloud/accounts?filter=archived" /cloud/accounts/$ACC1 /cloud/accounts/$ACC2
+    "/controls?filter=cloud-checks" "/search?q=arn:aws" /intel/ip/203.0.113.10
     "/?heatmap=inherent"
     # Control Register and frameworks
     /controls "/controls?filter=mine" "/controls?filter=planned" "/controls?filter=implemented" "/controls?filter=test-due-soon" "/controls?filter=test-overdue" "/controls?filter=weak"
@@ -189,6 +196,7 @@ READ_PAGES=(
     "/search?q=203.0.113.66" "/search?q=AS64511" "/search?q=bulletproof"
 )
 WRITE_PAGES=(/risks/create /risks/$R1/update /controls/create /controls/$C1/update /controls/$C5/update /decisions/create /decisions/$D1/update /incidents/create /incidents/$I1/update /devices/create /devices/$V1/update
+    /cloud/assets/create "/cloud/assets/create?account=$ACC1" /cloud/assets/$CLD1/update /cloud/accounts/create /cloud/accounts/$ACC1/update
     /intel/blocklist/create "/intel/blocklist/create?value=192.0.2.99" /intel/blocklist/$B1/update)
 U2=$(id_of user username viewer)
 ADMIN_PAGES=(/admin/user /admin/user/1 /admin/user/$U2 /admin/user/create /admin/user/$U2/update /admin/user/$U2/reset-password
@@ -217,6 +225,17 @@ grep -q 'past its vendor end of support' "$BODY" && ok || bad "supported-OS devi
 check viewer "/devices?filter=active&control=$OSCHECK&result=fail" 200
 grep -q 'Windows 10' "$BODY" && ok || bad "Windows 10 devices do not fail the supported-OS check"
 check analyst /search?q=CTL-0001 302
+check analyst /search?q=CLD-0001 302
+check analyst /search?q=ACC-0001 302
+check viewer /cloud/assets/999999 404
+check viewer / 200
+grep -q 'gw-dashboard-panel--cloud-posture' "$BODY" && grep -q 'gw-attention__group--cloud-exposed' "$BODY" && ok || bad "cloud posture / exposed cloud assets missing from the dashboard"
+check viewer "/cloud/assets?filter=stale" 200
+grep -q 'legacy-reports' "$BODY" && ok || bad "stale cloud asset missing from the Not seen recently filter"
+check viewer /intel/ip/203.0.113.10 200
+grep -q 'Your cloud asset' "$BODY" && ok || bad "intel report does not recognise the cloud load balancer's address"
+check viewer /frameworks/cyber-essentials 200
+grep -q 'Cloud checks in scope' "$BODY" && ok || bad "cloud checks missing from Cyber Essentials readiness"
 check analyst /search?q=A.8.7 302
 check analyst /search?q=CC6.1 302
 check analyst /search?q=PR.AA-01 302
@@ -355,6 +374,47 @@ post analyst "/devices/$VID" "/devices/$VID/restore" 302
 post analyst "/devices/$VID" "/devices/$VID/archive" 302
 post admin "/devices/$VID" "/devices/$VID/delete" 302
 check admin "/devices/$VID" 404
+
+# Cloud Inventory: account and asset create / validation / update / archive / delete, account delete guard
+CLOUD_MFA=$(sql "SELECT id FROM control WHERE cloud_check='manual' AND cloud_scope='account' AND title LIKE 'MFA%' LIMIT 1")
+CLOUD_PUBLIC=$(sql "SELECT id FROM control WHERE cloud_check='manual' AND cloud_scope='bucket' LIMIT 1")
+post analyst /cloud/accounts/create /cloud/accounts/create 302 \
+    "CloudAccount[name]=Smoke cloud account" "CloudAccount[provider]=azure" "CloudAccount[account_identifier]=00000000-0000-0000-0000-00000000smok" \
+    "CloudAccount[environment]=test" "CloudAccount[status]=active" "CloudAccount[criticality]=low" "CloudAccount[data_classification]=internal" \
+    "CloudAccount[owner_id]=" "CloudAccount[checks][$CLOUD_MFA]=fail"
+SACC=$(last_id cloud_account)
+check analyst "/cloud/accounts/$SACC" 200
+grep -q 'Smoke cloud account' "$BODY" && grep -q 'data-value="non-compliant"' "$BODY" && ok || bad "cloud account create / account check failed"
+post analyst /cloud/assets/create /cloud/assets/create 200 \
+    "CloudAsset[account_id]=$SACC" "CloudAsset[name]=smoke-bucket" "CloudAsset[resource_type]=bucket" "CloudAsset[status]=active" "CloudAsset[criticality]=low" \
+    "CloudAsset[data_classification]=internal" "CloudAsset[encryption_at_rest]=yes" "CloudAsset[public_ips]=203.0.113.999" "CloudAsset[environment]="
+grep -q 'Invalid IP address' "$BODY" && ok || bad "cloud asset IP validation not shown"
+post analyst /cloud/assets/create /cloud/assets/create 302 \
+    "CloudAsset[account_id]=$SACC" "CloudAsset[name]=smoke-bucket" "CloudAsset[resource_type]=bucket" "CloudAsset[status]=active" "CloudAsset[criticality]=low" \
+    "CloudAsset[data_classification]=internal" "CloudAsset[encryption_at_rest]=yes" "CloudAsset[internet_facing]=1" "CloudAsset[public_ips]=203.0.113.250" \
+    "CloudAsset[environment]=" "CloudAsset[checks][$CLOUD_PUBLIC]=pass"
+SAID=$(last_id cloud_asset)
+check analyst "/cloud/assets/$SAID" 200
+grep -q 'CLD-00' "$BODY" && grep -q 'data-value="compliant"' "$BODY" && grep -q 'Internet-facing' "$BODY" && ok || bad "cloud asset create / posture failed"
+grep -q 'Test' "$BODY" && ok || bad "cloud asset did not take the account's environment"
+post analyst "/cloud/assets/$SAID/update" "/cloud/assets/$SAID/update" 302 \
+    "CloudAsset[account_id]=$SACC" "CloudAsset[name]=smoke-bucket" "CloudAsset[resource_type]=bucket" "CloudAsset[status]=active" "CloudAsset[criticality]=medium" \
+    "CloudAsset[data_classification]=internal" "CloudAsset[encryption_at_rest]=no" "CloudAsset[environment]=test" "CloudAsset[checks][$CLOUD_PUBLIC]=fail"
+check analyst "/cloud/assets/$SAID" 200
+grep -q 'Non-compliant' "$BODY" && grep -q 'Not encrypted at rest' "$BODY" && ok || bad "cloud asset update / posture change failed"
+post analyst "/cloud/accounts/$SACC" "/cloud/accounts/$SACC/archive" 302
+post admin "/cloud/accounts/$SACC" "/cloud/accounts/$SACC/delete" 302
+[[ -n "$(sql "SELECT id FROM cloud_account WHERE id=$SACC")" ]] && ok || bad "cloud account with assets was deleted"
+post analyst "/cloud/assets/$SAID" "/cloud/assets/$SAID/archive" 302
+check analyst "/cloud/assets?filter=archived" 200
+grep -q 'smoke-bucket' "$BODY" && ok || bad "archived cloud asset not in archived filter"
+post analyst "/cloud/assets/$SAID" "/cloud/assets/$SAID/delete" 403
+post admin "/cloud/assets/$SAID" "/cloud/assets/$SAID/delete" 302
+post admin "/cloud/accounts/$SACC" "/cloud/accounts/$SACC/delete" 302
+check admin "/cloud/accounts/$SACC" 404
+post analyst /controls/create /controls/create 200 "Control[title]=Smoke cloud check" "Control[status]=implemented" "Control[control_type]=preventive" \
+    "Control[nature]=technical" "Control[cloud_check]=encryption" "Control[cloudScopeList]=" "Control[cloudScopeList][]=account"
+grep -q 'Only a check recorded on each asset' "$BODY" && ok || bad "computed cloud check on accounts accepted"
 
 # Control: validation, create with frameworks / ATT&CK / risk link, device check, tests, incident roles, archive/delete
 MFA_MIT=$(sql "SELECT id FROM attack_mitigation WHERE external_id='M1032'")

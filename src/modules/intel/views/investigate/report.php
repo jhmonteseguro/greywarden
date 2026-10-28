@@ -76,7 +76,7 @@ ob_start(); ?>
 <?php $intel = ob_get_clean();
 
 $notes = $model->notes;
-$correlations = count($local->blocks) + count($local->devices) + count($local->incidents);
+$correlations = count($local->blocks) + count($local->devices) + count($local->cloudAssets) + count($local->incidents);
 $items = [
     ['label' => '<i class="bi bi-radar"></i> Intelligence', 'encode' => false, 'content' => $intel, 'options' => ['id' => 'tab-intel']],
 ];

@@ -7,6 +7,7 @@ use app\models\DomainRecord;
 use app\models\Lookup;
 use app\models\User;
 use app\modules\attack\models\AttackTechnique;
+use app\modules\cloud\models\CloudAsset;
 use app\modules\control\models\Control;
 use app\modules\decision\models\Decision;
 use app\modules\incident\components\IncidentMetrics;
@@ -73,6 +74,8 @@ class Incident extends DomainRecord
 
     /** @var int[]|string|null link ids (null = not submitted) */
     public $deviceIds = null;
+    /** @var int[]|string|null link ids (null = not submitted) */
+    public $cloudAssetIds = null;
     /** @var int[]|string|null link ids (null = not submitted) */
     public $riskIds = null;
     /** @var int[]|string|null ATT&CK technique ids (null = not submitted) */
@@ -160,6 +163,7 @@ class Incident extends DomainRecord
     {
         return [
             'deviceIds' => ['table' => 'incident_device', 'self' => 'incident_id', 'other' => 'device_id', 'class' => Device::class, 'label' => 'Affected devices'],
+            'cloudAssetIds' => ['table' => 'incident_cloud_asset', 'self' => 'incident_id', 'other' => 'cloud_asset_id', 'class' => CloudAsset::class, 'label' => 'Affected cloud assets'],
             'riskIds' => ['table' => 'risk_incident', 'self' => 'incident_id', 'other' => 'risk_id', 'class' => Risk::class, 'label' => 'Related risks'],
             'techniqueIds' => ['table' => 'incident_attack_technique', 'self' => 'incident_id', 'other' => 'technique_id', 'class' => AttackTechnique::class, 'label' => 'ATT&CK techniques'],
             'detectedByControlIds' => ['table' => 'incident_control', 'self' => 'incident_id', 'other' => 'control_id', 'class' => Control::class,
@@ -237,6 +241,7 @@ class Incident extends DomainRecord
             ['assigned_to_id', 'exist', 'targetClass' => User::class, 'targetAttribute' => 'id'],
             ['root_cause', 'required', 'when' => fn() => $this->status === self::STATUS_CLOSED && in_array($this->severity, [self::SEVERITY_CRITICAL, self::SEVERITY_HIGH], true), 'whenClient' => 'function(){return false;}', 'message' => 'Record the root cause before closing a high or critical incident.'],
             ['deviceIds', 'each', 'rule' => ['exist', 'targetClass' => Device::class, 'targetAttribute' => 'id']],
+            ['cloudAssetIds', 'each', 'rule' => ['exist', 'targetClass' => CloudAsset::class, 'targetAttribute' => 'id']],
             ['riskIds', 'each', 'rule' => ['exist', 'targetClass' => Risk::class, 'targetAttribute' => 'id']],
             ['techniqueIds', 'each', 'rule' => ['exist', 'targetClass' => AttackTechnique::class, 'targetAttribute' => 'id']],
             [['detectedByControlIds', 'failedControlIds', 'responseControlIds'], 'each', 'rule' => ['exist', 'targetClass' => Control::class, 'targetAttribute' => 'id']],
@@ -344,6 +349,11 @@ class Incident extends DomainRecord
     public function getDevices()
     {
         return $this->hasMany(Device::class, ['id' => 'device_id'])->viaTable('incident_device', ['incident_id' => 'id']);
+    }
+
+    public function getCloudAssets()
+    {
+        return $this->hasMany(CloudAsset::class, ['id' => 'cloud_asset_id'])->viaTable('incident_cloud_asset', ['incident_id' => 'id']);
     }
 
     public function getRisks()

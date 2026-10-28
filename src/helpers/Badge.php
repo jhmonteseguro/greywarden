@@ -3,6 +3,7 @@
 namespace app\helpers;
 
 use app\modules\attack\components\Coverage;
+use app\modules\cloud\models\CloudAsset;
 use app\modules\inventory\components\OsLifecycle;
 use app\modules\inventory\models\Device;
 use yii\helpers\Html;
@@ -43,6 +44,11 @@ final class Badge
             'lost' => 'danger', 'stolen' => 'danger', 'disposed' => 'muted',
         ],
         'ownership' => ['company' => 'neutral', 'byod' => 'info'],
+        // Cloud Inventory (app\modules\cloud)
+        'cloud-status' => ['active' => 'success', 'stopped' => 'neutral', 'decommissioned' => 'muted', 'suspended' => 'warning', 'closed' => 'muted'],
+        'environment' => ['production' => 'high', 'staging' => 'info', 'development' => 'neutral', 'test' => 'neutral', 'shared' => 'info'],
+        'exposure' => ['internet' => 'warning'],
+        'encryption' => ['yes' => 'success', 'no' => 'danger', 'unknown' => 'neutral'],
         'classification' => ['public' => 'low', 'internal' => 'info', 'confidential' => 'high', 'restricted' => 'critical'],
         'user-status' => ['10' => 'success', '0' => 'muted'],
         'role' => ['admin' => 'critical', 'analyst' => 'info', 'viewer' => 'neutral'],
@@ -168,7 +174,7 @@ final class Badge
         );
     }
 
-    /** Device posture: compliant | non-compliant | not-assessed (DevicePosture::STATE_*) */
+    /** Device / cloud posture: compliant | non-compliant | not-assessed (DevicePosture::STATE_*) */
     public static function posture(string $state, ?string $title = null): string
     {
         $icons = ['compliant' => 'shield-check', 'non-compliant' => 'shield-exclamation', 'not-assessed' => 'shield'];
@@ -176,7 +182,7 @@ final class Badge
             array_filter(['icon' => $icons[$state] ?? null, 'title' => $title]));
     }
 
-    /** Device check result: pass | fail | unknown */
+    /** Device / cloud check result: pass | fail | unknown */
     public static function checkResult(string $result): string
     {
         $icons = ['pass' => 'check-lg', 'fail' => 'x-lg', 'unknown' => 'question-lg'];
@@ -213,16 +219,16 @@ final class Badge
             : self::flag('os-ending', 'OS support ending', 'Security updates end ' . $date);
     }
 
-    /** Last-seen flag for a synced device: 'missing' past Device::staleCriticalDays(), 'stale' past Device::staleDays() */
-    public static function lastSeen(Device $device, ?string $today = null): string
+    /** Last-seen flag for a synced device or cloud asset: 'missing' past its staleCriticalDays(), 'stale' past its staleDays() */
+    public static function lastSeen(Device|CloudAsset $record, ?string $today = null): string
     {
-        $tone = $device->getLastSeenTone($today);
+        $tone = $record->getLastSeenTone($today);
         if ($tone === null) {
             return '';
         }
-        $title = sprintf('No sync from %s for more than %d days', $device->getSourceLabel() ?? 'its source',
-            $tone === 'danger' ? Device::staleCriticalDays() : Device::staleDays());
-        return self::flag($tone === 'danger' ? 'missing' : 'stale', 'Not seen ' . $device->getLastSeenDays($today) . 'd', $title);
+        $title = sprintf('No sync from %s for more than %d days', $record->getSourceLabel() ?? 'its source',
+            $tone === 'danger' ? $record::staleCriticalDays() : $record::staleDays());
+        return self::flag($tone === 'danger' ? 'missing' : 'stale', 'Not seen ' . $record->getLastSeenDays($today) . 'd', $title);
     }
 
     /** ATT&CK mitigation adoption state: implemented | approved | proposed | gap */

@@ -22,6 +22,8 @@ class Module extends \yii\base\Module
         widgets\PendingDecisionsKpi::class,
         widgets\ActiveDevicesKpi::class,
         widgets\DeviceComplianceKpi::class,
+        widgets\CloudAssetsKpi::class,
+        widgets\CloudComplianceKpi::class,
         widgets\OverdueReviewsKpi::class,
     ];
 
@@ -31,6 +33,7 @@ class Module extends \yii\base\Module
         ['class' => widgets\IncidentTrendPanel::class, 'span' => 'col-xxl-7 col-xl-6'],
         ['class' => widgets\NeedsAttentionPanel::class, 'span' => 'col-xxl-7 col-xl-6'],
         ['class' => widgets\DevicePosturePanel::class, 'span' => 'col-xxl-5 col-xl-6'],
+        ['class' => widgets\CloudPosturePanel::class, 'span' => 'col-12'],
         ['class' => widgets\ControlsPanel::class, 'span' => 'col-12'],
         ['class' => widgets\AttackPanel::class, 'span' => 'col-12'],
         ['class' => widgets\RecentActivityPanel::class, 'span' => 'col-12'],

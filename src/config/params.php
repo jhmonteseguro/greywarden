@@ -28,6 +28,10 @@ return [
     'device.osWarningDays' => 90,       // flag an OS this many days before its end of support
     'device.osEndOfSupport' => [],      // extra/corrected OS end-of-support dates: regex (lower-case "os version") => 'Y-m-d'
 
+    // Cloud Inventory: synced assets not seen for longer are flagged, and shown as missing (red) after the second limit
+    'cloud.staleDays' => 30,
+    'cloud.staleCriticalDays' => 90,
+
     // Control Register: warn this many days before a control's next test is due
     'control.testDueSoonDays' => 14,
 

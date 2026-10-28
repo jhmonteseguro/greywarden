@@ -5,6 +5,7 @@ namespace app\modules\decision\models;
 use app\models\DomainRecord;
 use app\models\Lookup;
 use app\modules\attack\models\AttackMitigation;
+use app\modules\cloud\models\CloudAsset;
 use app\modules\control\models\Control;
 use app\modules\incident\models\Incident;
 use app\modules\risk\models\Risk;
@@ -55,6 +56,8 @@ class Decision extends DomainRecord
     public $mitigationIds = null;
     /** @var int[]|string|null link ids (null = not submitted) */
     public $controlIds = null;
+    /** @var int[]|string|null link ids (null = not submitted) */
+    public $cloudAssetIds = null;
 
     public static function tableName(): string
     {
@@ -97,6 +100,7 @@ class Decision extends DomainRecord
         return [
             'riskIds' => ['table' => 'risk_decision', 'self' => 'decision_id', 'other' => 'risk_id', 'class' => Risk::class, 'label' => 'Related risks'],
             'incidentIds' => ['table' => 'decision_incident', 'self' => 'decision_id', 'other' => 'incident_id', 'class' => Incident::class, 'label' => 'Related incidents'],
+            'cloudAssetIds' => ['table' => 'decision_cloud_asset', 'self' => 'decision_id', 'other' => 'cloud_asset_id', 'class' => CloudAsset::class, 'label' => 'Related cloud assets'],
             'mitigationIds' => ['table' => 'decision_attack_mitigation', 'self' => 'decision_id', 'other' => 'mitigation_id', 'class' => AttackMitigation::class, 'label' => 'ATT&CK mitigations'],
             'controlIds' => ['table' => 'decision_control', 'self' => 'decision_id', 'other' => 'control_id', 'class' => Control::class, 'label' => 'Controls'],
         ];
@@ -139,6 +143,7 @@ class Decision extends DomainRecord
             ['superseded_by_id', 'compare', 'compareAttribute' => 'id', 'operator' => '!=', 'when' => fn() => !$this->isNewRecord, 'message' => 'A decision cannot supersede itself.'],
             ['riskIds', 'each', 'rule' => ['exist', 'targetClass' => Risk::class, 'targetAttribute' => 'id']],
             ['incidentIds', 'each', 'rule' => ['exist', 'targetClass' => Incident::class, 'targetAttribute' => 'id']],
+            ['cloudAssetIds', 'each', 'rule' => ['exist', 'targetClass' => CloudAsset::class, 'targetAttribute' => 'id']],
             ['mitigationIds', 'each', 'rule' => ['exist', 'targetClass' => AttackMitigation::class, 'targetAttribute' => 'id']],
             ['controlIds', 'each', 'rule' => ['exist', 'targetClass' => Control::class, 'targetAttribute' => 'id']],
         ];
@@ -197,6 +202,11 @@ class Decision extends DomainRecord
     public function getIncidents()
     {
         return $this->hasMany(Incident::class, ['id' => 'incident_id'])->viaTable('decision_incident', ['decision_id' => 'id']);
+    }
+
+    public function getCloudAssets()
+    {
+        return $this->hasMany(CloudAsset::class, ['id' => 'cloud_asset_id'])->viaTable('decision_cloud_asset', ['decision_id' => 'id']);
     }
 
     public function getControls()

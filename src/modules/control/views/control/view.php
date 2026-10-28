@@ -9,6 +9,9 @@ use app\components\Rbac;
 use app\helpers\Badge;
 use app\models\Attachment;
 use app\modules\attack\widgets\TechniqueTags;
+use app\modules\cloud\components\CloudChecks;
+use app\modules\cloud\models\CloudAccount;
+use app\modules\cloud\models\CloudAsset;
 use app\modules\control\components\FrameworkCatalogue;
 use app\modules\control\models\Control;
 use app\modules\decision\models\Decision;
@@ -89,6 +92,8 @@ ob_start(); ?>
                     ['attribute' => 'implemented_on', 'format' => 'date', 'visible' => (bool) $model->implemented_on],
                     ['label' => 'Device check', 'format' => 'raw', 'visible' => (bool) $model->device_check,
                         'value' => Html::encode($model->getDeviceScopeLabel())],
+                    ['label' => 'Cloud check', 'format' => 'raw', 'visible' => (bool) $model->cloud_check,
+                        'value' => Html::encode($model->getCloudScopeLabel())],
                 ],
             ]) ?>
         </section>
@@ -220,6 +225,49 @@ if ($model->device_check) {
     <?php $deviceTab = ob_get_clean();
 }
 
+$cloudTab = null;
+if ($model->cloud_check) {
+    $check = CloudChecks::fromControl($model);
+    $assetCounts = $accountCounts = [];
+    foreach (DevicePosture::resultLabels() as $result => $label) {
+        if ($check->assetTypes() !== []) {
+            $assetCounts[$result] = (int) CloudAsset::find()->active()->inService()->checkResult($check, $result)->count();
+        }
+        if ($check->appliesToAccounts()) {
+            $accountCounts[$result] = (int) CloudAccount::find()->active()->inService()->checkResult($check, $result)->count();
+        }
+    }
+    ob_start(); ?>
+    <section class="gw-panel">
+        <h2 class="gw-panel__title"><i class="bi bi-cloud" aria-hidden="true"></i> Checked on cloud assets</h2>
+        <?php if (!$model->isInForce()): ?>
+            <div class="alert alert-info gw-callout" role="status"><i class="bi bi-info-circle" aria-hidden="true"></i>
+                This check is not in force: cloud assets are only checked while the control is implementing or implemented.</div>
+        <?php endif; ?>
+        <dl class="gw-dl">
+            <dt>Method</dt><dd><?= Html::encode(Control::cloudCheckOptions()[$model->cloud_check] ?? $model->cloud_check) ?></dd>
+            <dt>Applies to</dt><dd><?= Html::encode($model->getCloudScopeLabel()) ?></dd>
+        </dl>
+        <?php foreach (['asset' => [$assetCounts, '/cloud/asset/index', 'in-service asset'], 'account' => [$accountCounts, '/cloud/account/index', 'cloud account']] as $kind => [$counts, $route, $noun]): if (!$counts) continue; ?>
+            <ul class="gw-check-counts gw-check-counts--<?= $kind ?>">
+                <?php foreach ($counts as $result => $n): ?>
+                    <li class="gw-check-counts__item">
+                        <?= Badge::checkResult($result) ?>
+                        <?= Html::a('<strong>' . $n . '</strong> ' . $noun . ($n === 1 ? '' : 's'),
+                            [$route, 'filter' => 'active', 'control' => $model->id, 'result' => $result], ['class' => 'gw-check-counts__link']) ?>
+                    </li>
+                <?php endforeach; ?>
+            </ul>
+        <?php endforeach; ?>
+        <p class="gw-muted gw-small mb-0"><?= match (true) {
+            $check->isOsSupport() => 'Fails once an instance\'s operating system is past its vendor end of support; instances whose OS or version has no known date are not assessed.',
+            $check->isEncryption() => 'Read from each asset\'s "Encrypted at rest" answer; assets answered "Unknown" are not assessed.',
+            default => 'Record the result on each asset\'s (or account\'s) edit form, under Cloud checks.',
+        } ?></p>
+    </section>
+    <?php $cloudTab = ob_get_clean();
+}
+
 ob_start(); ?>
 <div class="row g-4">
     <div class="col-lg-6"><?= LinkedRecords::widget(['title' => 'Risks it mitigates', 'icon' => 'exclamation-triangle', 'models' => $risks,
@@ -271,6 +319,7 @@ ob_start(); ?>
         ['label' => 'Details', 'content' => $details, 'options' => ['id' => 'tab-details']],
         ['label' => 'Testing (' . count($tests) . ')', 'content' => $testing, 'options' => ['id' => 'tab-testing'], 'active' => $test->hasErrors()],
         $deviceTab !== null ? ['label' => 'Device check', 'content' => $deviceTab, 'options' => ['id' => 'tab-devices']] : null,
+        $cloudTab !== null ? ['label' => 'Cloud check', 'content' => $cloudTab, 'options' => ['id' => 'tab-cloud']] : null,
         ['label' => 'Links (' . (count($risks) + count($decisions) + $incidentCount) . ')', 'content' => $links, 'options' => ['id' => 'tab-links']],
         ['label' => 'Frameworks & ATT&CK (' . ($requirementCount + count($mitigations)) . ')', 'content' => $frameworks, 'options' => ['id' => 'tab-frameworks']],
         ['label' => 'Files (' . count($attachments) . ')', 'content' => Attachments::widget(['model' => $model, 'attachments' => $attachments]), 'options' => ['id' => 'tab-files']],

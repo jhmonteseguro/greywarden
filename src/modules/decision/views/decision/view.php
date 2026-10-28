@@ -9,6 +9,7 @@ use app\helpers\RiskMatrix;
 use app\models\Attachment;
 use app\modules\attack\components\Coverage;
 use app\modules\attack\widgets\TechniqueTags;
+use app\modules\cloud\models\CloudAsset;
 use app\modules\control\models\Control;
 use app\modules\decision\models\Decision;
 use app\modules\incident\models\Incident;
@@ -34,6 +35,7 @@ $risks = $model->risks;
 $incidents = $model->incidents;
 $supersedes = $model->supersedes;
 $controls = $model->controls;
+$cloudAssets = $model->cloudAssets;
 $mitigations = $model->mitigations;
 if ($mitigations) {
     // Techniques each mitigation addresses, and how many of them are seen in incidents / open risks
@@ -120,6 +122,8 @@ ob_start(); ?>
         'extra' => static fn(Risk $r) => Badge::score($r->getCurrentScore())]) ?></div>
     <div class="col-lg-6"><?= LinkedRecords::widget(['title' => 'Related incidents', 'icon' => 'fire', 'models' => $incidents,
         'extra' => static fn(Incident $i) => Badge::severity($i->severity)]) ?></div>
+    <div class="col-lg-6"><?= LinkedRecords::widget(['title' => 'Related cloud assets', 'icon' => 'cloud', 'models' => $cloudAssets,
+        'extra' => static fn(CloudAsset $a) => Badge::status('cloud-status', $a->status, CloudAsset::statusOptions())]) ?></div>
     <div class="col-lg-6"><?= LinkedRecords::widget(['title' => 'Supersedes', 'icon' => 'arrow-left-right', 'models' => $supersedes,
         'emptyText' => 'This decision does not supersede another.']) ?></div>
 </div>
@@ -133,7 +137,7 @@ ob_start(); ?>
     'tabContentOptions' => ['class' => 'gw-tab-content'],
     'items' => [
         ['label' => 'Details', 'content' => $details, 'options' => ['id' => 'tab-details']],
-        ['label' => 'Links (' . (count($controls) + count($risks) + count($incidents) + count($supersedes)) . ')', 'content' => $links, 'options' => ['id' => 'tab-links']],
+        ['label' => 'Links (' . (count($controls) + count($risks) + count($incidents) + count($cloudAssets) + count($supersedes)) . ')', 'content' => $links, 'options' => ['id' => 'tab-links']],
         ['label' => 'Files (' . count($attachments) . ')', 'content' => Attachments::widget(['model' => $model, 'attachments' => $attachments]), 'options' => ['id' => 'tab-files']],
         ['label' => 'History', 'content' => AuditHistory::widget(['entityType' => 'decision', 'entityId' => $model->id]), 'options' => ['id' => 'tab-history']],
     ],

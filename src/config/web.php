@@ -18,6 +18,7 @@ $config = [
         'decision' => ['class' => app\modules\decision\Module::class],
         'incident' => ['class' => app\modules\incident\Module::class],
         'inventory' => ['class' => app\modules\inventory\Module::class],
+        'cloud' => ['class' => app\modules\cloud\Module::class],
         'attack' => ['class' => app\modules\attack\Module::class],
         'intel' => ['class' => app\modules\intel\Module::class],
         'admin' => ['class' => app\modules\admin\Module::class],
@@ -92,6 +93,16 @@ $config = [
                 'devices/<id:\d+>' => 'inventory/device/view',
                 'devices/<id:\d+>/<action:[\w-]+>' => 'inventory/device/<action>',
                 'devices/<action:[\w-]+>' => 'inventory/device/<action>',
+
+                // Cloud Inventory: /cloud/assets, /cloud/assets/12, /cloud/accounts, /cloud/accounts/3/update ...
+                'cloud/assets' => 'cloud/asset/index',
+                'cloud/assets/<id:\d+>' => 'cloud/asset/view',
+                'cloud/assets/<id:\d+>/<action:[\w-]+>' => 'cloud/asset/<action>',
+                'cloud/assets/<action:[\w-]+>' => 'cloud/asset/<action>',
+                'cloud/accounts' => 'cloud/account/index',
+                'cloud/accounts/<id:\d+>' => 'cloud/account/view',
+                'cloud/accounts/<id:\d+>/<action:[\w-]+>' => 'cloud/account/<action>',
+                'cloud/accounts/<action:[\w-]+>' => 'cloud/account/<action>',
 
                 'attachments/<id:\d+>' => 'attachment/download',
                 'attachments/<id:\d+>/<action:[\w-]+>' => 'attachment/<action>',

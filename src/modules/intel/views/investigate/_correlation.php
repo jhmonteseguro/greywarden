@@ -1,6 +1,6 @@
 <?php
 /**
- * What Greywarden knows locally: blocklist entries, own assets, incidents mentioning the indicator.
+ * What Greywarden knows locally: blocklist entries, own devices and cloud assets, incidents mentioning the indicator.
  * @var yii\web\View $this
  * @var app\modules\intel\components\Indicator $indicator
  * @var app\modules\intel\components\LocalContext $local
@@ -8,6 +8,7 @@
  */
 
 use app\helpers\Badge;
+use app\modules\cloud\models\CloudAsset;
 use app\modules\incident\models\Incident;
 use app\modules\intel\models\BlocklistEntry;
 use app\modules\inventory\models\Device;
@@ -30,5 +31,11 @@ use yii\helpers\Html;
         'title' => 'Your devices', 'icon' => 'pc-display', 'models' => $local->devices,
         'emptyText' => $indicator->isIp() ? 'No device in the inventory has this address.' : 'Device matching is by IP address.',
         'extra' => static fn(Device $d) => Badge::criticality($d->criticality),
+    ]) ?>
+    <?= LinkedRecords::widget([
+        'title' => 'Your cloud assets', 'icon' => 'cloud', 'models' => $local->cloudAssets,
+        'emptyText' => $indicator->isIp() ? 'No cloud asset has this public address.' : 'Cloud asset matching is by public IP address.',
+        'extra' => static fn(CloudAsset $a) => Badge::criticality($a->criticality)
+            . ($a->isInternetFacing() ? ' ' . Badge::render('exposure', 'internet', 'Internet-facing', ['icon' => 'globe2']) : ''),
     ]) ?></div>
 </div>

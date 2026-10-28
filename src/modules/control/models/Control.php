@@ -6,6 +6,8 @@ use app\components\Actor;
 use app\models\DomainRecord;
 use app\models\User;
 use app\modules\attack\models\AttackMitigation;
+use app\modules\cloud\components\CloudCatalogue;
+use app\modules\cloud\components\CloudChecks;
 use app\modules\control\components\FrameworkCatalogue;
 use app\modules\decision\models\Decision;
 use app\modules\incident\models\Incident;
@@ -25,6 +27,8 @@ use Yii;
  * A control with a `device_check` is checked on every device it applies to
  * (device types + ownership): "manual" checks are recorded per device in
  * device_control, "patch_age" is measured from the device's last patch date.
+ * A control with a `cloud_check` is checked the same way on the cloud assets
+ * (resource types) and / or cloud accounts in its `cloud_scope`.
  *
  * @property int $id
  * @property string $reference
@@ -46,6 +50,8 @@ use Yii;
  * @property string|null $device_types
  * @property string $device_ownership
  * @property int|null $check_max_age_days
+ * @property string|null $cloud_check
+ * @property string|null $cloud_scope
  *
  * @property-read User|null $owner
  * @property-read Risk[] $risks
@@ -76,6 +82,8 @@ class Control extends DomainRecord
     public const CHECK_MANUAL = 'manual';
     public const CHECK_PATCH_AGE = 'patch_age';
     public const CHECK_OS_SUPPORT = 'os_support';
+    /** Cloud checks only: from each cloud asset's "encrypted at rest" answer */
+    public const CHECK_ENCRYPTION = 'encryption';
 
     public const OWNERSHIP_ALL = 'all';
 
@@ -94,6 +102,8 @@ class Control extends DomainRecord
     public $requirementIds = null;
     /** @var string[]|string|null device types from the form (null = not submitted); stored in device_types */
     public $deviceTypeList = null;
+    /** @var string[]|string|null cloud scope tokens from the form (null = not submitted); stored in cloud_scope */
+    public $cloudScopeList = null;
 
     public static function tableName(): string
     {
@@ -170,6 +180,15 @@ class Control extends DomainRecord
         ];
     }
 
+    public static function cloudCheckOptions(): array
+    {
+        return [
+            self::CHECK_MANUAL => 'Checked on each asset / account (pass / fail)',
+            self::CHECK_OS_SUPPORT => 'Supported OS (from each instance\'s OS and version)',
+            self::CHECK_ENCRYPTION => 'Encryption at rest (from each asset\'s "Encrypted at rest" answer)',
+        ];
+    }
+
     public static function deviceOwnershipOptions(): array
     {
         return [self::OWNERSHIP_ALL => 'All devices'] + Device::ownershipOptions();
@@ -195,6 +214,7 @@ class Control extends DomainRecord
             'test_frequency_months' => self::frequencyOptions(),
             'device_check' => self::deviceCheckOptions(),
             'device_ownership' => self::deviceOwnershipOptions(),
+            'cloud_check' => self::cloudCheckOptions(),
         ];
     }
 
@@ -225,6 +245,9 @@ class Control extends DomainRecord
             ['check_max_age_days', 'integer', 'min' => 1, 'max' => 365],
             ['check_max_age_days', 'required', 'when' => fn() => $this->device_check === self::CHECK_PATCH_AGE,
                 'whenClient' => "function(){return $('#control-device_check').val()==='patch_age';}", 'message' => 'Set the maximum patch age in days.'],
+            ['cloud_check', 'in', 'range' => array_keys(self::cloudCheckOptions())],
+            ['cloudScopeList', 'each', 'rule' => ['in', 'range' => array_keys(CloudCatalogue::scopeOptions())]],
+            ['cloudScopeList', 'validateCloudScope'],
             ['riskIds', 'each', 'rule' => ['exist', 'targetClass' => Risk::class, 'targetAttribute' => 'id']],
             ['decisionIds', 'each', 'rule' => ['exist', 'targetClass' => Decision::class, 'targetAttribute' => 'id']],
             ['mitigationIds', 'each', 'rule' => ['exist', 'targetClass' => AttackMitigation::class, 'targetAttribute' => 'id']],
@@ -255,6 +278,9 @@ class Control extends DomainRecord
             'deviceTypeList' => 'Applies to device types',
             'device_ownership' => 'Applies to',
             'check_max_age_days' => 'Maximum patch age (days)',
+            'cloud_check' => 'Cloud check',
+            'cloud_scope' => 'Cloud scope',
+            'cloudScopeList' => 'Applies to',
         ];
     }
 
@@ -270,6 +296,8 @@ class Control extends DomainRecord
             'test_frequency_months' => 'How often its effectiveness is tested. Leave empty for no schedule.',
             'device_check' => 'Makes this control a check on every device it applies to, while it is implementing or implemented.',
             'deviceTypeList' => 'Leave all unticked to apply it to every device type.',
+            'cloud_check' => 'Makes this control a check on the cloud assets and / or cloud accounts it applies to, while it is implementing or implemented.',
+            'cloudScopeList' => 'Leave all unticked to apply it to every resource type. Tick only "Cloud accounts" for account-level checks such as root MFA.',
         ];
     }
 
@@ -278,18 +306,24 @@ class Control extends DomainRecord
         if ($attribute === 'device_types') {
             return implode(', ', array_map(static fn($t) => Device::typeOptions()[$t] ?? $t, explode(',', (string) $value)));
         }
+        if ($attribute === 'cloud_scope') {
+            return implode(', ', array_map(static fn($t) => CloudCatalogue::scopeOptions()[$t] ?? $t, explode(',', (string) $value)));
+        }
         return parent::formatAuditValue($attribute, $value);
     }
 
     public function beforeValidate(): bool
     {
-        foreach (['owner_id', 'target_date', 'implemented_on', 'test_frequency_months', 'device_check', 'check_max_age_days'] as $a) {
+        foreach (['owner_id', 'target_date', 'implemented_on', 'test_frequency_months', 'device_check', 'check_max_age_days', 'cloud_check'] as $a) {
             if ($this->$a === '') {
                 $this->$a = null;
             }
         }
         if ($this->deviceTypeList !== null && !is_array($this->deviceTypeList)) {
             $this->deviceTypeList = [];
+        }
+        if ($this->cloudScopeList !== null && !is_array($this->cloudScopeList)) {
+            $this->cloudScopeList = [];
         }
         return parent::beforeValidate();
     }
@@ -308,6 +342,12 @@ class Control extends DomainRecord
         } elseif ($this->device_check !== self::CHECK_PATCH_AGE) {
             $this->check_max_age_days = null;
         }
+        if ($this->cloudScopeList !== null) {
+            $this->cloud_scope = self::cloudScopeValue($this->cloudScopeList);
+        }
+        if (!$this->cloud_check) {
+            $this->cloud_scope = null;
+        }
         $this->effectiveness ??= self::EFFECTIVENESS_NOT_TESTED;
         if ($this->status === self::STATUS_IMPLEMENTED && !$this->implemented_on) {
             $this->implemented_on = Actor::today();
@@ -320,12 +360,14 @@ class Control extends DomainRecord
     {
         parent::afterSave($insert, $changedAttributes);
         DeviceChecks::reset();
+        CloudChecks::reset();
     }
 
     public function afterDelete(): void
     {
         parent::afterDelete();
         DeviceChecks::reset();
+        CloudChecks::reset();
     }
 
     // ---- Relations ------------------------------------------------------
@@ -539,11 +581,52 @@ class Control extends DomainRecord
         return $label;
     }
 
-    /** Form pre-fill: links plus the device type checkboxes */
+    /** Form pre-fill: links plus the device type and cloud scope checkboxes */
     public function populateLinks(): void
     {
         parent::populateLinks();
         $this->deviceTypeList ??= $this->getDeviceTypes() ?? [];
+        $this->cloudScopeList ??= $this->getCloudScope() ?? [];
+    }
+
+    // ---- Cloud checks -------------------------------------------------------
+
+    /** @return string[]|null scope tokens (resource types and / or "account"); null = every resource type */
+    public function getCloudScope(): ?array
+    {
+        return $this->cloud_scope ? explode(',', $this->cloud_scope) : null;
+    }
+
+    /**
+     * Stored scope for the ticked tokens: none ticked = every resource type (NULL);
+     * all resource types ticked and not accounts = NULL as well.
+     */
+    public static function cloudScopeValue(array $tokens): ?string
+    {
+        $tokens = array_values(array_intersect(array_keys(CloudCatalogue::scopeOptions()), $tokens));
+        $types = array_diff($tokens, [CloudCatalogue::SCOPE_ACCOUNT]);
+        if (!$tokens || ($types === $tokens && count($types) === count(CloudCatalogue::typeOptions()))) {
+            return null;
+        }
+        return implode(',', $tokens);
+    }
+
+    /** Only checks recorded per record (manual) can apply to cloud accounts */
+    public function validateCloudScope(string $attribute): void
+    {
+        if ($this->cloud_check && $this->cloud_check !== self::CHECK_MANUAL && is_array($this->cloudScopeList)
+            && in_array(CloudCatalogue::SCOPE_ACCOUNT, $this->cloudScopeList, true)) {
+            $this->addError($attribute, 'Only a check recorded on each asset / account (pass / fail) can apply to cloud accounts.');
+        }
+    }
+
+    public function getCloudScopeLabel(): string
+    {
+        $scope = $this->getCloudScope();
+        if ($scope === null) {
+            return $this->cloud_check === self::CHECK_OS_SUPPORT ? 'Instances' : 'All cloud asset types';
+        }
+        return implode(', ', array_map(static fn($t) => CloudCatalogue::scopeOptions()[$t] ?? $t, $scope));
     }
 
     public static function defaultPatchMaxAgeDays(): int
