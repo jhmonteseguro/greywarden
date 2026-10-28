@@ -17,6 +17,8 @@ class DeviceModelTest extends DbTestCase
         return new Device($attrs + [
             'hostname' => 'lt-test-001',
             'device_type' => 'laptop',
+            'os' => 'Ubuntu', // supported until 2029, so the supported-OS check passes
+            'os_version' => '24.04 LTS',
             'status' => 'active',
             'criticality' => 'medium',
             'data_classification' => 'internal',
@@ -187,8 +189,8 @@ class DeviceModelTest extends DbTestCase
             'win10' => $this->makeDevice(['hostname' => 'win10', 'os' => 'Windows 10 Enterprise', 'os_version' => '22H2', 'last_seen_at' => '2026-10-27 10:00:00']),
             'win11' => $this->makeDevice(['hostname' => 'win11', 'os' => 'Windows 11 Enterprise', 'os_version' => '23H2', 'last_seen_at' => '2026-09-01 10:00:00']),
             'srv' => $this->makeDevice(['hostname' => 'srv', 'os' => 'Windows Server 2022', 'last_seen_at' => '2026-05-01 10:00:00']),
-            'linux' => $this->makeDevice(['hostname' => 'linux', 'os' => 'Linux']),
-            'blank' => $this->makeDevice(['hostname' => 'blank']),
+            'linux' => $this->makeDevice(['hostname' => 'linux', 'os' => 'Linux', 'os_version' => null]),
+            'blank' => $this->makeDevice(['hostname' => 'blank', 'os' => null, 'os_version' => null]),
         ];
         foreach ($devices as $d) {
             $this->assertTrue($d->save(), json_encode($d->getErrors()));
@@ -202,12 +204,54 @@ class DeviceModelTest extends DbTestCase
         $this->assertSame(['win10'], $names($find()->osSupport(OsLifecycle::UNSUPPORTED, $today)->column()));
         $this->assertSame(['win10', 'win11'], $names($find()->osSupport([OsLifecycle::UNSUPPORTED, OsLifecycle::ENDING], $today)->column()));
         $this->assertSame(['srv'], $names($find()->osSupport(OsLifecycle::SUPPORTED, $today)->column()));
+        $this->assertSame(['linux', 'blank'], $names($find()->osSupport(OsLifecycle::UNKNOWN, $today)->column()), 'no OS is unknown');
         $this->assertSame([], $find()->osSupport('no-such-state', $today)->column());
         foreach ($devices as $name => $d) {
             $this->assertSame($name === 'win10', $d->isOsUnsupported($today), $name);
             $this->assertSame($name === 'srv', $d->isMissing($today), $name);
         }
         $this->assertSame('2025-10-14', $devices['win10']->getOsSupport($today)['endDate']);
+    }
+
+    public function testSupportedOsCheckMakesUnsupportedDevicesNonCompliant(): void
+    {
+        $os = array_values(array_filter(DeviceChecks::all(), static fn($c) => $c->isOsSupport()));
+        $this->assertCount(1, $os, 'the migration creates the supported-OS check');
+        $check = $os[0];
+        $this->assertSame('Supported OS', $check->shortLabel());
+        $this->assertArrayNotHasKey($check->id, DeviceChecks::manual(), 'nothing to record on the device form');
+
+        $recent = date('Y-m-d', strtotime('-3 days'));
+        $pass = self::allChecks('pass');
+        $devices = [
+            'supported' => $this->makeDevice(['hostname' => 'ok', 'checks' => $pass, 'last_patched_at' => $recent]),
+            'win10' => $this->makeDevice(['hostname' => 'w10', 'os' => 'Windows 10 Pro', 'os_version' => '22H2', 'checks' => $pass, 'last_patched_at' => $recent]),
+            'unknown' => $this->makeDevice(['hostname' => 'w11', 'os' => 'Windows 11', 'os_version' => null, 'checks' => $pass, 'last_patched_at' => $recent]),
+            'no-os' => $this->makeDevice(['hostname' => 'noos', 'os' => null, 'os_version' => null, 'checks' => $pass, 'last_patched_at' => $recent]),
+            'switch' => $this->makeDevice(['hostname' => 'sw', 'device_type' => 'network', 'os' => 'IOS XE', 'os_version' => '17.9', 'last_patched_at' => $recent]),
+        ];
+        foreach ($devices as $d) {
+            $this->assertTrue($d->save(), json_encode($d->getErrors()));
+        }
+
+        $win10 = $devices['win10']->getPosture();
+        $this->assertSame(DevicePosture::STATE_NON_COMPLIANT, $win10['state']);
+        $this->assertSame('Windows 10 Pro 22H2: security updates ended 14 Oct 2025', $win10['failures'][$check->id]);
+        $this->assertSame(DevicePosture::STATE_COMPLIANT, $devices['supported']->getPosture()['state']);
+        $this->assertSame(DevicePosture::RESULT_PASS, $devices['supported']->getPosture()['items'][$check->id]['result']);
+        $this->assertSame('No end-of-support date known for Windows 11', $devices['unknown']->getPosture()['items'][$check->id]['detail']);
+        $this->assertSame(DevicePosture::STATE_NOT_ASSESSED, $devices['unknown']->getPosture()['state']);
+        $this->assertSame('No operating system recorded', $devices['no-os']->getPosture()['items'][$check->id]['detail']);
+        $this->assertArrayNotHasKey($check->id, $devices['switch']->getPosture()['items'], 'network devices are out of scope');
+
+        $ids = array_map(static fn(Device $d) => $d->id, $devices);
+        $names = static fn(array $found) => array_keys(array_intersect($ids, array_map('intval', $found)));
+        $result = static fn(string $r) => $names(Device::find()->where(['device.id' => $ids])->checkResult($check, $r)->select('device.id')->column());
+        $this->assertSame(['supported'], $result(DevicePosture::RESULT_PASS));
+        $this->assertSame(['win10'], $result(DevicePosture::RESULT_FAIL));
+        $this->assertSame(['unknown', 'no-os'], $result(DevicePosture::RESULT_UNKNOWN));
+        $this->assertContains($ids['win10'], array_map('intval', Device::find()->where(['device.id' => $ids])->nonCompliant()->select('device.id')->column()));
+        $this->assertNotContains($ids['win10'], array_map('intval', Device::find()->where(['device.id' => $ids])->compliant()->select('device.id')->column()));
     }
 
     public function testPostureQueriesMatchPhpLogic(): void

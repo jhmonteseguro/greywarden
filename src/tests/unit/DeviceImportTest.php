@@ -110,7 +110,11 @@ class DeviceImportTest extends DbTestCase
         $this->assertMatchesRegularExpression('/^DEV-\d{4,}$/', $device->asset_tag);
         $this->assertTrue($device->isByod());
         $this->assertSame('Imported in a test.', $device->notes);
-        $this->assertSame(DevicePosture::STATE_NOT_ASSESSED, $device->getPosture()['state'], 'the export has no posture data');
+        // The export has no posture data: only the supported-OS check has a result (Windows 11 22H2 Pro ended in 2024)
+        $posture = $device->getPosture();
+        $this->assertSame(DevicePosture::STATE_NON_COMPLIANT, $posture['state']);
+        $this->assertSame(['Windows 11 22H2 (10.0.22621.4317): security updates ended 8 Oct 2024'], array_values($posture['failures']));
+        $this->assertNotEmpty($posture['unknown'], 'the manual checks are not assessed');
         $this->assertStringContainsString('frozen', Device::findOne(['source_id' => 'e48b11b8-0101-4375-8a1c-445a428c9553'])->notes);
 
         // Same file again: nothing changes (and no audit noise)

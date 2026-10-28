@@ -14,6 +14,11 @@ releases).
   `device.osWarningDays`, default 90), the device page shows the end-of-support date (Apple and Android dates are
   marked as estimated), and there is an *OS end of support* filter, an *Unsupported OS* count on the Active devices
   KPI and a *Needs attention* group. Add or correct dates in `device.osEndOfSupport`.
+- *Supported OS* device-check method in the Control Register: the check fails once a device's OS is past its end of
+  support, so the device is non-compliant, and is not assessed when the OS or version has no known date. A migration
+  adds a *Supported operating systems* control (laptops, desktops, servers, VMs, phones and tablets; implemented,
+  mapped to A.8.8, CE-SU-1, CE-SU-2, CC7.1, PR.PS-02, B4.d and ATT&CK M1051), so existing devices on an unsupported OS
+  become non-compliant after upgrading.
 - Last seen is graded: amber after `device.staleDays` (30) and red, flagged *missing*, after
   `device.staleCriticalDays` (90). The last-patched date is red when the device fails a patch-age check.
 

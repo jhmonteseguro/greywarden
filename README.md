@@ -345,6 +345,8 @@ greywarden/
 * **Device checks**: a control with a *device check* applies to the device types (and ownership) you choose while it is
   implementing or implemented. *Manual* checks get a Pass / Fail / Not assessed select on the device form (`device_control`;
   no row = not assessed). *Patch age* checks pass when the device's *Last patched* date is within the control's maximum age.
+  *Supported OS* checks fail once the device's OS is past its vendor end of support (`OsLifecycle`), and are not assessed
+  when the OS or version has no known date; migration `m261028_000005` adds one (*Supported operating systems*, in force).
   A device is **non-compliant** if any applicable check fails, **not assessed** if none fails but some have no result, and
   **compliant** otherwise; `DevicePosture` (PHP) and `DeviceQuery` (SQL) implement the same rules. Migration
   `m261020_000003` turned the four fixed posture columns and the patch rule into CTL-0001…0005, keeping ticked boxes as
@@ -435,7 +437,8 @@ make import-devices FILE=devices.csv AS=jdoe             # import; AS= is record
 * **macOS 10.15.7** is the frozen value browsers put in their user agent, not the real version. It is left blank and
   explained in the device notes.
 * The export has **no security-posture data**: device check results and the patch date are left unset, so imported
-  devices show as **not assessed** until an analyst records the checks on the device form. Results recorded in
+  devices show as **not assessed** (or **non-compliant** when the supported-OS check fails) until an analyst records the
+  checks on the device form. Results recorded in
   Greywarden survive later imports.
 * **Last seen** comes from the export's *Last Sync*. In-service devices that haven't synced for `device.staleDays` show a
   *Not seen* flag, appear under the *Not seen recently* filter and in the dashboard's *Needs attention* panel. After

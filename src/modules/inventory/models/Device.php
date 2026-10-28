@@ -444,7 +444,8 @@ class Device extends DomainRecord
      */
     public function getPosture(?string $today = null): array
     {
-        return DevicePosture::evaluate(DeviceChecks::all(), $this->device_type, $this->ownership, $this->getCheckResults(), $this->last_patched_at, $today);
+        return DevicePosture::evaluate(DeviceChecks::all(), $this->device_type, $this->ownership, $this->getCheckResults(), $this->last_patched_at, $today,
+            $this->os, $this->os_version);
     }
 
     public function isCompliant(): bool

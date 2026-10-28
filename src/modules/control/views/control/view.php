@@ -211,9 +211,11 @@ if ($model->device_check) {
                 </li>
             <?php endforeach; ?>
         </ul>
-        <p class="gw-muted gw-small mb-0"><?= $check->isPatchAge()
-            ? 'Measured from each device\'s "Last patched" date; devices without one are not assessed.'
-            : 'Record the result on each device\'s edit form, under Device checks.' ?></p>
+        <p class="gw-muted gw-small mb-0"><?= match (true) {
+            $check->isPatchAge() => 'Measured from each device\'s "Last patched" date; devices without one are not assessed.',
+            $check->isOsSupport() => 'Fails once the device\'s operating system is past its vendor end of support; devices whose OS or version has no known date are not assessed.',
+            default => 'Record the result on each device\'s edit form, under Device checks.',
+        } ?></p>
     </section>
     <?php $deviceTab = ob_get_clean();
 }

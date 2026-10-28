@@ -10,6 +10,7 @@ final class DeviceCheck
 {
     public const MANUAL = 'manual';
     public const PATCH_AGE = 'patch_age';
+    public const OS_SUPPORT = 'os_support';
 
     /**
      * @param string[]|null $types device types it applies to; null = all
@@ -39,9 +40,24 @@ final class DeviceCheck
         return $this->method === self::PATCH_AGE;
     }
 
+    public function isOsSupport(): bool
+    {
+        return $this->method === self::OS_SUPPORT;
+    }
+
+    /** Recorded per device (pass / fail); the other methods are worked out from the device's fields */
+    public function isManual(): bool
+    {
+        return $this->method === self::MANUAL;
+    }
+
     /** Short label for charts, e.g. "Patched ≤30d" */
     public function shortLabel(): string
     {
-        return $this->isPatchAge() ? sprintf('Patched ≤%dd', $this->maxAgeDays) : $this->title;
+        return match ($this->method) {
+            self::PATCH_AGE => sprintf('Patched ≤%dd', $this->maxAgeDays),
+            self::OS_SUPPORT => 'Supported OS',
+            default => $this->title,
+        };
     }
 }

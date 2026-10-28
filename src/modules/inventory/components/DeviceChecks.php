@@ -32,7 +32,7 @@ final class DeviceChecks
     /** @return DeviceCheck[] checks recorded per device (pass / fail) */
     public static function manual(): array
     {
-        return array_filter(self::all(), static fn(DeviceCheck $c) => !$c->isPatchAge());
+        return array_filter(self::all(), static fn(DeviceCheck $c) => $c->isManual());
     }
 
     /** @return DeviceCheck[] checks measured from the device's last patch date */
@@ -52,7 +52,11 @@ final class DeviceChecks
             (int) $c->id,
             $c->reference,
             $c->title,
-            $c->device_check === Control::CHECK_PATCH_AGE ? DeviceCheck::PATCH_AGE : DeviceCheck::MANUAL,
+            match ($c->device_check) {
+                Control::CHECK_PATCH_AGE => DeviceCheck::PATCH_AGE,
+                Control::CHECK_OS_SUPPORT => DeviceCheck::OS_SUPPORT,
+                default => DeviceCheck::MANUAL,
+            },
             $c->getDeviceTypes(),
             $c->device_ownership ?: Control::OWNERSHIP_ALL,
             (int) ($c->check_max_age_days ?: Control::defaultPatchMaxAgeDays()),

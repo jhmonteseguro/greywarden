@@ -75,6 +75,7 @@ class Control extends DomainRecord
 
     public const CHECK_MANUAL = 'manual';
     public const CHECK_PATCH_AGE = 'patch_age';
+    public const CHECK_OS_SUPPORT = 'os_support';
 
     public const OWNERSHIP_ALL = 'all';
 
@@ -162,7 +163,11 @@ class Control extends DomainRecord
 
     public static function deviceCheckOptions(): array
     {
-        return [self::CHECK_MANUAL => 'Checked on each device (pass / fail)', self::CHECK_PATCH_AGE => 'Patch age (from each device\'s last patched date)'];
+        return [
+            self::CHECK_MANUAL => 'Checked on each device (pass / fail)',
+            self::CHECK_PATCH_AGE => 'Patch age (from each device\'s last patched date)',
+            self::CHECK_OS_SUPPORT => 'Supported OS (from each device\'s OS and version)',
+        ];
     }
 
     public static function deviceOwnershipOptions(): array

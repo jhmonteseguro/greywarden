@@ -96,6 +96,13 @@ class DeviceQuery extends DomainQuery
                 default => ['device.last_patched_at' => null],
             };
         }
+        if ($check->isOsSupport()) {
+            return match ($result) {
+                DevicePosture::RESULT_PASS => $this->osSupportCondition([OsLifecycle::SUPPORTED, OsLifecycle::ENDING], $today),
+                DevicePosture::RESULT_FAIL => $this->osSupportCondition(OsLifecycle::UNSUPPORTED, $today),
+                default => $this->osSupportCondition(OsLifecycle::UNKNOWN, $today),
+            };
+        }
         $recorded = (new Query())->select(new Expression('1'))->from(['dc' => 'device_control'])
             ->where('dc.device_id = device.id')->andWhere(['dc.control_id' => $check->id]);
         return $result === DevicePosture::RESULT_UNKNOWN
@@ -132,15 +139,22 @@ class DeviceQuery extends DomainQuery
      */
     public function osSupport(string|array $states, ?string $today = null): static
     {
+        return $this->andWhere($this->osSupportCondition($states, $today));
+    }
+
+    /** Devices without an OS are unknown */
+    private function osSupportCondition(string|array $states, ?string $today): array
+    {
+        $states = (array) $states;
         $pairs = (new Query())->select(['os', 'os_version'])->distinct()->from('device')
             ->where(['not', ['os' => null]])->all(Device::getDb());
-        $cond = ['or'];
+        $cond = ['or', in_array(OsLifecycle::UNKNOWN, $states, true) ? ['device.os' => null] : '0=1'];
         foreach ($pairs as $p) {
-            if (in_array(OsLifecycle::evaluate($p['os'], $p['os_version'], $today)['state'], (array) $states, true)) {
+            if (in_array(OsLifecycle::evaluate($p['os'], $p['os_version'], $today)['state'], $states, true)) {
                 $cond[] = ['device.os' => $p['os'], 'device.os_version' => $p['os_version']];
             }
         }
-        return $this->andWhere(count($cond) > 1 ? $cond : '0=1');
+        return $cond;
     }
 
     public function pastEol(?string $today = null): static

@@ -295,6 +295,11 @@ class ControlRegisterTest extends DbTestCase
         $patch->check_max_age_days = 14;
         $this->assertTrue($patch->save(), json_encode($patch->getErrors()));
 
+        $os = $this->makeControl(['device_check' => Control::CHECK_OS_SUPPORT, 'check_max_age_days' => 30, 'deviceTypeList' => ['laptop']]);
+        $this->assertNull($os->check_max_age_days, 'only a patch-age check has a maximum age');
+        $this->assertSame('laptop', $os->device_types);
+        $this->assertTrue(\app\modules\inventory\components\DeviceChecks::fromControl($os)->isOsSupport());
+
         // Removing the device check clears its scope
         $scoped = $this->makeControl(['device_check' => Control::CHECK_MANUAL, 'deviceTypeList' => ['laptop'], 'device_ownership' => 'byod']);
         $this->assertSame('laptop', $scoped->device_types);

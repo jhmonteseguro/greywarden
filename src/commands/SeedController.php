@@ -321,6 +321,7 @@ class SeedController extends Controller
             'mdm_enrolled' => ['Devices enrolled in MDM', Control::CHECK_MANUAL, ['laptop', 'desktop', 'mobile', 'tablet'], ['M1028', 'M1033'], ['A.8.1', 'A.8.9']],
             'firewall_enabled' => ['Host firewall enabled', Control::CHECK_MANUAL, $endpoints, ['M1037'], ['A.8.20', 'CE-FW-1', 'CE-FW-7']],
             'patched' => ['Security updates applied promptly', Control::CHECK_PATCH_AGE, null, ['M1051'], ['A.8.8', 'CE-SU-3', 'CE-SU-4', 'CC7.1', 'PR.PS-02', 'B4.d']],
+            'os_supported' => ['Supported operating systems', Control::CHECK_OS_SUPPORT, array_merge($endpoints, ['mobile', 'tablet']), ['M1051'], ['A.8.8', 'CE-SU-1', 'CE-SU-2', 'CC7.1', 'PR.PS-02', 'B4.d']],
         ];
         $this->as('jpatel');
         $ids = [];

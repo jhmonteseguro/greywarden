@@ -386,6 +386,13 @@ class RecordFlowsTest extends FunctionalTestCase
         $this->get("/devices/{$old->id}");
         $this->assertSee('OS support');
         $this->assertSee('Unsupported OS');
+        // ... and fails the supported-OS device check
+        $this->assertSee('Windows Server 2012 R2 6.3: security updates ended 10 Oct 2023');
+        $this->assertSee('data-value="non-compliant"');
+        $check = \app\modules\control\models\Control::findOne(['device_check' => 'os_support']);
+        $this->get("/controls/{$check->id}");
+        $this->assertOk();
+        $this->assertSee('past its vendor end of support');
 
         Device::updateAll(['last_seen_at' => date('Y-m-d H:i:s', strtotime('-200 days')), 'source' => 'google', 'source_id' => 'fn-missing'], ['id' => $old->id]);
         $this->get("/devices/{$old->id}");

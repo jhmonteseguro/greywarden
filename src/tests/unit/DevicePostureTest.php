@@ -23,6 +23,29 @@ class DevicePostureTest extends TestCase
 
     private const ALL_PASS = [1 => 'pass', 2 => 'pass', 3 => 'pass'];
 
+    public function testSupportedOsCheck(): void
+    {
+        $checks = [5 => new DeviceCheck(5, 'CTL-0005', 'Supported OS', DeviceCheck::OS_SUPPORT, ['laptop'])];
+        $eval = static fn(?string $os, ?string $version, string $type = 'laptop') => DevicePosture::evaluate($checks, $type, 'company', [], null, self::TODAY, $os, $version);
+
+        $r = $eval('Windows 10 Pro', '22H2');
+        $this->assertSame(DevicePosture::STATE_NON_COMPLIANT, $r['state']);
+        $this->assertSame([5 => 'Windows 10 Pro 22H2: security updates ended 14 Oct 2025'], $r['failures']);
+
+        $r = $eval('macOS', '15.2');
+        $this->assertSame(DevicePosture::STATE_COMPLIANT, $r['state']);
+        $this->assertSame('macOS 15.2: security updates until 15 Sep 2027 (estimated)', $r['items'][5]['detail']);
+        $this->assertSame(DevicePosture::RESULT_PASS, $eval('Windows 11 Pro', '24H2')['items'][5]['result'], 'ending soon still passes');
+
+        $this->assertSame(DevicePosture::STATE_NOT_ASSESSED, $eval('ChromeOS', '128')['state']);
+        $this->assertSame([5 => 'Supported OS not assessed'], $eval(null, null)['unknown']);
+        $this->assertSame('No operating system recorded', $eval(null, null)['items'][5]['detail']);
+        $this->assertSame([], $eval('Windows 10', null, 'printer')['items'], 'out of scope');
+
+        $date = DevicePosture::evaluate($checks, 'laptop', 'company', [], null, new \DateTimeImmutable('2025-10-01'), 'Windows 10', null);
+        $this->assertSame(DevicePosture::STATE_COMPLIANT, $date['state'], 'today as a DateTime');
+    }
+
     public function testEveryCheckPassingIsCompliant(): void
     {
         $r = DevicePosture::evaluate(self::checks(), 'laptop', 'company', self::ALL_PASS, '2026-06-20', self::TODAY);

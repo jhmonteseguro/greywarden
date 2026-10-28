@@ -211,6 +211,11 @@ grep -q 'gw-attention__group--control-tests-soon' "$BODY" && ok || bad "due-soon
 grep -q 'gw-attention__group--unsupported-os' "$BODY" && ok || bad "unsupported-OS devices missing from Needs attention"
 check viewer "/devices?filter=unsupported-os" 200
 grep -q 'data-value="os-unsupported"' "$BODY" && ok || bad "no unsupported OS flagged (demo data has Windows 10 / Server 2012 R2)"
+OSCHECK=$(sql "SELECT id FROM control WHERE device_check='os_support' LIMIT 1")
+check viewer "/controls/$OSCHECK" 200
+grep -q 'past its vendor end of support' "$BODY" && ok || bad "supported-OS device check control missing"
+check viewer "/devices?filter=active&control=$OSCHECK&result=fail" 200
+grep -q 'Windows 10' "$BODY" && ok || bad "Windows 10 devices do not fail the supported-OS check"
 check analyst /search?q=CTL-0001 302
 check analyst /search?q=A.8.7 302
 check analyst /search?q=CC6.1 302
@@ -306,7 +311,7 @@ grep -q 'Enter a MAC address' "$BODY" && grep -q 'Invalid IP address' "$BODY" &&
 post analyst /devices/create /devices/create 302 \
     "Device[hostname]=smoke-host" "Device[device_type]=laptop" "Device[status]=active" "Device[criticality]=low" \
     "Device[data_classification]=internal" "Device[mac_address]=aa-bb-cc-dd-ee-ff" "Device[ip_addresses]=10.0.0.9, fe80::1" \
-    $(checks pass) "Device[last_patched_at]=$TODAY"
+    "Device[os]=Ubuntu" "Device[os_version]=24.04 LTS" $(checks pass) "Device[last_patched_at]=$TODAY"
 VID=$(last_id device)
 check analyst "/devices/$VID" 200
 grep -q 'AA:BB:CC:DD:EE:FF' "$BODY" && grep -q 'DEV-00' "$BODY" && ok || bad "device normalisation / auto asset tag failed"
@@ -316,6 +321,11 @@ post analyst "/devices/$VID/update" "/devices/$VID/update" 302 \
     "Device[data_classification]=internal" "Device[checks][${CHECKS[0]}]=fail"
 check analyst "/devices/$VID" 200
 grep -q 'LAPTOP-SMOKE' "$BODY" && grep -q 'Non-compliant' "$BODY" && ok || bad "device asset tag override / posture change failed"
+post analyst "/devices/$VID/update" "/devices/$VID/update" 302 \
+    "Device[asset_tag]=LAPTOP-SMOKE" "Device[hostname]=smoke-host" "Device[device_type]=laptop" "Device[status]=active" "Device[criticality]=medium" \
+    "Device[data_classification]=internal" "Device[os]=Windows 10 Pro" "Device[os_version]=22H2"
+check analyst "/devices/$VID" 200
+grep -q 'Windows 10 Pro 22H2: security updates ended' "$BODY" && grep -q 'data-value="os-unsupported"' "$BODY" && ok || bad "unsupported OS does not fail the supported-OS check"
 grep -q 'Device checks' "$BODY" && ok || bad "device check change missing from history"
 post analyst /devices/create /devices/create 200 \
     "Device[device_type]=mobile" "Device[ownership]=byod" "Device[status]=active" "Device[criticality]=low" "Device[data_classification]=internal"

@@ -59,7 +59,7 @@ $pickerHints = [
         <div class="col-md-6"><?= $form->field($model, 'device_check')->dropDownList(Control::deviceCheckOptions(), ['prompt' => '— Not checked on devices —']) ?></div>
         <div class="col-md-6" data-gw-depends="#control-device_check" data-gw-value="patch_age"><?= $form->field($model, 'check_max_age_days')->input('number', ['min' => 1, 'max' => 365])
             ->hint('Cyber Essentials requires high and critical updates within 14 days.') ?></div>
-        <div class="col-12" data-gw-depends="#control-device_check" data-gw-value="manual,patch_age">
+        <div class="col-12" data-gw-depends="#control-device_check" data-gw-value="manual,patch_age,os_support">
             <?= $form->field($model, 'deviceTypeList')->inline()->checkboxList(Device::typeOptions()) ?>
             <?= $form->field($model, 'device_ownership')->inline()->radioList(Control::deviceOwnershipOptions()) ?>
         </div>
