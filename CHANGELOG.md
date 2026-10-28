@@ -6,6 +6,8 @@ releases).
 
 ## [Unreleased]
 
+## [0.4.2-alpha] - 2026-10-28
+
 ### Changed
 
 - Cloud import: subnets and individual disk / database snapshots (AWS EC2 and RDS snapshots, Azure and Google Cloud
@@ -143,7 +145,8 @@ First public release.
 - Repository safeguards: git hooks with a leak check and signed-push rules, and CI with all test suites, a secret
   scan and a production image build.
 
-[Unreleased]: https://github.com/jhmonteseguro/greywarden/compare/v0.4.1-alpha...HEAD
+[Unreleased]: https://github.com/jhmonteseguro/greywarden/compare/v0.4.2-alpha...HEAD
+[0.4.2-alpha]: https://github.com/jhmonteseguro/greywarden/compare/v0.4.1-alpha...v0.4.2-alpha
 [0.4.1-alpha]: https://github.com/jhmonteseguro/greywarden/compare/v0.4.0-alpha...v0.4.1-alpha
 [0.4.0-alpha]: https://github.com/jhmonteseguro/greywarden/compare/v0.3.0-alpha...v0.4.0-alpha
 [0.3.0-alpha]: https://github.com/jhmonteseguro/greywarden/compare/v0.2.0-alpha...v0.3.0-alpha
