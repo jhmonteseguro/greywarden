@@ -42,7 +42,8 @@ fi
 
 echo -n "Waiting for PHP dependencies"
 for _ in $(seq 1 120); do
-    if $DC exec -T php test -f vendor/autoload.php 2>/dev/null; then
+    # Installed, and no container is still running composer install (docker/php/entrypoint.sh)
+    if $DC exec -T php sh -c 'test -f vendor/autoload.php && flock -n runtime/.composer.lock true' 2>/dev/null; then
         echo " ready."; break
     fi
     echo -n "."; sleep 2

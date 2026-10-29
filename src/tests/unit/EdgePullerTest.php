@@ -171,6 +171,9 @@ class EdgePullerTest extends DbTestCase
         $this->assertStringContainsString(sprintf('datetime_geq: "%s"', gmdate('Y-m-d\TH:i:s\Z', self::NOW - 120 - 3600)), $ips);
         $this->assertStringContainsString('limit: 1000', $ips);
         $this->assertStringContainsString('{clientRequestQuery_like: "%union%select%"}', $this->trafficQuery('payloads'));
+        // Security events have no requestSource field: Cloudflare rejects the query if it is there
+        $this->assertStringContainsString(sprintf('datetime_geq: "%s"', gmdate('Y-m-d\TH:i:s\Z', self::NOW - 120 - 3600)), $this->trafficQuery('firewall'));
+        $this->assertStringNotContainsString('requestSource', $this->trafficQuery('firewall'));
         $this->assertSame('zone1', $this->queries[1]['variables']['zoneTag']);
     }
 

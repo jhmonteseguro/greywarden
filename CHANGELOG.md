@@ -6,6 +6,15 @@ releases).
 
 ## [Unreleased]
 
+### Fixed
+
+- Edge pulls: the security-events query sent the `requestSource` filter, which only request analytics accept, so
+  Cloudflare rejected it ("unknown arg requestSource") and addresses it had already blocked or challenged could
+  still open findings.
+- A fresh development stack (and CI) could break its `vendor/` folder: the php and scheduler containers both ran
+  `composer install` into the shared code at the same time. The install now takes a lock, and `scripts/up.sh` /
+  `make wait` wait until it is released.
+
 ## [0.6.1-alpha] - 2026-10-29
 
 ### Added

@@ -51,7 +51,7 @@ logs: ## Follow container logs (make logs s=php for one service)
 wait: ## Wait until PHP dependencies are installed
 	@echo -n "Waiting for PHP container"; \
 	for i in $$(seq 1 120); do \
-	  if $(PHP_T) test -f vendor/autoload.php 2>/dev/null; then echo " ready."; exit 0; fi; \
+	  if $(PHP_T) sh -c 'test -f vendor/autoload.php && flock -n runtime/.composer.lock true' 2>/dev/null; then echo " ready."; exit 0; fi; \
 	  echo -n "."; sleep 2; \
 	done; echo " timed out (see: make logs s=php)"; exit 1
 

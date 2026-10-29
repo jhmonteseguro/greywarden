@@ -129,7 +129,9 @@ final class CloudflareTraffic
             throw new RuntimeException('Cloudflare analytics: request analytics (' . self::HTTP . ') are not available for this zone.');
         }
         $limit = min(self::MAX_ROWS, max(100, $http['maxPageSize']));
-        $window = sprintf('datetime_geq: %s, datetime_lt: %s', self::literal(gmdate('Y-m-d\TH:i:s\Z', $start)), self::literal(gmdate('Y-m-d\TH:i:s\Z', $end)));
+        // Security events have no requestSource, so only the request queries filter on it
+        $period = sprintf('datetime_geq: %s, datetime_lt: %s', self::literal(gmdate('Y-m-d\TH:i:s\Z', $start)), self::literal(gmdate('Y-m-d\TH:i:s\Z', $end)));
+        $window = $period;
         // Visitor traffic only (not Workers subrequests), where the plan can filter on it
         if (self::hasField($http, 'requestSource')) {
             $window .= ', requestSource: "eyeball"';
@@ -147,7 +149,7 @@ final class CloudflareTraffic
         }
         if ($firewall['enabled']) {
             $fwLimit = min(self::MAX_ROWS, max(100, $firewall['maxPageSize']));
-            $queries['firewall'] = self::groups(self::FIREWALL, "{ $window }", $fwLimit, 'clientIP action');
+            $queries['firewall'] = self::groups(self::FIREWALL, "{ $period }", $fwLimit, 'clientIP action');
         }
 
         $zone = ['zoneTag' => (string) gw_env('CLOUDFLARE_ZONE_ID')];
