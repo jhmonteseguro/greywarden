@@ -16,7 +16,7 @@ use yii\web\Response;
 use yii\web\UploadedFile;
 
 /**
- * Dated notes on records (controls for now, see RecordNote::ENTITY_TYPES).
+ * Dated notes on records (see RecordNote::ENTITY_TYPES).
  *
  * Access: add -> records.manage while the record is not archived; remove ->
  * the note's author, or an administrator. A note can link a file already on

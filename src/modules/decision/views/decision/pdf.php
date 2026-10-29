@@ -7,6 +7,7 @@
 
 use app\helpers\Badge;
 use app\models\Attachment;
+use app\models\RecordNote;
 use app\modules\control\models\Control;
 use app\modules\decision\models\Decision;
 use app\modules\incident\models\Incident;
@@ -50,5 +51,7 @@ $this->params['pdf.badges'] = Badge::status('decision-status', $model->status, D
     <?= $this->render('@app/views/pdf/_records', ['title' => 'Supersedes', 'models' => $model->supersedes]) ?>
 <?php endif; ?>
 <?= $this->render('@app/views/pdf/_records', ['title' => 'ATT&CK mitigations', 'models' => $model->mitigations, 'emptyText' => 'None recorded.']) ?>
+
+<?= $this->render('@app/views/pdf/_notes', ['notes' => RecordNote::listFor($model, true)]) ?>
 
 <?= $this->render('@app/views/pdf/_attachments', ['attachments' => Attachment::listFor($model)]) ?>

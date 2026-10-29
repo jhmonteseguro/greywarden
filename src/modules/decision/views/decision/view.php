@@ -7,6 +7,7 @@
 use app\helpers\Badge;
 use app\helpers\RiskMatrix;
 use app\models\Attachment;
+use app\models\RecordNote;
 use app\modules\attack\components\Coverage;
 use app\modules\attack\widgets\TechniqueTags;
 use app\modules\cloud\models\CloudAsset;
@@ -18,6 +19,7 @@ use app\widgets\Attachments;
 use app\widgets\AuditHistory;
 use app\widgets\DetailView;
 use app\widgets\LinkedRecords;
+use app\widgets\Notes;
 use app\widgets\RecordActions;
 use yii\bootstrap5\Tabs;
 use yii\db\Query;
@@ -129,7 +131,8 @@ ob_start(); ?>
 </div>
 <?php $links = ob_get_clean(); ?>
 
-<?php $attachments = Attachment::listFor($model); ?>
+<?php $attachments = Attachment::listFor($model);
+$notes = RecordNote::listFor($model); ?>
 <?= $this->render('@app/views/partials/_archived-notice', ['model' => $model]) ?>
 
 <?= Tabs::widget([
@@ -137,6 +140,7 @@ ob_start(); ?>
     'tabContentOptions' => ['class' => 'gw-tab-content'],
     'items' => [
         ['label' => 'Details', 'content' => $details, 'options' => ['id' => 'tab-details']],
+        ['label' => 'Notes (' . count($notes) . ')', 'content' => Notes::widget(['model' => $model, 'notes' => $notes, 'attachments' => $attachments]), 'options' => ['id' => 'tab-notes']],
         ['label' => 'Links (' . (count($controls) + count($risks) + count($incidents) + count($cloudAssets) + count($supersedes)) . ')', 'content' => $links, 'options' => ['id' => 'tab-links']],
         ['label' => 'Files (' . count($attachments) . ')', 'content' => Attachments::widget(['model' => $model, 'attachments' => $attachments]), 'options' => ['id' => 'tab-files']],
         ['label' => 'History', 'content' => AuditHistory::widget(['entityType' => 'decision', 'entityId' => $model->id]), 'options' => ['id' => 'tab-history']],

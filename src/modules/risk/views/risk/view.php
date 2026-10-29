@@ -8,6 +8,7 @@ use app\helpers\Badge;
 use app\helpers\RiskMatrix;
 use app\components\Rbac;
 use app\models\Attachment;
+use app\models\RecordNote;
 use app\modules\attack\widgets\TechniqueTags;
 use app\modules\cloud\models\CloudAsset;
 use app\modules\control\models\Control;
@@ -19,6 +20,7 @@ use app\widgets\Attachments;
 use app\widgets\AuditHistory;
 use app\widgets\DetailView;
 use app\widgets\LinkedRecords;
+use app\widgets\Notes;
 use app\widgets\RecordActions;
 use yii\bootstrap5\Tabs;
 use yii\helpers\Html;
@@ -187,7 +189,8 @@ ob_start(); ?>
 </div>
 <?php $links = ob_get_clean(); ?>
 
-<?php $attachments = Attachment::listFor($model); ?>
+<?php $attachments = Attachment::listFor($model);
+$notes = RecordNote::listFor($model); ?>
 <?= $this->render('@app/views/partials/_archived-notice', ['model' => $model]) ?>
 
 <?= Tabs::widget([
@@ -201,6 +204,7 @@ ob_start(); ?>
             'canEdit' => Rbac::canManage() && !$model->getIsArchived(),
             'editUrl' => ['update', 'id' => $model->id],
         ]), 'options' => ['id' => 'tab-attack']],
+        ['label' => 'Notes (' . count($notes) . ')', 'content' => Notes::widget(['model' => $model, 'notes' => $notes, 'attachments' => $attachments]), 'options' => ['id' => 'tab-notes']],
         ['label' => 'Links (' . (count($devices) + count($cloudAssets) + count($incidents) + count($decisions)) . ')', 'content' => $links, 'options' => ['id' => 'tab-links']],
         ['label' => 'Files (' . count($attachments) . ')', 'content' => Attachments::widget(['model' => $model, 'attachments' => $attachments]), 'options' => ['id' => 'tab-files']],
         ['label' => 'History', 'content' => AuditHistory::widget(['entityType' => 'risk', 'entityId' => $model->id]), 'options' => ['id' => 'tab-history']],

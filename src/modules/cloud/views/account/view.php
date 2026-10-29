@@ -7,6 +7,7 @@
 use app\components\Rbac;
 use app\helpers\Badge;
 use app\models\Attachment;
+use app\models\RecordNote;
 use app\modules\attack\components\CloudAttack;
 use app\modules\cloud\components\CloudChecks;
 use app\modules\cloud\models\CloudAccount;
@@ -17,6 +18,7 @@ use app\widgets\Attachments;
 use app\widgets\AuditHistory;
 use app\widgets\DetailView;
 use app\widgets\LinkedRecords;
+use app\widgets\Notes;
 use app\widgets\RecordActions;
 use yii\bootstrap5\Tabs;
 use yii\helpers\Html;
@@ -115,7 +117,8 @@ $assetList = LinkedRecords::widget(['title' => 'Assets in this account', 'icon' 
     'extra' => static fn(CloudAsset $a) => '<span class="gw-muted">' . Html::encode($a->getTypeLabel()) . '</span> '
         . ($a->isInternetFacing() ? Badge::render('exposure', 'internet', 'Internet-facing', ['icon' => 'globe2']) . ' ' : '')
         . Badge::posture($a->getPosture()['state'])]);
-$attachments = Attachment::listFor($model); ?>
+$attachments = Attachment::listFor($model);
+$notes = RecordNote::listFor($model); ?>
 <?= $this->render('@app/views/partials/_archived-notice', ['model' => $model]) ?>
 
 <?= Tabs::widget([
@@ -123,6 +126,7 @@ $attachments = Attachment::listFor($model); ?>
     'tabContentOptions' => ['class' => 'gw-tab-content'],
     'items' => [
         ['label' => 'Details', 'content' => $details, 'options' => ['id' => 'tab-details']],
+        ['label' => 'Notes (' . count($notes) . ')', 'content' => Notes::widget(['model' => $model, 'notes' => $notes, 'attachments' => $attachments]), 'options' => ['id' => 'tab-notes']],
         ['label' => 'Assets (' . count($live) . ')', 'content' => $assetList, 'options' => ['id' => 'tab-assets']],
         ['label' => 'Files (' . count($attachments) . ')', 'content' => Attachments::widget(['model' => $model, 'attachments' => $attachments]), 'options' => ['id' => 'tab-files']],
         ['label' => 'History', 'content' => AuditHistory::widget(['entityType' => 'cloud_account', 'entityId' => $model->id]), 'options' => ['id' => 'tab-history']],

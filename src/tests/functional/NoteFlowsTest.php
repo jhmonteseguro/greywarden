@@ -5,8 +5,13 @@ namespace tests\functional;
 use app\components\Actor;
 use app\models\Attachment;
 use app\models\AuditLog;
+use app\models\Lookup;
 use app\models\RecordNote;
+use app\modules\cloud\models\CloudAccount;
+use app\modules\cloud\models\CloudAsset;
 use app\modules\control\models\Control;
+use app\modules\decision\models\Decision;
+use app\modules\risk\models\Risk;
 use tests\FunctionalTestCase;
 use Yii;
 use yii\helpers\FileHelper;
@@ -191,5 +196,42 @@ class NoteFlowsTest extends FunctionalTestCase
         $control->restore();
         $this->post("/notes/{$theirs->id}/remove");
         $this->assertNull(RecordNote::findOne($theirs->id));
+    }
+
+    public function testRisksDecisionsAndCloudRecordsTakeNotes(): void
+    {
+        $risk = new Risk(['title' => 'Phishing', 'category_id' => $this->lookupId(Lookup::TYPE_RISK_CATEGORY), 'owner_id' => $this->userIdFor('analyst'),
+            'status' => Risk::STATUS_ASSESSED, 'date_identified' => '2026-10-01', 'inherent_likelihood' => 2, 'inherent_impact' => 2]);
+        $decision = new Decision(['title' => 'Adopt MFA', 'decision_date' => '2026-10-21', 'decision_text' => 'Everyone.',
+            'decision_makers' => 'CISO', 'status' => Decision::STATUS_APPROVED, 'category_id' => $this->lookupId(Lookup::TYPE_DECISION_CATEGORY)]);
+        $account = new CloudAccount(['name' => 'Production (AWS)', 'provider' => 'aws', 'account_identifier' => '111122223333', 'environment' => 'production',
+            'status' => CloudAccount::STATUS_ACTIVE, 'criticality' => 'high', 'data_classification' => 'confidential']);
+        foreach ([$risk, $decision, $account] as $record) {
+            $this->assertTrue($record->save(), json_encode($record->getErrors()));
+        }
+        $asset = new CloudAsset(['account_id' => $account->id, 'name' => 'customer-exports', 'resource_type' => 'bucket',
+            'status' => CloudAsset::STATUS_ACTIVE, 'criticality' => 'high', 'data_classification' => 'confidential']);
+        $this->assertTrue($asset->save(), json_encode($asset->getErrors()));
+
+        $this->loginAs('analyst');
+        foreach ([[$risk, '/risks'], [$decision, '/decisions'], [$account, '/cloud/accounts'], [$asset, '/cloud/assets']] as [$owner, $path]) {
+            $type = $owner::entityType();
+            $this->get("$path/{$owner->id}");
+            $this->assertSee('id="tab-notes"');
+            $this->assertSee('No notes yet.');
+            $this->assertSee('id="note-form"');
+
+            $this->post("/notes/add?entity=$type&id={$owner->id}", ['body' => "Emailed DevOps about $type"], $this->file("$type.txt", "Copy\n"));
+            $this->assertRedirect("$path/{$owner->id}");
+            $this->assertStringContainsString("Note added to {$owner->getReferenceValue()}, with $type.txt attached.", $this->flash('success'));
+            $this->get("$path/{$owner->id}");
+            $this->assertSee("Emailed DevOps about $type");
+            $this->assertSee('Notes (1)');
+            $this->assertSee('Files (1)');
+            $this->assertSame(1, (int) AuditLog::find()->where(['entity_type' => $type, 'entity_id' => $owner->id, 'action' => 'note'])->count(), $type);
+        }
+
+        $this->post('/notes/add?entity=incident&id=1', ['body' => 'x']);
+        $this->assertStatus(404, 'incidents keep their timeline');
     }
 }

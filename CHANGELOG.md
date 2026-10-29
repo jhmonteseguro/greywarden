@@ -6,6 +6,12 @@ releases).
 
 ## [Unreleased]
 
+### Added
+
+- Notes on risks, decisions, cloud accounts and cloud assets: the same **Notes** tab as controls (dated, signed,
+  never edited, optionally linking a file), with *Note added* / *Note removed* in each record's History and a
+  **Notes** section in the risk and decision PDFs. Incidents keep using their Timeline.
+
 ## [0.8.1-alpha] - 2026-10-29
 
 ### Fixed

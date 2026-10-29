@@ -419,20 +419,21 @@ greywarden/
 * **History**: *File attached* / *File removed* entries (name, size, SHA-256 prefix) appear in the record's History.
   Permanently deleting an archived record deletes its files.
 
-### Notes on controls
+### Notes on records
 
-* A control's **Notes** tab is a running log of progress, e.g. "Emailed DevOps requesting the firewall change, copy
-  saved in Files". Each note (up to 1,000 characters, plain text) is stamped with the date, time and author and
-  cannot be edited or back-dated; correct a note by adding another.
-* A note can **link a file**: one already on the control's Files tab, or a new one attached in the same step (it is
+* Risks, controls, decisions, cloud accounts and cloud assets have a **Notes** tab: a running log of progress, e.g.
+  "Emailed DevOps requesting the firewall change, copy saved in Files". Each note (up to 1,000 characters, plain
+  text) is stamped with the date, time and author and cannot be edited or back-dated; correct a note by adding another.
+  Incidents keep their dated narrative on the incident **Timeline** instead.
+* A note can **link a file**: one already on the record's Files tab, or a new one attached in the same step (it is
   checked like any other upload and also appears on the Files tab). The note keeps the file's name, so it still reads
   correctly if the file is removed later.
-* **Access**: viewers read notes; analysts add them while the control is not archived. A note can be removed by its
+* **Access**: viewers read notes; analysts add them while the record is not archived. A note can be removed by its
   author or an administrator.
-* **History and PDF**: *Note added* / *Note removed* entries (with the note's text) appear in the control's History,
-  and the control PDF has a **Notes** section, oldest first. Notes are included in every export, so keep them fit
-  for the people the PDF goes to.
-* Notes live in `record_note` (`entity_type` / `entity_id`, like attachments), so other record types can take them
+* **History and PDF**: *Note added* / *Note removed* entries (with the note's text) appear in the record's History,
+  and the risk, control and decision PDFs have a **Notes** section, oldest first. Notes are included in every export,
+  so keep them fit for the people the PDF goes to.
+* Notes live in `record_note` (`entity_type` / `entity_id`, like attachments), so another record type can take them
   by adding to `RecordNote::ENTITY_TYPES` and placing the `Notes` widget and `pdf/_notes` partial.
 
 ### Incident reports (PDF)

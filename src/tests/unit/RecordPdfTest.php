@@ -108,6 +108,27 @@ class RecordPdfTest extends DbTestCase
         }
     }
 
+    public function testRiskAndDecisionDocumentsListNotes(): void
+    {
+        $risk = $this->risk();
+        $decision = new Decision([
+            'title' => 'Adopt MFA', 'decision_date' => '2026-10-21', 'decision_text' => 'Everyone.',
+            'decision_makers' => 'CISO', 'status' => Decision::STATUS_APPROVED, 'category_id' => $this->lookupId(Lookup::TYPE_DECISION_CATEGORY),
+        ]);
+        $this->assertTrue($decision->save(), json_encode($decision->getErrors()));
+        $this->assertStringNotContainsString('<h2>Notes</h2>', $this->html($risk, 'risk'), 'no notes, no section');
+        $this->assertStringNotContainsString('<h2>Notes</h2>', $this->html($decision, 'decision'));
+
+        RecordNote::add($risk, 'Owner agreed the <treatment> plan');
+        RecordNote::add($decision, 'Board informed');
+        $html = $this->html($risk, 'risk');
+        $this->assertStringContainsString('<h2>Notes</h2>', $html);
+        $this->assertStringContainsString('Owner agreed the &lt;treatment&gt; plan', $html);
+        $html = $this->html($decision, 'decision');
+        $this->assertStringContainsString('<h2>Notes</h2>', $html);
+        $this->assertStringContainsString('Board informed', $html);
+    }
+
     public function testDecisionRendersToPdf(): void
     {
         $decision = new Decision([

@@ -5,9 +5,14 @@ namespace tests\unit;
 use app\components\Actor;
 use app\models\Attachment;
 use app\models\AuditLog;
+use app\models\DomainRecord;
 use app\models\Lookup;
 use app\models\RecordNote;
+use app\modules\cloud\models\CloudAccount;
+use app\modules\cloud\models\CloudAsset;
 use app\modules\control\models\Control;
+use app\modules\decision\models\Decision;
+use app\modules\inventory\models\Device;
 use app\modules\risk\models\Risk;
 use tests\DbTestCase;
 use Yii;
@@ -46,12 +51,12 @@ class RecordNoteTest extends DbTestCase
         return $control;
     }
 
-    private function attach(Control $control, string $name): Attachment
+    private function attach(DomainRecord $owner, string $name): Attachment
     {
         $tmp = tempnam(sys_get_temp_dir(), 'gwnu');
         file_put_contents($tmp, "Evidence\n");
         $this->temp[] = $tmp;
-        $file = Attachment::attach($control, new UploadedFile(['name' => $name, 'tempName' => $tmp, 'type' => 'text/plain', 'size' => 9, 'error' => UPLOAD_ERR_OK]));
+        $file = Attachment::attach($owner, new UploadedFile(['name' => $name, 'tempName' => $tmp, 'type' => 'text/plain', 'size' => 9, 'error' => UPLOAD_ERR_OK]));
         $this->assertInstanceOf(Attachment::class, $file);
         return $file;
     }
@@ -92,11 +97,54 @@ class RecordNoteTest extends DbTestCase
         $this->assertNull(RecordNote::findOwner('control', 999999));
         $this->assertSame($control->id, RecordNote::findOwner('control', $control->id)->id);
 
-        $risk = new Risk(['title' => 'Not yet', 'category_id' => $this->lookupId(Lookup::TYPE_RISK_CATEGORY), 'owner_id' => $this->userId(),
-            'status' => Risk::STATUS_ASSESSED, 'date_identified' => '2026-10-01', 'inherent_likelihood' => 2, 'inherent_impact' => 2]);
-        $this->assertTrue($risk->save(), json_encode($risk->getErrors()));
+        $device = new Device(['hostname' => 'lt-notes-001', 'device_type' => 'laptop', 'status' => 'active', 'criticality' => 'medium', 'data_classification' => 'internal']);
+        $this->assertTrue($device->save(), json_encode($device->getErrors()));
         $this->expectException(InvalidConfigException::class);
-        RecordNote::add($risk, 'Risks take no notes yet');
+        RecordNote::add($device, 'Devices take no notes');
+    }
+
+    /** One saved record of each type that takes notes, keyed by entity type */
+    private function owners(): array
+    {
+        $risk = new Risk(['title' => 'Phishing', 'category_id' => $this->lookupId(Lookup::TYPE_RISK_CATEGORY), 'owner_id' => $this->userId(),
+            'status' => Risk::STATUS_ASSESSED, 'date_identified' => '2026-10-01', 'inherent_likelihood' => 2, 'inherent_impact' => 2]);
+        $decision = new Decision(['title' => 'Adopt MFA', 'decision_date' => '2026-10-21', 'decision_text' => 'Everyone.',
+            'decision_makers' => 'CISO', 'status' => Decision::STATUS_APPROVED, 'category_id' => $this->lookupId(Lookup::TYPE_DECISION_CATEGORY)]);
+        $account = new CloudAccount(['name' => 'Production (AWS)', 'provider' => 'aws', 'account_identifier' => '111122223333', 'environment' => 'production',
+            'status' => CloudAccount::STATUS_ACTIVE, 'criticality' => 'high', 'data_classification' => 'confidential']);
+        foreach ([$risk, $decision, $account] as $record) {
+            $this->assertTrue($record->save(), json_encode($record->getErrors()));
+        }
+        $asset = new CloudAsset(['account_id' => $account->id, 'name' => 'customer-exports', 'resource_type' => 'bucket',
+            'status' => CloudAsset::STATUS_ACTIVE, 'criticality' => 'high', 'data_classification' => 'confidential']);
+        $this->assertTrue($asset->save(), json_encode($asset->getErrors()));
+        return ['risk' => $risk, 'control' => $this->control(), 'decision' => $decision, 'cloud_account' => $account, 'cloud_asset' => $asset];
+    }
+
+    public function testRisksControlsDecisionsAndCloudRecordsTakeNotes(): void
+    {
+        $this->assertSame(['risk', 'control', 'decision', 'cloud_account', 'cloud_asset'], RecordNote::ENTITY_TYPES);
+        $this->assertFalse(RecordNote::takesNotes('incident'), 'incidents keep their timeline');
+        foreach ($this->owners() as $type => $owner) {
+            /** @var DomainRecord $owner */
+            $this->assertTrue(RecordNote::takesNotes($type), $type);
+            $note = RecordNote::add($owner, "Note on $type", $this->attach($owner, "$type.txt"));
+            $this->assertInstanceOf(RecordNote::class, $note, $type);
+            $this->assertSame($owner->id, RecordNote::findOwner($type, $owner->id)->id);
+            $this->assertSame(["Note on $type"], array_column(RecordNote::listFor($owner), 'body'));
+            $this->assertSame(['note' => [null, "Note on $type · file: $type.txt"]],
+                AuditLog::findOne(['entity_type' => $type, 'entity_id' => $owner->id, 'action' => 'note'])->getChangesArray());
+        }
+    }
+
+    public function testNotesGoWithAHardDeletedRecordOfAnyType(): void
+    {
+        $owners = $this->owners();
+        foreach (['risk', 'decision', 'cloud_asset'] as $type) {
+            $note = RecordNote::add($owners[$type], 'Goes with the record');
+            $this->assertSame(1, $owners[$type]->delete(), $type);
+            $this->assertNull(RecordNote::findOne($note->id), $type);
+        }
     }
 
     public function testLinkedFileKeepsItsNameAfterRemoval(): void

@@ -8,6 +8,7 @@
 use app\helpers\Badge;
 use app\helpers\RiskMatrix;
 use app\models\Attachment;
+use app\models\RecordNote;
 use app\modules\control\models\Control;
 use app\modules\decision\models\Decision;
 use app\modules\incident\models\Incident;
@@ -105,5 +106,7 @@ $controlStatus = static fn(Control $c) => Badge::status('control-status', $c->st
 <?php if ($model->cloudAssets): ?>
     <?= $this->render('@app/views/pdf/_records', ['title' => 'Affected cloud assets', 'models' => $model->cloudAssets]) ?>
 <?php endif; ?>
+
+<?= $this->render('@app/views/pdf/_notes', ['notes' => RecordNote::listFor($model, true)]) ?>
 
 <?= $this->render('@app/views/pdf/_attachments', ['attachments' => Attachment::listFor($model)]) ?>
