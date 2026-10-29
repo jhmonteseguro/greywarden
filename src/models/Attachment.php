@@ -22,6 +22,7 @@ use yii\web\UploadedFile;
  * @property string $entity_type
  * @property int $entity_id
  * @property int|null $control_test_id
+ * @property bool $is_evidence attached from the control's Evidence field
  * @property string $stored_name
  * @property string $original_name
  * @property string $mime_type
@@ -181,11 +182,11 @@ class Attachment extends ActiveRecord
     }
 
     /**
-     * Stores an upload against $owner (optionally as evidence of a control test)
-     * and logs it in the owner's history. Returns the attachment, or the reason
-     * it was refused as a string.
+     * Stores an upload against $owner (optionally as evidence of a control test,
+     * or of the control itself) and logs it in the owner's history. Returns the
+     * attachment, or the reason it was refused as a string.
      */
-    public static function attach(DomainRecord $owner, ?UploadedFile $file, ?string $description = null, ?ControlTest $test = null): self|string
+    public static function attach(DomainRecord $owner, ?UploadedFile $file, ?string $description = null, ?ControlTest $test = null, bool $evidence = false): self|string
     {
         if ($problem = self::check($file)) {
             return $problem;
@@ -195,6 +196,7 @@ class Attachment extends ActiveRecord
             'entity_type' => $owner::entityType(),
             'entity_id' => $owner->id,
             'control_test_id' => $test?->id,
+            'is_evidence' => $evidence,
             'stored_name' => bin2hex(random_bytes(16)),
             'original_name' => self::cleanName($file->name),
             'mime_type' => self::TYPES[$ext][0],
@@ -277,6 +279,8 @@ class Attachment extends ActiveRecord
         $text = sprintf('%s (%s, SHA-256 %s…)', $this->original_name, Yii::$app->formatter->asShortSize($this->size, 1), substr($this->sha256, 0, 12));
         if ($this->control_test_id && ($test = $this->controlTest)) {
             $text .= ' · test of ' . Yii::$app->formatter->asDate($test->tested_on);
+        } elseif ($this->is_evidence) {
+            $text .= ' · evidence';
         }
         return $text;
     }

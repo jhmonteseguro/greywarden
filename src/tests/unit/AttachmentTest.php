@@ -169,6 +169,42 @@ class AttachmentTest extends DbTestCase
         $this->assertFileExists($a->getPath());
     }
 
+    public function testControlEvidenceFilesAreValidatedAndListedAsItsEvidence(): void
+    {
+        $control = $this->control();
+        $control->evidenceFiles = [$this->upload('fake.pdf', 'not a pdf')];
+        $this->assertFalse($control->validate());
+        $this->assertStringContainsString('does not contain what its .pdf name says', $control->getFirstError('evidenceFiles'));
+
+        $control->evidenceFiles = [$this->upload('mfa-report.png', $this->png())];
+        $this->assertTrue($control->save(), json_encode($control->getErrors()));
+        $this->assertSame([], $control->attachEvidenceFiles());
+        $this->assertSame([], $control->evidenceFiles, 'attached once only');
+        Attachment::attach($control, $this->upload('other.txt', 'not evidence'));
+
+        $this->assertSame(['mfa-report.png'], array_column($control->evidenceAttachments, 'original_name'));
+        $a = Attachment::findOne(['entity_type' => 'control', 'entity_id' => $control->id, 'original_name' => 'mfa-report.png']);
+        $this->assertTrue((bool) $a->is_evidence);
+        $this->assertNull($a->control_test_id);
+        $this->assertStringEndsWith(' · evidence', $a->getAuditText());
+        $this->assertCount(2, Attachment::listFor($control), 'evidence files are on the Files tab too');
+
+        $this->assertTrue($a->remove());
+        $control = Control::findOne($control->id);
+        $this->assertSame([], $control->evidenceAttachments);
+
+        // A file that cannot be stored is reported, not attached
+        $upload = $this->upload('report.txt', 'evidence');
+        $control->evidenceFiles = [new class(['name' => $upload->name, 'tempName' => $upload->tempName, 'type' => 'text/plain', 'size' => $upload->size, 'error' => UPLOAD_ERR_OK]) extends UploadedFile {
+            public function saveAs($file, $deleteTempFile = true): bool
+            {
+                return false;
+            }
+        }];
+        $this->assertSame(['The file could not be stored. Ask an administrator to check the attachments folder.'], $control->attachEvidenceFiles());
+        $this->assertSame([], Control::findOne($control->id)->evidenceAttachments);
+    }
+
     public function testOnlyRegisterRecordsTakeAttachments(): void
     {
         $this->assertNull(Attachment::findOwner('user', 1));

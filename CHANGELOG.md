@@ -6,6 +6,12 @@ releases).
 
 ## [Unreleased]
 
+### Added
+
+- Evidence files on controls: the control's create / edit form can attach files under its Evidence field. They are
+  checked like any other upload (a refused file keeps the whole form from saving), listed under Evidence on the
+  Details tab and in the control PDF, and also appear on the Files tab marked *Evidence of the control*.
+
 ### Fixed
 
 - Demo reset (`php yii seed/demo --reset=1`): it now also removes the notes and attached files of the wiped records,

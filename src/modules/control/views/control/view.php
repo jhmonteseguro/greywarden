@@ -51,9 +51,12 @@ $tests = $model->tests;
 $attachments = Attachment::listFor($model);
 $notes = RecordNote::listFor($model);
 $testFiles = [];
+$evidenceFiles = [];
 foreach ($attachments as $a) {
     if ($a->control_test_id) {
         $testFiles[$a->control_test_id][] = $a;
+    } elseif ($a->is_evidence) {
+        $evidenceFiles[] = $a;
     }
 }
 $risks = $model->risks;
@@ -77,6 +80,15 @@ ob_start(); ?>
             <?= $this->render('@app/views/partials/_text-block', ['label' => 'Description', 'text' => $model->description]) ?>
             <?= $this->render('@app/views/partials/_text-block', ['label' => 'Implementation', 'text' => $model->implementation]) ?>
             <?= $this->render('@app/views/partials/_text-block', ['label' => 'Evidence', 'text' => $model->evidence]) ?>
+            <?php if ($evidenceFiles): ?>
+                <ul class="list-unstyled gw-small gw-control-evidence">
+                    <?php foreach ($evidenceFiles as $a): ?>
+                        <li><i class="bi bi-<?= $a->getIcon() ?> gw-muted" aria-hidden="true"></i>
+                            <?= Html::a(Html::encode($a->original_name), ['/attachment/download', 'id' => $a->id], ['title' => 'Download']) ?>
+                            <span class="gw-muted">· <?= $fmt->asDate($a->created_at) ?></span></li>
+                    <?php endforeach; ?>
+                </ul>
+            <?php endif; ?>
         </section>
     </div>
     <div class="col-xl-4">

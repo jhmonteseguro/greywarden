@@ -3,6 +3,7 @@
 namespace app\modules\control\models;
 
 use app\components\Actor;
+use app\models\Attachment;
 use app\models\DomainRecord;
 use app\models\User;
 use app\modules\attack\models\AttackMitigation;
@@ -59,6 +60,7 @@ use Yii;
  * @property-read AttackMitigation[] $mitigations
  * @property-read FrameworkRequirement[] $requirements
  * @property-read ControlTest[] $tests newest first
+ * @property-read Attachment[] $evidenceAttachments files attached as its evidence, newest first
  */
 class Control extends DomainRecord
 {
@@ -104,6 +106,8 @@ class Control extends DomainRecord
     public $deviceTypeList = null;
     /** @var string[]|string|null cloud scope tokens from the form (null = not submitted); stored in cloud_scope */
     public $cloudScopeList = null;
+    /** @var \yii\web\UploadedFile[] files posted with the Evidence field; see validateEvidenceFiles() */
+    public array $evidenceFiles = [];
 
     public static function tableName(): string
     {
@@ -248,6 +252,7 @@ class Control extends DomainRecord
             ['cloud_check', 'in', 'range' => array_keys(self::cloudCheckOptions())],
             ['cloudScopeList', 'each', 'rule' => ['in', 'range' => array_keys(CloudCatalogue::scopeOptions())]],
             ['cloudScopeList', 'validateCloudScope'],
+            ['evidenceFiles', 'validateEvidenceFiles', 'skipOnEmpty' => true],
             ['riskIds', 'each', 'rule' => ['exist', 'targetClass' => Risk::class, 'targetAttribute' => 'id']],
             ['decisionIds', 'each', 'rule' => ['exist', 'targetClass' => Decision::class, 'targetAttribute' => 'id']],
             ['mitigationIds', 'each', 'rule' => ['exist', 'targetClass' => AttackMitigation::class, 'targetAttribute' => 'id']],
@@ -281,6 +286,7 @@ class Control extends DomainRecord
             'cloud_check' => 'Cloud check',
             'cloud_scope' => 'Cloud scope',
             'cloudScopeList' => 'Applies to',
+            'evidenceFiles' => 'Evidence files',
         ];
     }
 
@@ -356,6 +362,33 @@ class Control extends DomainRecord
         return parent::beforeSave($insert);
     }
 
+    public function validateEvidenceFiles(string $attribute): void
+    {
+        foreach ($this->$attribute as $file) {
+            if ($problem = Attachment::check($file)) {
+                $this->addError($attribute, $problem);
+            }
+        }
+    }
+
+    /**
+     * Attaches the validated evidence files to the control, marked as its evidence
+     * (they also appear on the Files tab).
+     * @return string[] problems storing them
+     */
+    public function attachEvidenceFiles(): array
+    {
+        $problems = [];
+        foreach ($this->evidenceFiles as $file) {
+            $result = Attachment::attach($this, $file, null, null, true);
+            if (is_string($result)) {
+                $problems[] = $result;
+            }
+        }
+        $this->evidenceFiles = [];
+        return $problems;
+    }
+
     public function afterSave($insert, $changedAttributes): void
     {
         parent::afterSave($insert, $changedAttributes);
@@ -402,6 +435,12 @@ class Control extends DomainRecord
     public function getTests()
     {
         return $this->hasMany(ControlTest::class, ['control_id' => 'id'])->orderBy(['tested_on' => SORT_DESC, 'id' => SORT_DESC]);
+    }
+
+    public function getEvidenceAttachments()
+    {
+        return $this->hasMany(Attachment::class, ['entity_id' => 'id'])
+            ->andOnCondition(['entity_type' => self::entityType(), 'is_evidence' => true])->orderBy(['id' => SORT_DESC]);
     }
 
     /** @return array<string,Incident[]> role => incidents (see Incident::controlRoleOptions()) */

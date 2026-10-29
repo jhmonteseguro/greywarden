@@ -39,6 +39,8 @@ $fmt = Yii::$app->formatter;
                                     <?php if ($a->controlTest): ?>
                                         <div class="gw-muted gw-small"><i class="bi bi-clipboard-check" aria-hidden="true"></i>
                                             Evidence of the test on <?= $fmt->asDate($a->controlTest->tested_on) ?></div>
+                                    <?php elseif ($a->is_evidence): ?>
+                                        <div class="gw-muted gw-small"><i class="bi bi-patch-check" aria-hidden="true"></i> Evidence of the control</div>
                                     <?php endif; ?>
                                     <div class="gw-muted gw-small gw-mono" title="SHA-256 <?= Html::encode($a->sha256) ?>">SHA-256 <?= Html::encode(substr($a->sha256, 0, 16)) ?>…</div>
                                 </td>

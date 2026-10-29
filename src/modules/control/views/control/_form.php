@@ -4,6 +4,7 @@
  * @var app\modules\control\models\Control $model
  */
 
+use app\models\Attachment;
 use app\models\User;
 use app\modules\attack\models\AttackMitigation;
 use app\modules\cloud\components\CloudCatalogue;
@@ -32,7 +33,7 @@ $pickerHints = [
     FrameworkCatalogue::NCSC_CAF => 'Filter outcomes, e.g. B2.a or logs',
 ];
 ?>
-<?php $form = ActiveForm::begin(['id' => 'control-form', 'options' => ['class' => 'gw-form gw-form--control']]); ?>
+<?php $form = ActiveForm::begin(['id' => 'control-form', 'options' => ['class' => 'gw-form gw-form--control', 'enctype' => 'multipart/form-data']]); ?>
 <?= $form->errorSummary($model, ['class' => 'alert alert-danger gw-error-summary']) ?>
 
 <fieldset class="gw-fieldset">
@@ -50,6 +51,21 @@ $pickerHints = [
         <div class="col-12"><?= $form->field($model, 'description')->textarea(['rows' => 3]) ?></div>
         <div class="col-12"><?= $form->field($model, 'implementation')->textarea(['rows' => 3]) ?></div>
         <div class="col-12"><?= $form->field($model, 'evidence')->textarea(['rows' => 2]) ?></div>
+        <div class="col-12">
+            <?php if (!$model->isNewRecord && ($evidenceFiles = $model->evidenceAttachments)): ?>
+                <div class="mb-2 gw-small gw-control-evidence">
+                    <span class="gw-muted">Attached as evidence:</span>
+                    <?php foreach ($evidenceFiles as $a): ?>
+                        <span class="text-nowrap"><i class="bi bi-<?= $a->getIcon() ?> gw-muted" aria-hidden="true"></i>
+                            <?= Html::a(Html::encode($a->original_name), ['/attachment/download', 'id' => $a->id], ['title' => 'Download']) ?></span>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+            <?= $form->field($model, 'evidenceFiles[]')->fileInput(['multiple' => true, 'accept' => Attachment::acceptAttribute()])
+                ->label($model->isNewRecord ? 'Evidence files' : 'Attach more evidence files')
+                ->hint(Html::encode(Attachment::extensionList()) . '; up to ' . (int) Yii::$app->params['attachments.maxSizeMb'] . ' MB per upload. '
+                    . 'They also appear on the Files tab, where they can be removed.') ?>
+        </div>
     </div>
     <p class="form-text gw-field__hint mb-0">Effectiveness comes from the tests recorded on the control's Testing tab.</p>
 </fieldset>

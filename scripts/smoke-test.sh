@@ -489,6 +489,16 @@ post viewer "/controls/$CID" "/controls/$CID/record-test" 403 "ControlTest[teste
 post analyst "/controls/$CID" "/controls/$CID/delete-test?test=$TID" 302
 check analyst "/controls/$CID" 200
 grep -q 'Smoke findings' "$BODY" && bad "deleted test still shown" || ok
+# Editing the control can attach evidence files, which also land on its Files tab
+TOKEN=$(csrf analyst "/controls/$CID/update")
+printf 'host,patched\nsmoke,yes\n' > "$WORK/smoke-evidence.csv"
+CODE=$(curl -s -o "$WORK/body.html" -w '%{http_code}' -b "$(jar analyst)" -c "$(jar analyst)" -F "_csrf=$TOKEN" \
+    -F "Control[title]=Smoke test control" -F "Control[status]=implemented" -F "Control[control_type]=detective" -F "Control[nature]=technical" \
+    -F "Control[evidence]=Smoke evidence text" -F "Control[evidenceFiles][]=@$WORK/smoke-evidence.csv;type=text/csv" "$BASE/controls/$CID/update")
+[[ "$CODE" == "302" ]] && ok || bad "control edit with an evidence file -> $CODE"
+[[ "$(sql "SELECT COUNT(*) FROM attachment WHERE entity_type='control' AND entity_id=$CID AND is_evidence=1 AND original_name='smoke-evidence.csv'")" == "1" ]] && ok || bad "evidence file not attached to the control"
+check viewer "/controls/$CID" 200
+grep -q 'gw-control-evidence' "$BODY" && grep -q 'Evidence of the control' "$BODY" && ok || bad "evidence file not listed under Evidence / on the Files tab"
 # Dated notes on the control: viewers read them, analysts add and remove their own, they go into the PDF
 post analyst "/controls/$CID" "/notes/add?entity=control&id=$CID" 302 "body=Smoke note: emailed DevOps"
 NID=$(last_id record_note)

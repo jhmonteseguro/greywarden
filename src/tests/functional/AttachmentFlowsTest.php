@@ -167,4 +167,62 @@ class AttachmentFlowsTest extends FunctionalTestCase
         $this->get("/controls/{$control->id}");
         $this->assertSee('restore-log.txt');
     }
+
+    public function testControlFormAttachesEvidenceFiles(): void
+    {
+        $this->loginAs('analyst');
+        $evidence = static function (array ...$list): array {
+            $files = ['Control' => []];
+            foreach (['name', 'type', 'tmp_name', 'error', 'size'] as $k) {
+                $files['Control'][$k]['evidenceFiles'] = array_column($list, $k);
+            }
+            return $files;
+        };
+        $form = ['Control' => ['title' => 'Endpoint encryption', 'status' => Control::STATUS_IMPLEMENTED, 'control_type' => 'preventive',
+            'nature' => 'technical', 'evidence' => 'BitLocker report in Intune']];
+
+        $this->get('/controls/create');
+        $this->assertSee('enctype="multipart/form-data"');
+        $this->assertSee('name="Control[evidenceFiles][]"');
+
+        // A disallowed file refuses the whole form and stores nothing
+        $this->post('/controls/create', $form, $evidence($this->file('report.txt', "ok\n"), $this->file('tool.exe', 'MZ')));
+        $this->assertOk();
+        $this->assertSee('not an allowed type');
+        $this->assertFalse(Control::find()->where(['title' => 'Endpoint encryption'])->exists());
+        $this->assertFalse(Attachment::find()->where(['entity_type' => 'control'])->exists());
+
+        // Files posted when creating are attached as the control's evidence
+        $this->post('/controls/create', $form, $evidence($this->file('bitlocker.csv', "device,encrypted\nLT-01,yes\n")));
+        $control = Control::findOne(['title' => 'Endpoint encryption']);
+        $this->assertRedirect("/controls/{$control->id}");
+        $this->assertSame(['bitlocker.csv'], array_column($control->evidenceAttachments, 'original_name'));
+
+        // ... and when editing, alongside those already attached
+        $this->get("/controls/{$control->id}/update");
+        $this->assertSee('Attached as evidence:');
+        $this->assertSee('Attach more evidence files');
+        $this->post("/controls/{$control->id}/update", $form, $evidence($this->file('policy.txt', "Encrypt all laptops\n")));
+        $this->assertRedirect("/controls/{$control->id}");
+        $this->assertSame('Control ' . $control->reference . ' updated.', $this->flash('success'));
+        $files = Control::findOne($control->id)->evidenceAttachments;
+        $this->assertSame(['policy.txt', 'bitlocker.csv'], array_column($files, 'original_name'));
+
+        // An edit without files attaches nothing more
+        $this->post("/controls/{$control->id}/update", $form, ['Control' => ['name' => ['evidenceFiles' => ['']], 'type' => ['evidenceFiles' => ['']],
+            'tmp_name' => ['evidenceFiles' => ['']], 'error' => ['evidenceFiles' => [UPLOAD_ERR_NO_FILE]], 'size' => ['evidenceFiles' => [0]]]]);
+        $this->assertRedirect("/controls/{$control->id}");
+        $this->assertCount(2, Control::findOne($control->id)->evidenceAttachments);
+
+        // The Details tab links them under Evidence, and the Files tab lists them as the control's evidence
+        $this->loginAs('viewer');
+        $this->get("/controls/{$control->id}");
+        $this->assertSee('class="list-unstyled gw-small gw-control-evidence"');
+        $this->assertSee('href="/attachments/' . $files[0]->id . '"');
+        $this->assertSee('Files (2)');
+        $this->assertSee('Evidence of the control');
+        $this->get("/controls/{$control->id}/pdf");
+        $this->assertOk();
+        $this->assertStringStartsWith('%PDF-', $this->body);
+    }
 }

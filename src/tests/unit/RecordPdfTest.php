@@ -108,6 +108,25 @@ class RecordPdfTest extends DbTestCase
         }
     }
 
+    public function testControlDocumentNamesItsEvidenceFiles(): void
+    {
+        $control = $this->control();
+        $this->assertStringNotContainsString('Evidence files:', $this->html($control, 'control'));
+        $attachments = Yii::$app->params['attachments.path'];
+        Yii::$app->params['attachments.path'] = $dir = sys_get_temp_dir() . '/gw-pdf-evidence-' . bin2hex(random_bytes(4));
+        try {
+            $tmp = tempnam(sys_get_temp_dir(), 'gwpe');
+            file_put_contents($tmp, "Patch report\n");
+            $control->evidenceFiles = [new \yii\web\UploadedFile(['name' => 'patch-<report>.txt', 'tempName' => $tmp, 'type' => 'text/plain', 'size' => 13, 'error' => UPLOAD_ERR_OK])];
+            $this->assertSame([], $control->attachEvidenceFiles());
+            unlink($tmp);
+            $this->assertStringContainsString('Evidence files: patch-&lt;report&gt;.txt', $this->html(Control::findOne($control->id), 'control'));
+        } finally {
+            Yii::$app->params['attachments.path'] = $attachments;
+            FileHelper::removeDirectory($dir);
+        }
+    }
+
     public function testRiskAndDecisionDocumentsListNotes(): void
     {
         $risk = $this->risk();

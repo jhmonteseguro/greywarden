@@ -82,7 +82,7 @@ abstract class CrudController extends Controller
         $model->loadDefaultValues();
         $this->applyDefaults($model);
 
-        if ($model->load(Yii::$app->request->post()) && $model->save()) {
+        if ($model->load(Yii::$app->request->post()) && $this->saveModel($model)) {
             Yii::$app->session->setFlash('success', sprintf('%s %s created.', $class::entityLabel(), $model->getReferenceValue()));
             return $this->redirect($model->getViewUrl());
         }
@@ -97,7 +97,7 @@ abstract class CrudController extends Controller
             Yii::$app->session->setFlash('warning', 'Archived records are read-only. Restore the record to edit it.');
             return $this->redirect($model->getViewUrl());
         }
-        if ($model->load(Yii::$app->request->post()) && $model->save()) {
+        if ($model->load(Yii::$app->request->post()) && $this->saveModel($model)) {
             Yii::$app->session->setFlash('success', sprintf('%s %s updated.', $model::entityLabel(), $model->getReferenceValue()));
             return $this->redirect($model->getViewUrl());
         }
@@ -132,6 +132,12 @@ abstract class CrudController extends Controller
         $model->delete();
         Yii::$app->session->setFlash('success', sprintf('%s %s permanently deleted.', $model::entityLabel(), $ref));
         return $this->redirect(['index', 'filter' => 'archived']);
+    }
+
+    /** Hook for saving the create / edit form, e.g. to take uploads posted with it. */
+    protected function saveModel(DomainRecord $model): bool
+    {
+        return $model->save();
     }
 
     /** Hook for create defaults (owner = current user, dates = today ...). */

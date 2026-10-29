@@ -50,6 +50,20 @@ class ControlController extends CrudController
         $model->check_max_age_days = Control::defaultPatchMaxAgeDays();
     }
 
+    /** Evidence files posted with the form are checked with it and attached once it saves */
+    protected function saveModel(DomainRecord $model): bool
+    {
+        /** @var Control $model */
+        $model->evidenceFiles = UploadedFile::getInstances($model, 'evidenceFiles');
+        if (!$model->save()) {
+            return false;
+        }
+        if ($problems = $model->attachEvidenceFiles()) {
+            Yii::$app->session->setFlash('danger', implode(' ', $problems));
+        }
+        return true;
+    }
+
     public function actionView(int $id): string
     {
         return $this->render('view', ['model' => $this->findModel($id), 'test' => $this->newTest()]);

@@ -408,6 +408,9 @@ greywarden/
 * Risks, controls, decisions and incidents have a **Files** tab; the *Record a test* form on a control also takes
   files, which are marked as that test's evidence (they show in the test's row and on the Files tab, and stay on the
   control if the test is removed).
+* The control's create / edit form takes **evidence files** under its Evidence field. They are checked like any other
+  upload, listed under Evidence on the control's Details tab and in its PDF, and also appear on the Files tab (marked
+  *Evidence of the control*), where they are removed.
 * **Allowed**: PNG, JPG, PDF, DOCX, XLSX, CSV and TXT, up to `attachments.maxSizeMb` (20 MB, `config/params.php`;
   PHP and nginx accept up to 24 MB per request). The type is checked from the file's **content** (libmagic) against
   its extension, so a renamed HTML or executable is refused.

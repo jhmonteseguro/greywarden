@@ -54,6 +54,9 @@ $frameworks['ATT&CK mitigations'] = $model->mitigations;
 <?= $this->render('@app/views/pdf/_text', ['label' => 'Description', 'text' => $model->description]) ?>
 <?= $this->render('@app/views/pdf/_text', ['label' => 'Implementation', 'text' => $model->implementation]) ?>
 <?= $this->render('@app/views/pdf/_text', ['label' => 'Evidence', 'text' => $model->evidence]) ?>
+<?php if ($evidenceFiles = $model->evidenceAttachments): ?>
+    <p class="muted small">Evidence files: <?= Html::encode(implode(', ', array_column($evidenceFiles, 'original_name'))) ?></p>
+<?php endif; ?>
 
 <?= $this->render('@app/views/pdf/_notes', ['notes' => RecordNote::listFor($model, true)]) ?>
 
