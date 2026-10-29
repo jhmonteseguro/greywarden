@@ -6,6 +6,8 @@ releases).
 
 ## [Unreleased]
 
+## [0.10.1-alpha] - 2026-10-29
+
 ### Changed
 
 - Incident Log: the grid now opens on **All** incidents (closed ones included) instead of only open ones. The
@@ -288,7 +290,8 @@ First public release.
 - Repository safeguards: git hooks with a leak check and signed-push rules, and CI with all test suites, a secret
   scan and a production image build.
 
-[Unreleased]: https://github.com/jhmonteseguro/greywarden/compare/v0.10.0-alpha...HEAD
+[Unreleased]: https://github.com/jhmonteseguro/greywarden/compare/v0.10.1-alpha...HEAD
+[0.10.1-alpha]: https://github.com/jhmonteseguro/greywarden/compare/v0.10.0-alpha...v0.10.1-alpha
 [0.10.0-alpha]: https://github.com/jhmonteseguro/greywarden/compare/v0.9.0-alpha...v0.10.0-alpha
 [0.9.0-alpha]: https://github.com/jhmonteseguro/greywarden/compare/v0.8.1-alpha...v0.9.0-alpha
 [0.8.1-alpha]: https://github.com/jhmonteseguro/greywarden/compare/v0.8.0-alpha...v0.8.1-alpha
