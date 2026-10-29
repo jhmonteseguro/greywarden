@@ -37,7 +37,7 @@ Every release tag and release commit is signed with this PGP key:
 ```bash
 curl -s https://github.com/jhmonteseguro.gpg | gpg --import
 gpg --fingerprint 07DF7BE9572F7E0E          # compare with the fingerprint above
-git verify-tag v0.6.0-alpha
+git verify-tag v0.6.1-alpha
 ```
 
 `scripts/deploy.sh` refuses to deploy a tag without a valid signature.

@@ -6,6 +6,8 @@ releases).
 
 ## [Unreleased]
 
+## [0.6.1-alpha] - 2026-10-29
+
 ### Added
 
 - A `scheduler` container (same image as php, `php yii schedule/run`) runs Greywarden's scheduled jobs, so no host
@@ -197,7 +199,8 @@ First public release.
 - Repository safeguards: git hooks with a leak check and signed-push rules, and CI with all test suites, a secret
   scan and a production image build.
 
-[Unreleased]: https://github.com/jhmonteseguro/greywarden/compare/v0.6.0-alpha...HEAD
+[Unreleased]: https://github.com/jhmonteseguro/greywarden/compare/v0.6.1-alpha...HEAD
+[0.6.1-alpha]: https://github.com/jhmonteseguro/greywarden/compare/v0.6.0-alpha...v0.6.1-alpha
 [0.6.0-alpha]: https://github.com/jhmonteseguro/greywarden/compare/v0.5.0-alpha...v0.6.0-alpha
 [0.5.0-alpha]: https://github.com/jhmonteseguro/greywarden/compare/v0.4.2-alpha...v0.5.0-alpha
 [0.4.2-alpha]: https://github.com/jhmonteseguro/greywarden/compare/v0.4.1-alpha...v0.4.2-alpha
