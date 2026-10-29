@@ -9,6 +9,7 @@ use app\modules\cloud\components\CloudChecks;
 use app\modules\intel\components\Http;
 use app\modules\intel\components\Network;
 use app\modules\inventory\components\DeviceChecks;
+use app\modules\supplier\components\SupplierChecks;
 use tests\support\OutputCapture;
 use tests\support\TestSession;
 use Yii;
@@ -54,6 +55,7 @@ abstract class FunctionalTestCase extends DbTestCase
         self::$serverBackup = $_SERVER;
         DeviceChecks::reset();
         CloudChecks::reset();
+        SupplierChecks::reset();
         Yii::$app->db->beginTransaction();
         if (static::$seed) {
             [$code, $out] = OutputCapture::run('seed/demo');
@@ -76,6 +78,7 @@ abstract class FunctionalTestCase extends DbTestCase
         Actor::override(null);
         DeviceChecks::reset();
         CloudChecks::reset();
+        SupplierChecks::reset();
         $_SERVER = self::$serverBackup;
         parent::tearDownAfterClass();
     }

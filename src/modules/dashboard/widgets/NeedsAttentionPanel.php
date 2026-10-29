@@ -11,6 +11,8 @@ use app\modules\intel\models\EdgeFinding;
 use app\modules\inventory\components\OsLifecycle;
 use app\modules\inventory\models\Device;
 use app\modules\risk\models\Risk;
+use app\modules\supplier\models\Supplier;
+use app\modules\supplier\models\SupplierAssurance;
 use Yii;
 use yii\db\Expression;
 use yii\db\Query;
@@ -185,6 +187,39 @@ class NeedsAttentionPanel extends PanelWidget
                 'query' => CloudAsset::find()->active()->inService()->stale($today)->orderBy(['cloud_asset.last_seen_at' => SORT_DESC]),
                 'url' => ['/cloud/asset/index', 'filter' => 'stale', 'sort' => '-last_seen_at'],
                 'meta' => static fn(CloudAsset $a) => 'Last seen ' . Yii::$app->formatter->asRelativeTime($a->last_seen_at),
+            ],
+            [
+                'key' => 'supplier-checks',
+                'label' => 'Suppliers failing checks',
+                'icon' => 'buildings',
+                'query' => Supplier::find()->active()->inService()->nonCompliant($today)->orderBy(['supplier.tier' => SORT_ASC, 'supplier.name' => SORT_ASC]),
+                'url' => ['/supplier/supplier/index', 'filter' => 'non-compliant'],
+                'meta' => static fn(Supplier $s) => Supplier::tierShortLabel($s->tier) . ' · ' . implode(', ', array_slice($s->getPosture($today)['failures'], 0, 2)),
+            ],
+            [
+                'key' => 'supplier-review',
+                'label' => 'Overdue supplier reviews',
+                'icon' => 'calendar-x',
+                'query' => Supplier::find()->active()->reviewOverdue($today)->orderBy(['supplier.next_review_date' => SORT_ASC]),
+                'url' => ['/supplier/supplier/index', 'filter' => 'review-overdue'],
+                'meta' => static fn(Supplier $s) => 'Review due ' . Yii::$app->formatter->asDate($s->next_review_date),
+            ],
+            [
+                'key' => 'supplier-assurance',
+                'label' => sprintf('Supplier assurance expiring (%d days)', SupplierAssurance::expiryWarningDays()),
+                'icon' => 'patch-exclamation',
+                'query' => Supplier::find()->active()->inService()->assuranceDue($today)->orderBy(['supplier.tier' => SORT_ASC, 'supplier.name' => SORT_ASC]),
+                'url' => ['/supplier/supplier/index', 'filter' => 'assurance'],
+                'meta' => static fn(Supplier $s) => implode(', ', array_map(static fn(SupplierAssurance $a) => $a->getTypeLabel() . ($a->isExpired($today) ? ' expired ' : ' expires ')
+                    . Yii::$app->formatter->asDate($a->expires_on), array_slice($s->getAssuranceDue($today), 0, 2))),
+            ],
+            [
+                'key' => 'supplier-renewals',
+                'label' => sprintf('Supplier notice periods closing (%d days)', Supplier::renewalWarningDays()),
+                'icon' => 'hourglass-split',
+                'query' => Supplier::find()->active()->renewalDue($today)->orderBy(['supplier.contract_end' => SORT_ASC]),
+                'url' => ['/supplier/supplier/index', 'filter' => 'renewals'],
+                'meta' => static fn(Supplier $s) => 'Give notice by ' . Yii::$app->formatter->asDate($s->getNoticeDeadline()) . ' · renews ' . Yii::$app->formatter->asDate($s->contract_end),
             ],
             [
                 'key' => 'warranty',

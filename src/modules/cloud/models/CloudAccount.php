@@ -3,12 +3,14 @@
 namespace app\modules\cloud\models;
 
 use app\models\DomainRecord;
+use app\models\RecordsChecks;
 use app\models\User;
 use app\modules\cloud\components\CloudCatalogue;
 use app\modules\cloud\components\CloudChecks;
 use app\modules\cloud\components\CloudPosture;
 use app\modules\control\models\Control;
 use app\modules\inventory\models\Device;
+use app\modules\supplier\models\Supplier;
 
 /**
  * Cloud account: an AWS account, Azure subscription, GCP project or SaaS tenant
@@ -20,6 +22,7 @@ use app\modules\inventory\models\Device;
  * @property string $reference
  * @property string $name
  * @property string $provider
+ * @property int|null $supplier_id the supplier the account is contracted with
  * @property string|null $account_identifier
  * @property string $environment
  * @property int|null $owner_id
@@ -29,12 +32,13 @@ use app\modules\inventory\models\Device;
  * @property string|null $notes
  *
  * @property-read User|null $owner
+ * @property-read Supplier|null $supplier
  * @property-read CloudAsset[] $assets
  * @property-read Control[] $controls cloud-check controls with a result recorded on this account
  */
 class CloudAccount extends DomainRecord
 {
-    use RecordsCloudChecks;
+    use RecordsChecks;
 
     public const STATUS_ACTIVE = 'active';
     /** Statuses in which the account still exists and is checked */
@@ -135,13 +139,14 @@ class CloudAccount extends DomainRecord
             ['criticality', 'in', 'range' => array_keys(Device::criticalityOptions())],
             ['data_classification', 'in', 'range' => array_keys(Device::classificationOptions())],
             ['owner_id', 'exist', 'targetClass' => User::class, 'targetAttribute' => 'id'],
+            ['supplier_id', 'exist', 'targetClass' => Supplier::class, 'targetAttribute' => 'id'],
             ['checks', 'validateChecks'],
         ];
     }
 
     public function beforeValidate(): bool
     {
-        foreach (['account_identifier', 'owner_id'] as $a) {
+        foreach (['account_identifier', 'owner_id', 'supplier_id'] as $a) {
             if ($this->$a === '') {
                 $this->$a = null;
             }
@@ -155,6 +160,7 @@ class CloudAccount extends DomainRecord
             'reference' => 'Reference',
             'name' => 'Account name',
             'provider' => 'Provider',
+            'supplier_id' => 'Supplier',
             'account_identifier' => 'Account identifier',
             'environment' => 'Environment',
             'owner_id' => 'Owner',
@@ -172,6 +178,7 @@ class CloudAccount extends DomainRecord
             'name' => 'e.g. "Production (AWS)" or "Company Google Workspace".',
             'account_identifier' => 'AWS account ID, Azure subscription ID, GCP project ID, or the tenant\'s domain / organisation.',
             'environment' => 'Assets added to the account start with this environment.',
+            'supplier_id' => 'Who the account is contracted with, from the Supplier Register.',
         ];
     }
 
@@ -180,6 +187,20 @@ class CloudAccount extends DomainRecord
     public function getOwner()
     {
         return $this->hasOne(User::class, ['id' => 'owner_id']);
+    }
+
+    public function getSupplier()
+    {
+        return $this->hasOne(Supplier::class, ['id' => 'supplier_id']);
+    }
+
+    /** The supplier as "SUP-0001 · Amazon Web Services" in the history */
+    public function formatAuditValue(string $attribute, mixed $value): string
+    {
+        if ($attribute === 'supplier_id' && $value) {
+            return Supplier::findOne($value)?->getAuditLabel() ?? '#' . $value;
+        }
+        return parent::formatAuditValue($attribute, $value);
     }
 
     public function getAssets()

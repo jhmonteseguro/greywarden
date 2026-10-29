@@ -16,6 +16,7 @@ use app\modules\incident\models\Incident;
 use app\modules\inventory\models\Device;
 use app\modules\risk\models\Risk;
 use app\modules\decision\models\Decision;
+use app\modules\supplier\models\Supplier;
 use app\widgets\Attachments;
 use app\widgets\AuditHistory;
 use app\widgets\DetailView;
@@ -38,6 +39,7 @@ $fmt = Yii::$app->formatter;
 
 $devices = $model->devices;
 $cloudAssets = $model->cloudAssets;
+$suppliers = $model->suppliers;
 $risks = $model->risks;
 $decisions = $model->decisions;
 $techniques = $model->techniques;
@@ -108,6 +110,8 @@ ob_start(); ?>
         'extra' => static fn(Device $d) => Badge::criticality($d->criticality)]) ?></div>
     <div class="col-lg-4"><?= LinkedRecords::widget(['title' => 'Affected cloud assets', 'icon' => 'cloud', 'models' => $cloudAssets,
         'extra' => static fn(CloudAsset $a) => Badge::criticality($a->criticality)]) ?></div>
+    <div class="col-lg-4"><?= LinkedRecords::widget(['title' => 'Suppliers involved', 'icon' => 'buildings', 'models' => $suppliers,
+        'extra' => static fn(Supplier $s) => Badge::tier($s->tier) . ' ' . Badge::status('supplier-status', $s->status, Supplier::statusOptions())]) ?></div>
     <div class="col-lg-4"><?= LinkedRecords::widget(['title' => 'Related risks', 'icon' => 'exclamation-triangle', 'models' => $risks,
         'extra' => static fn(Risk $r) => Badge::score($r->getCurrentScore())]) ?></div>
     <div class="col-lg-4"><?= LinkedRecords::widget(['title' => 'Related decisions', 'icon' => 'journal-check', 'models' => $decisions,
@@ -135,7 +139,7 @@ ob_start(); ?>
             'canEdit' => Rbac::canManage() && !$model->getIsArchived(),
             'editUrl' => ['update', 'id' => $model->id],
         ]), 'options' => ['id' => 'tab-attack']],
-        ['label' => 'Links (' . (count($devices) + count($cloudAssets) + count($risks) + count($decisions) + $controlCount) . ')', 'content' => $links, 'options' => ['id' => 'tab-links']],
+        ['label' => 'Links (' . (count($devices) + count($cloudAssets) + count($suppliers) + count($risks) + count($decisions) + $controlCount) . ')', 'content' => $links, 'options' => ['id' => 'tab-links']],
         ['label' => 'Files (' . count($attachments) . ')', 'content' => Attachments::widget(['model' => $model, 'attachments' => $attachments]), 'options' => ['id' => 'tab-files']],
         ['label' => 'History', 'content' => AuditHistory::widget(['entityType' => 'incident', 'entityId' => $model->id]), 'options' => ['id' => 'tab-history']],
     ],

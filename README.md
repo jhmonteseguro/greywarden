@@ -37,6 +37,11 @@ For real data, see [Production](#production); for the full setup, see [Developme
   and the assets in them (instances, VPCs, security groups, buckets, databases, IAM roles, DNS zones, repositories...)
   with exposure, encryption, OS support and posture against **cloud checks** from the Control Register, linked to
   risks, incidents and decisions; imported from AWS, Azure and Google Cloud inventory exports and synced from Cloudflare
+* **Supplier Register**: the third parties you rely on, what they provide, the data and access they have, a **tier**
+  worked out from those, the security terms of the contract (DPA, breach notification, right to audit, notice period),
+  the assurance they have given (ISO 27001, SOC 2, Cyber Essentials… with expiry dates), periodic reviews and posture
+  against **supplier checks** from the Control Register; cloud accounts belong to a supplier, and risks, incidents,
+  decisions and controls link to suppliers
 * **Edge findings**: pulls the zone's Cloudflare traffic analytics every 15 minutes, flags addresses that probe for
   secrets and admin pages, enumerate paths, send attack payloads or use scanner tools (scored and explained), and
   recommends what to do: raise an incident when a sensitive path answered 200, block for a few days, block the probe
@@ -186,6 +191,7 @@ Composer, Gii or the runtime create are owned by you. Uploaded files are stored 
 | `make import-devices FILE=devices.csv AS=<user> [DRY_RUN=1]` | import a Google Workspace device export (see [Device import](#device-import-google-workspace)) |
 | `make import-cloud FILE=resources.json PROVIDER=aws\|azure\|gcp AS=<user> [ACCOUNT=ACC-0003] [DRY_RUN=1]` | import an AWS, Azure or Google Cloud inventory export (see [Importing cloud assets](#importing-cloud-assets)) |
 | `make sync-cloudflare AS=<user> [DRY_RUN=1]` | add / refresh the Cloudflare zones as cloud assets, using `CLOUDFLARE_API_TOKEN` |
+| `make suppliers-from-cloud AS=<user> [DRY_RUN=1]` | add one supplier per cloud provider in use, without linking the accounts (see [Supplier Register](#supplier-register)) |
 | `make edge-pull [AS=<user>] [MINUTES=60] [DRY_RUN=1]` / `make edge-status` | read the Cloudflare traffic since the last pull and update the edge findings now (the scheduler container also does this every `EDGE_PULL_INTERVAL` minutes) / show the zone's analytics limits and recent pulls (see [Edge findings](#edge-findings-cloudflare-traffic)) |
 | `make expire-blocks` | take expired blocklist entries out of Cloudflare (`make edge-pull` does this too) |
 | `make cloudflare-migrate [OLD_RULE="Block Bad Actors"] [DRY_RUN=1]` | one-off: move *Add to Cloudflare* entries from the old rule into the IP list and the **Greywarden Blocklist** rule (see [Threat intel](#threat-intel-ip--asn-investigation)) |
@@ -293,10 +299,10 @@ greywarden/
 
 ### Key concepts
 
-* **Domain records** (`Risk`, `Control`, `Decision`, `Incident`, `Device`, `CloudAccount`, `CloudAsset`) extend `models/DomainRecord`, which attaches:
+* **Domain records** (`Risk`, `Control`, `Decision`, `Incident`, `Device`, `CloudAccount`, `CloudAsset`, `Supplier`) extend `models/DomainRecord`, which attaches:
   * timestamps and blameable (`created_at/updated_at/created_by/updated_by`)
   * the `AuditBehavior`
-  * reference generation (prefix `RSK`, `CTL`, `DEC`, `INC`, `DEV`, `ACC`, `CLD`; asset tags can be overridden)
+  * reference generation (prefix `RSK`, `CTL`, `DEC`, `INC`, `DEV`, `ACC`, `CLD`, `SUP`; asset tags can be overridden)
   * archive / restore (`archived_at/archived_by`)
   * many-to-many link syncing (`linkDefinitions()`), with link changes included in the audit diff. A link can be
     scoped to rows of a shared table with `where` (incident ↔ control links carry a `role`)
@@ -376,6 +382,44 @@ greywarden/
   `m261020_000003` turned the four fixed posture columns and the patch rule into CTL-0001…0005, keeping ticked boxes as
   *pass*, unticked as *fail*, and leaving synced devices that had nothing ticked as *not assessed*.
 
+### Supplier Register
+
+* **Supplier** (`SUP-0001`…): name, legal entity, company number, website, category (an admin-editable lookup), what
+  they provide, business owner and status (proposed › due diligence › active › offboarding › terminated). A supplier is
+  the company and your relationship with it; a **cloud account** is a tenancy you administer. An account belongs to
+  one supplier (*Supplier* on the account form), and one supplier can have several accounts, even across providers
+  (Google Cloud and Google Workspace are both Google).
+* **Tier** (1 = critical, 2 = important, 3 = standard) is worked out on every save from *criticality*, *the most
+  sensitive data they hold*, *processes personal data* and *access to our systems*: high or critical criticality,
+  restricted data or privileged access make a supplier Tier 1; medium criticality, confidential or personal data, or
+  user access make it at least Tier 2. The supplier page says which factors put it there.
+* **Contract** (security terms only): start and renewal / end dates, notice period, data processing agreement,
+  breach-notification commitment in hours and right to audit, plus a security contact, status page and exit plan.
+  Once the notice deadline (renewal date minus notice period) is within `supplier.renewalWarningDays` (default 60)
+  the supplier gets a *Notice period closing* flag, a filter and a *Needs attention* group.
+* **Assurance** tab: certificates and reports (ISO 27001, SOC 2 Type I / II, Cyber Essentials (Plus), PCI DSS, ISO 27701,
+  CSA STAR, pen test summaries, questionnaires) with issue and expiry dates. Entries are added and removed (both in the
+  History), not edited; per type, the one lasting longest counts, and it is flagged when it expires within
+  `supplier.assuranceWarningDays` (default 60) or has expired. Attach the documents on the Files tab.
+* **Reviews**: suppliers in service (active or offboarding) are reviewed every 12, 24 or 36 months for Tiers 1, 2 and 3
+  (`supplier.reviewMonths`). The first review date is set when a supplier goes into service; recording a review on the
+  Reviews tab moves it on by the tier's interval. Overdue reviews show on the dashboard tile and in *Needs attention*.
+* **Supplier checks**: a control with a *supplier check* applies to the tiers you tick while it is implementing or
+  implemented. *Manual* checks get a Pass / Fail / Not assessed select on the supplier form (`supplier_control`).
+  *Data processing agreement* checks read the DPA answer and only apply to suppliers that process personal data.
+  *Current assurance* checks pass while the supplier has an unexpired certificate or report, fail once all have expired,
+  and are not assessed when none is recorded. Posture follows the device rules; `SupplierPosture` (PHP) and
+  `SupplierQuery` (SQL) implement the same logic. Map these controls to ISO 27001 A.5.19–A.5.23, SOC 2 CC9.2, NIST CSF
+  GV.SC and NCSC CAF A4 so the supplier work counts towards the frameworks.
+* **Links**: risks (*Related suppliers*), incidents (*Suppliers involved*), decisions and controls (*Suppliers it relies
+  on*) link to suppliers from their own forms; the supplier's Links tab lists them with its cloud accounts. Suppliers
+  also take notes and files, and have a PDF.
+* **From the cloud accounts**: `make suppliers-from-cloud AS=jdoe [DRY_RUN=1]` adds one supplier per vendor of the
+  in-service cloud accounts (Amazon Web Services, Microsoft, Google, Cloudflare, GitHub; *Other* is skipped), at the
+  highest criticality and data classification of that vendor's accounts and owned by `AS`. Vendors that already have a
+  supplier of that name are left alone, and accounts are **not** linked: pick the supplier on each account's form,
+  then fill in the legal entity, personal data, access, contract terms and assurance.
+
 ### MITRE ATT&CK
 
 * **Catalogue**: `attack_tactic`, `attack_technique` (sub-techniques via `parent_id`), `attack_mitigation`, plus MITRE's
@@ -424,7 +468,7 @@ greywarden/
 
 ### Notes on records
 
-* Risks, controls, decisions, cloud accounts and cloud assets have a **Notes** tab: a running log of progress, e.g.
+* Risks, controls, decisions, cloud accounts, cloud assets and suppliers have a **Notes** tab: a running log of progress, e.g.
   "Emailed DevOps requesting the firewall change, copy saved in Files". Each note (up to 1,000 characters, plain
   text) is stamped with the date, time and author and cannot be edited or back-dated; correct a note by adding another.
   Incidents keep their dated narrative on the incident **Timeline** instead; a timeline entry can likewise link a file

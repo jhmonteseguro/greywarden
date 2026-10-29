@@ -11,6 +11,7 @@ use app\modules\cloud\components\CloudPosture;
 use app\modules\cloud\models\CloudAccount;
 use app\modules\inventory\components\DevicePosture;
 use app\modules\inventory\models\Device;
+use app\modules\supplier\models\Supplier;
 use app\widgets\ActiveForm;
 use yii\helpers\Html;
 
@@ -30,6 +31,7 @@ $identifiers = implode(' · ', array_filter(array_map(
         <div class="col-md-8"><?= $form->field($model, 'name')->textInput(['maxlength' => true, 'placeholder' => 'e.g. Production (AWS)']) ?></div>
         <div class="col-md-6"><?= $form->field($model, 'account_identifier')->textInput(['maxlength' => true, 'class' => 'form-control gw-mono'])->hint($identifiers) ?></div>
         <div class="col-md-6"><?= $form->field($model, 'owner_id')->dropDownList(User::options($model->owner_id), ['prompt' => '— Unassigned —']) ?></div>
+        <div class="col-md-6"><?= $form->field($model, 'supplier_id')->dropDownList(Supplier::selectOptions($model->supplier_id ? [$model->supplier_id] : []), ['prompt' => '— Not linked —']) ?></div>
     </div>
 </fieldset>
 

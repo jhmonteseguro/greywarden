@@ -15,6 +15,9 @@ use app\modules\incident\models\Incident;
 use app\modules\inventory\components\DeviceChecks;
 use app\modules\inventory\models\Device;
 use app\modules\risk\models\Risk;
+use app\modules\supplier\components\SupplierCheck;
+use app\modules\supplier\components\SupplierChecks;
+use app\modules\supplier\models\Supplier;
 use DateTimeImmutable;
 use Yii;
 
@@ -29,7 +32,8 @@ use Yii;
  * (device types + ownership): "manual" checks are recorded per device in
  * device_control, "patch_age" is measured from the device's last patch date.
  * A control with a `cloud_check` is checked the same way on the cloud assets
- * (resource types) and / or cloud accounts in its `cloud_scope`.
+ * (resource types) and / or cloud accounts in its `cloud_scope`, and a control
+ * with a `supplier_check` on the suppliers of its `supplier_tiers`.
  *
  * @property int $id
  * @property string $reference
@@ -53,12 +57,15 @@ use Yii;
  * @property int|null $check_max_age_days
  * @property string|null $cloud_check
  * @property string|null $cloud_scope
+ * @property string|null $supplier_check
+ * @property string|null $supplier_tiers
  *
  * @property-read User|null $owner
  * @property-read Risk[] $risks
  * @property-read Decision[] $decisions
  * @property-read AttackMitigation[] $mitigations
  * @property-read FrameworkRequirement[] $requirements
+ * @property-read Supplier[] $suppliers suppliers the control relies on
  * @property-read ControlTest[] $tests newest first
  * @property-read Attachment[] $evidenceAttachments files attached as its evidence, newest first
  */
@@ -106,6 +113,10 @@ class Control extends DomainRecord
     public $deviceTypeList = null;
     /** @var string[]|string|null cloud scope tokens from the form (null = not submitted); stored in cloud_scope */
     public $cloudScopeList = null;
+    /** @var int[]|string|null supplier ids (null = not submitted) */
+    public $supplierIds = null;
+    /** @var string[]|string|null supplier tiers from the form (null = not submitted); stored in supplier_tiers */
+    public $supplierTierList = null;
     /** @var \yii\web\UploadedFile[] files posted with the Evidence field; see validateEvidenceFiles() */
     public array $evidenceFiles = [];
 
@@ -193,6 +204,15 @@ class Control extends DomainRecord
         ];
     }
 
+    public static function supplierCheckOptions(): array
+    {
+        return [
+            SupplierCheck::MANUAL => 'Checked on each supplier (pass / fail)',
+            SupplierCheck::DPA => 'Data processing agreement (from each supplier\'s DPA answer; personal data only)',
+            SupplierCheck::ASSURANCE => 'Current assurance (an unexpired certificate or report on the supplier)',
+        ];
+    }
+
     public static function deviceOwnershipOptions(): array
     {
         return [self::OWNERSHIP_ALL => 'All devices'] + Device::ownershipOptions();
@@ -205,6 +225,7 @@ class Control extends DomainRecord
             'decisionIds' => ['table' => 'decision_control', 'self' => 'control_id', 'other' => 'decision_id', 'class' => Decision::class, 'label' => 'Related decisions'],
             'mitigationIds' => ['table' => 'control_attack_mitigation', 'self' => 'control_id', 'other' => 'mitigation_id', 'class' => AttackMitigation::class, 'label' => 'ATT&CK mitigations'],
             'requirementIds' => ['table' => 'control_framework_requirement', 'self' => 'control_id', 'other' => 'requirement_id', 'class' => FrameworkRequirement::class, 'label' => 'Framework requirements'],
+            'supplierIds' => ['table' => 'control_supplier', 'self' => 'control_id', 'other' => 'supplier_id', 'class' => Supplier::class, 'label' => 'Suppliers it relies on'],
         ];
     }
 
@@ -219,6 +240,7 @@ class Control extends DomainRecord
             'device_check' => self::deviceCheckOptions(),
             'device_ownership' => self::deviceOwnershipOptions(),
             'cloud_check' => self::cloudCheckOptions(),
+            'supplier_check' => self::supplierCheckOptions(),
         ];
     }
 
@@ -252,6 +274,9 @@ class Control extends DomainRecord
             ['cloud_check', 'in', 'range' => array_keys(self::cloudCheckOptions())],
             ['cloudScopeList', 'each', 'rule' => ['in', 'range' => array_keys(CloudCatalogue::scopeOptions())]],
             ['cloudScopeList', 'validateCloudScope'],
+            ['supplier_check', 'in', 'range' => array_keys(self::supplierCheckOptions())],
+            ['supplierTierList', 'each', 'rule' => ['in', 'range' => array_map('strval', Supplier::TIERS)]],
+            ['supplierIds', 'each', 'rule' => ['exist', 'targetClass' => Supplier::class, 'targetAttribute' => 'id']],
             ['evidenceFiles', 'validateEvidenceFiles', 'skipOnEmpty' => true],
             ['riskIds', 'each', 'rule' => ['exist', 'targetClass' => Risk::class, 'targetAttribute' => 'id']],
             ['decisionIds', 'each', 'rule' => ['exist', 'targetClass' => Decision::class, 'targetAttribute' => 'id']],
@@ -286,6 +311,9 @@ class Control extends DomainRecord
             'cloud_check' => 'Cloud check',
             'cloud_scope' => 'Cloud scope',
             'cloudScopeList' => 'Applies to',
+            'supplier_check' => 'Supplier check',
+            'supplier_tiers' => 'Supplier tiers',
+            'supplierTierList' => 'Applies to supplier tiers',
             'evidenceFiles' => 'Evidence files',
         ];
     }
@@ -304,6 +332,8 @@ class Control extends DomainRecord
             'deviceTypeList' => 'Leave all unticked to apply it to every device type.',
             'cloud_check' => 'Makes this control a check on the cloud assets and / or cloud accounts it applies to, while it is implementing or implemented.',
             'cloudScopeList' => 'Leave all unticked to apply it to every resource type. Tick only "Cloud accounts" for account-level checks such as root MFA.',
+            'supplier_check' => 'Makes this control a check on the suppliers it applies to, while it is implementing or implemented.',
+            'supplierTierList' => 'Leave all unticked to apply it to every tier.',
         ];
     }
 
@@ -311,6 +341,9 @@ class Control extends DomainRecord
     {
         if ($attribute === 'device_types') {
             return implode(', ', array_map(static fn($t) => Device::typeOptions()[$t] ?? $t, explode(',', (string) $value)));
+        }
+        if ($attribute === 'supplier_tiers') {
+            return implode(', ', array_map([Supplier::class, 'tierShortLabel'], explode(',', (string) $value)));
         }
         if ($attribute === 'cloud_scope') {
             return implode(', ', array_map(static fn($t) => CloudCatalogue::scopeOptions()[$t] ?? $t, explode(',', (string) $value)));
@@ -320,7 +353,7 @@ class Control extends DomainRecord
 
     public function beforeValidate(): bool
     {
-        foreach (['owner_id', 'target_date', 'implemented_on', 'test_frequency_months', 'device_check', 'check_max_age_days', 'cloud_check'] as $a) {
+        foreach (['owner_id', 'target_date', 'implemented_on', 'test_frequency_months', 'device_check', 'check_max_age_days', 'cloud_check', 'supplier_check'] as $a) {
             if ($this->$a === '') {
                 $this->$a = null;
             }
@@ -330,6 +363,9 @@ class Control extends DomainRecord
         }
         if ($this->cloudScopeList !== null && !is_array($this->cloudScopeList)) {
             $this->cloudScopeList = [];
+        }
+        if ($this->supplierTierList !== null && !is_array($this->supplierTierList)) {
+            $this->supplierTierList = [];
         }
         return parent::beforeValidate();
     }
@@ -353,6 +389,14 @@ class Control extends DomainRecord
         }
         if (!$this->cloud_check) {
             $this->cloud_scope = null;
+        }
+        if ($this->supplierTierList !== null) {
+            $tiers = array_values(array_intersect(Supplier::TIERS, array_map('intval', $this->supplierTierList)));
+            // None or all ticked: every tier
+            $this->supplier_tiers = $tiers && count($tiers) < count(Supplier::TIERS) ? implode(',', $tiers) : null;
+        }
+        if (!$this->supplier_check) {
+            $this->supplier_tiers = null;
         }
         $this->effectiveness ??= self::EFFECTIVENESS_NOT_TESTED;
         if ($this->status === self::STATUS_IMPLEMENTED && !$this->implemented_on) {
@@ -394,6 +438,7 @@ class Control extends DomainRecord
         parent::afterSave($insert, $changedAttributes);
         DeviceChecks::reset();
         CloudChecks::reset();
+        SupplierChecks::reset();
     }
 
     public function afterDelete(): void
@@ -401,6 +446,7 @@ class Control extends DomainRecord
         parent::afterDelete();
         DeviceChecks::reset();
         CloudChecks::reset();
+        SupplierChecks::reset();
     }
 
     // ---- Relations ------------------------------------------------------
@@ -430,6 +476,12 @@ class Control extends DomainRecord
     {
         return $this->hasMany(FrameworkRequirement::class, ['id' => 'requirement_id'])->viaTable('control_framework_requirement', ['control_id' => 'id'])
             ->orderBy(['framework_requirement.framework' => SORT_DESC, 'framework_requirement.sort_order' => SORT_ASC]);
+    }
+
+    public function getSuppliers()
+    {
+        return $this->hasMany(Supplier::class, ['id' => 'supplier_id'])->viaTable('control_supplier', ['control_id' => 'id'])
+            ->orderBy(['supplier.reference' => SORT_ASC]);
     }
 
     public function getTests()
@@ -620,12 +672,13 @@ class Control extends DomainRecord
         return $label;
     }
 
-    /** Form pre-fill: links plus the device type and cloud scope checkboxes */
+    /** Form pre-fill: links plus the device type, cloud scope and supplier tier checkboxes */
     public function populateLinks(): void
     {
         parent::populateLinks();
         $this->deviceTypeList ??= $this->getDeviceTypes() ?? [];
         $this->cloudScopeList ??= $this->getCloudScope() ?? [];
+        $this->supplierTierList ??= array_map('strval', $this->getSupplierTiers() ?? []);
     }
 
     // ---- Cloud checks -------------------------------------------------------
@@ -666,6 +719,21 @@ class Control extends DomainRecord
             return $this->cloud_check === self::CHECK_OS_SUPPORT ? 'Instances' : 'All cloud asset types';
         }
         return implode(', ', array_map(static fn($t) => CloudCatalogue::scopeOptions()[$t] ?? $t, $scope));
+    }
+
+    // ---- Supplier checks ----------------------------------------------------
+
+    /** @return int[]|null supplier tiers the check applies to; null = every tier */
+    public function getSupplierTiers(): ?array
+    {
+        return $this->supplier_tiers ? array_map('intval', explode(',', $this->supplier_tiers)) : null;
+    }
+
+    public function getSupplierScopeLabel(): string
+    {
+        $tiers = $this->getSupplierTiers();
+        $label = $tiers ? implode(', ', array_map([Supplier::class, 'tierShortLabel'], $tiers)) . ' suppliers' : 'All suppliers';
+        return $this->supplier_check === SupplierCheck::DPA ? $label . ' processing personal data' : $label;
     }
 
     public static function defaultPatchMaxAgeDays(): int

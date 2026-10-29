@@ -6,6 +6,7 @@ use app\models\Lookup;
 use app\modules\dashboard\widgets\OverdueReviewsKpi;
 use app\modules\decision\models\Decision;
 use app\modules\risk\models\Risk;
+use app\modules\supplier\models\Supplier;
 use tests\DbTestCase;
 use Yii;
 
@@ -17,6 +18,7 @@ class OverdueReviewsKpiTest extends DbTestCase
         // Start from no overdue reviews (rolled back with the test transaction)
         Yii::$app->db->createCommand()->update('risk', ['next_review_date' => null])->execute();
         Yii::$app->db->createCommand()->update('decision', ['review_date' => null])->execute();
+        Yii::$app->db->createCommand()->update('supplier', ['next_review_date' => null])->execute();
     }
 
     private function overdueRisk(): void
@@ -38,6 +40,14 @@ class OverdueReviewsKpiTest extends DbTestCase
         ]);
         $this->assertTrue($d->save(), json_encode($d->getErrors()));
         Yii::$app->db->createCommand()->update('decision', ['review_date' => '2020-01-01'], ['id' => $d->id])->execute();
+    }
+
+    private function overdueSupplier(): void
+    {
+        $s = new Supplier(['name' => 'Overdue supplier', 'status' => Supplier::STATUS_ACTIVE, 'criticality' => 'low',
+            'data_classification' => 'public', 'access_level' => Supplier::ACCESS_NONE]);
+        $this->assertTrue($s->save(), json_encode($s->getErrors()));
+        Yii::$app->db->createCommand()->update('supplier', ['next_review_date' => '2020-01-01'], ['id' => $s->id])->execute();
     }
 
     private function tile(): string
@@ -79,5 +89,23 @@ class OverdueReviewsKpiTest extends DbTestCase
         $this->assertStringNotContainsString('gw-kpi__go', $html);
         $this->assertMatchesRegularExpression('#class="gw-kpi__breakdown-link" href="[^"]*risk[^"]*review-overdue#', $html);
         $this->assertMatchesRegularExpression('#class="gw-kpi__breakdown-link" href="[^"]*decision[^"]*review-overdue#', $html);
+    }
+
+    public function testOnlySuppliersOverdueLinksToSuppliers(): void
+    {
+        $this->overdueSupplier();
+        $html = $this->tile();
+        $this->assertMatchesRegularExpression('#<a [^>]*class="gw-kpi [^"]*" href="[^"]*supplier[^"]*review-overdue#', $html);
+        $this->assertStringContainsString('Suppliers', $html);
+    }
+
+    public function testSuppliersAndRisksOverdueLinkEachRow(): void
+    {
+        $this->overdueRisk();
+        $this->overdueSupplier();
+        $html = $this->tile();
+        $this->assertMatchesRegularExpression('#class="gw-kpi__breakdown-link" href="[^"]*supplier[^"]*review-overdue#', $html);
+        $this->assertMatchesRegularExpression('#class="gw-kpi__breakdown-link" href="[^"]*risk[^"]*review-overdue#', $html);
+        $this->assertDoesNotMatchRegularExpression('#breakdown-link" href="[^"]*decision#', $html, 'no link for a row with nothing overdue');
     }
 }

@@ -14,6 +14,7 @@ use app\modules\control\models\Control;
 use app\modules\decision\models\Decision;
 use app\modules\inventory\models\Device;
 use app\modules\risk\models\Risk;
+use app\modules\supplier\models\Supplier;
 use tests\DbTestCase;
 use Yii;
 use yii\base\InvalidConfigException;
@@ -118,12 +119,15 @@ class RecordNoteTest extends DbTestCase
         $asset = new CloudAsset(['account_id' => $account->id, 'name' => 'customer-exports', 'resource_type' => 'bucket',
             'status' => CloudAsset::STATUS_ACTIVE, 'criticality' => 'high', 'data_classification' => 'confidential']);
         $this->assertTrue($asset->save(), json_encode($asset->getErrors()));
-        return ['risk' => $risk, 'control' => $this->control(), 'decision' => $decision, 'cloud_account' => $account, 'cloud_asset' => $asset];
+        $supplier = new Supplier(['name' => 'Fabrikam Managed IT', 'status' => Supplier::STATUS_ACTIVE, 'criticality' => 'high',
+            'data_classification' => 'confidential', 'access_level' => Supplier::ACCESS_PRIVILEGED]);
+        $this->assertTrue($supplier->save(), json_encode($supplier->getErrors()));
+        return ['risk' => $risk, 'control' => $this->control(), 'decision' => $decision, 'cloud_account' => $account, 'cloud_asset' => $asset, 'supplier' => $supplier];
     }
 
-    public function testRisksControlsDecisionsAndCloudRecordsTakeNotes(): void
+    public function testRisksControlsDecisionsCloudRecordsAndSuppliersTakeNotes(): void
     {
-        $this->assertSame(['risk', 'control', 'decision', 'cloud_account', 'cloud_asset'], RecordNote::ENTITY_TYPES);
+        $this->assertSame(['risk', 'control', 'decision', 'cloud_account', 'cloud_asset', 'supplier'], RecordNote::ENTITY_TYPES);
         $this->assertFalse(RecordNote::takesNotes('incident'), 'incidents keep their timeline');
         foreach ($this->owners() as $type => $owner) {
             /** @var DomainRecord $owner */

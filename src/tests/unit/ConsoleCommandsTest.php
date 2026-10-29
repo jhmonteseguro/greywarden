@@ -90,12 +90,12 @@ class ConsoleCommandsTest extends DbTestCase
         $this->assertNotNull(EdgeFinding::find()->where(['status' => EdgeFinding::STATUS_BLOCKED])->andWhere(['not', ['blocklist_id' => null]])->one());
         $this->assertTrue(EdgeFinding::find()->where(['status' => EdgeFinding::STATUS_DISMISSED])->exists());
         $this->assertSame(1, (int) EdgePull::find()->count());
-        // Completed reviews on a few risks and decisions, each keeping the record's review date
+        // Completed reviews on a few risks, decisions and a supplier, each keeping the record's review date
         $reviews = RecordReview::find()->all();
-        $this->assertCount(5, $reviews);
+        $this->assertCount(6, $reviews);
         $types = array_unique(array_map(static fn($r) => $r->entity_type, $reviews));
         sort($types);
-        $this->assertSame(['decision', 'risk'], $types);
+        $this->assertSame(['decision', 'risk', 'supplier'], $types);
         foreach ($reviews as $review) {
             $owner = $review->getOwner();
             $this->assertSame($owner->{RecordReview::dateAttribute($owner)}, $review->next_review_date);

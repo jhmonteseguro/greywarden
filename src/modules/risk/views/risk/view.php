@@ -17,6 +17,7 @@ use app\modules\decision\models\Decision;
 use app\modules\incident\models\Incident;
 use app\modules\inventory\models\Device;
 use app\modules\risk\models\Risk;
+use app\modules\supplier\models\Supplier;
 use app\widgets\Attachments;
 use app\widgets\AuditHistory;
 use app\widgets\DetailView;
@@ -50,6 +51,7 @@ $lastReview = $reviews[0] ?? null;
 
 $devices = $model->devices;
 $cloudAssets = $model->cloudAssets;
+$suppliers = $model->suppliers;
 $incidents = $model->incidents;
 $decisions = $model->decisions;
 $techniques = $model->techniques;
@@ -189,6 +191,8 @@ ob_start(); ?>
         'extra' => static fn(Device $d) => Badge::status('device-status', $d->status, Device::statusOptions())]) ?></div>
     <div class="col-lg-4"><?= LinkedRecords::widget(['title' => 'Affected cloud assets', 'icon' => 'cloud', 'models' => $cloudAssets,
         'extra' => static fn(CloudAsset $a) => Badge::status('cloud-status', $a->status, CloudAsset::statusOptions())]) ?></div>
+    <div class="col-lg-4"><?= LinkedRecords::widget(['title' => 'Related suppliers', 'icon' => 'buildings', 'models' => $suppliers,
+        'extra' => static fn(Supplier $s) => Badge::tier($s->tier) . ' ' . Badge::status('supplier-status', $s->status, Supplier::statusOptions())]) ?></div>
     <div class="col-lg-4"><?= LinkedRecords::widget(['title' => 'Related incidents', 'icon' => 'fire', 'models' => $incidents,
         'extra' => static fn(Incident $i) => Badge::severity($i->severity) . ' ' . Badge::status('incident-status', $i->status, Incident::statusOptions())]) ?></div>
     <div class="col-lg-4"><?= LinkedRecords::widget(['title' => 'Related decisions', 'icon' => 'journal-check', 'models' => $decisions,
@@ -213,7 +217,7 @@ $notes = RecordNote::listFor($model); ?>
         ]), 'options' => ['id' => 'tab-attack']],
         ['label' => 'Reviews (' . count($reviews) . ')', 'content' => Reviews::widget(['model' => $model, 'reviews' => $reviews]), 'options' => ['id' => 'tab-reviews']],
         ['label' => 'Notes (' . count($notes) . ')', 'content' => Notes::widget(['model' => $model, 'notes' => $notes, 'attachments' => $attachments]), 'options' => ['id' => 'tab-notes']],
-        ['label' => 'Links (' . (count($devices) + count($cloudAssets) + count($incidents) + count($decisions)) . ')', 'content' => $links, 'options' => ['id' => 'tab-links']],
+        ['label' => 'Links (' . (count($devices) + count($cloudAssets) + count($suppliers) + count($incidents) + count($decisions)) . ')', 'content' => $links, 'options' => ['id' => 'tab-links']],
         ['label' => 'Files (' . count($attachments) . ')', 'content' => Attachments::widget(['model' => $model, 'attachments' => $attachments]), 'options' => ['id' => 'tab-files']],
         ['label' => 'History', 'content' => AuditHistory::widget(['entityType' => 'risk', 'entityId' => $model->id]), 'options' => ['id' => 'tab-history']],
     ],

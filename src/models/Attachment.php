@@ -38,7 +38,7 @@ use yii\web\UploadedFile;
 class Attachment extends ActiveRecord
 {
     /** Records that take attachments (keys of AuditLog::entities()) */
-    public const ENTITY_TYPES = ['risk', 'control', 'decision', 'incident', 'cloud_account', 'cloud_asset'];
+    public const ENTITY_TYPES = ['risk', 'control', 'decision', 'incident', 'cloud_account', 'cloud_asset', 'supplier'];
 
     /**
      * Allowed extension => [stored MIME type, MIME types finfo may report for it].

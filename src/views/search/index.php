@@ -19,6 +19,7 @@ use app\modules\incident\models\Incident;
 use app\modules\intel\models\BlocklistEntry;
 use app\modules\inventory\models\Device;
 use app\modules\risk\models\Risk;
+use app\modules\supplier\models\Supplier;
 use yii\helpers\Html;
 
 $this->title = $q === '' ? 'Search' : 'Search results';
@@ -85,6 +86,8 @@ $this->params['subtitle'] = $q === '' ? 'Enter a reference, title, hostname, ser
                         } elseif ($item instanceof CloudAccount) {
                             echo '<span class="gw-muted">' . Html::encode($item->getProviderSummary()) . '</span> '
                                 . Badge::status('cloud-status', $item->status, CloudAccount::statusOptions());
+                        } elseif ($item instanceof Supplier) {
+                            echo Badge::tier($item->tier) . ' ' . Badge::status('supplier-status', $item->status, Supplier::statusOptions());
                         }
                         if ($item->getIsArchived() && !$item instanceof BlocklistEntry) {
                             echo ' ' . Badge::flag('archived', 'Archived');

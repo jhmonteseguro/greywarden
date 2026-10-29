@@ -100,13 +100,14 @@ E1=$(id_of edge_finding ip 192.0.2.150); E2=$(id_of edge_finding ip 203.0.113.9)
 V1=$(id_of device asset_tag DEV-0001); V26=$(id_of device asset_tag DEV-0026); V38=$(id_of device asset_tag DEV-0038)
 C1=$(id_of control reference CTL-0001); C5=$(id_of control reference CTL-0005); C8=$(id_of control reference CTL-0008); C18=$(id_of control reference CTL-0018)
 CLD1=$(id_of cloud_asset reference CLD-0001); CLD10=$(id_of cloud_asset reference CLD-0010); ACC1=$(id_of cloud_account reference ACC-0001); ACC2=$(id_of cloud_account reference ACC-0002)
+SUP1=$(id_of supplier reference SUP-0001); SUP5=$(id_of supplier reference SUP-0005); SUP9=$(id_of supplier reference SUP-0009)
 REQ_ISO=$(sql "SELECT id FROM framework_requirement WHERE external_id='A.8.7'"); REQ_CE=$(sql "SELECT id FROM framework_requirement WHERE external_id='CE-UA-4'")
 REQ_SOC2=$(sql "SELECT id FROM framework_requirement WHERE external_id='CC6.1'"); REQ_SOC2_A=$(sql "SELECT id FROM framework_requirement WHERE external_id='A1.2'")
 REQ_NIST=$(sql "SELECT id FROM framework_requirement WHERE external_id='PR.AA-01'"); REQ_CAF=$(sql "SELECT id FROM framework_requirement WHERE external_id='B4.d'")
 # Manual device checks in force, as Device[checks][<id>]=<result> fields
 CHECKS=($(sql "SELECT id FROM control WHERE device_check='manual' AND status IN ('implementing','implemented') AND archived_at IS NULL ORDER BY id"))
 checks() { local r=$1; for c in "${CHECKS[@]}"; do echo "Device[checks][$c]=$r"; done; }
-if [[ -z "$R1" || -z "$I19" || -z "$V38" || -z "$B1" || -z "$E1" || -z "$C18" || -z "$REQ_ISO" || -z "$CLD10" || -z "$ACC2" ]]; then echo "Demo data missing - run: make seed"; exit 1; fi
+if [[ -z "$R1" || -z "$I19" || -z "$V38" || -z "$B1" || -z "$E1" || -z "$C18" || -z "$REQ_ISO" || -z "$CLD10" || -z "$ACC2" || -z "$SUP9" ]]; then echo "Demo data missing - run: make seed"; exit 1; fi
 
 # ---------------------------------------------------------------- temporary admin + cleanup
 SMOKE_USER="smoke.user.$$"
@@ -176,6 +177,10 @@ READ_PAGES=(
     "/cloud/assets?filter=all&sort=-last_seen_at&provider=aws&category=storage" "/cloud/assets?account_id=$ACC1" /cloud/assets/$CLD1 /cloud/assets/$CLD10
     /cloud/accounts "/cloud/accounts?filter=non-compliant" "/cloud/accounts?filter=not-assessed" "/cloud/accounts?filter=archived" /cloud/accounts/$ACC1 /cloud/accounts/$ACC2
     "/controls?filter=cloud-checks" "/search?q=arn:aws" /intel/ip/203.0.113.10
+    # Supplier Register
+    /suppliers "/suppliers?filter=active" "/suppliers?filter=onboarding" "/suppliers?filter=tier-1" "/suppliers?filter=mine" "/suppliers?filter=non-compliant"
+    "/suppliers?filter=not-assessed" "/suppliers?filter=review-overdue" "/suppliers?filter=assurance" "/suppliers?filter=renewals" "/suppliers?filter=archived"
+    "/suppliers?filter=all&sort=-criticality&tier=1" /suppliers/$SUP1 /suppliers/$SUP5 /suppliers/$SUP9 "/controls?filter=supplier-checks" "/search?q=Fabrikam"
     "/?heatmap=inherent"
     # Control Register and frameworks
     /controls "/controls?filter=mine" "/controls?filter=planned" "/controls?filter=implemented" "/controls?filter=test-due-soon" "/controls?filter=test-overdue" "/controls?filter=weak"
@@ -201,11 +206,12 @@ READ_PAGES=(
 )
 WRITE_PAGES=(/risks/create /risks/$R1/update /controls/create /controls/$C1/update /controls/$C5/update /decisions/create /decisions/$D1/update /incidents/create /incidents/$I1/update /devices/create /devices/$V1/update
     /cloud/assets/create "/cloud/assets/create?account=$ACC1" /cloud/assets/$CLD1/update /cloud/accounts/create /cloud/accounts/$ACC1/update
+    /suppliers/create /suppliers/$SUP1/update
     /intel/blocklist/create "/intel/blocklist/create?value=192.0.2.99" /intel/blocklist/$B1/update)
 U2=$(id_of user username viewer)
 ADMIN_PAGES=(/admin/user /admin/user/1 /admin/user/$U2 /admin/user/create /admin/user/$U2/update /admin/user/$U2/reset-password
     /admin/audit "/admin/audit?entity_type=risk&action=update" "/admin/audit?action=login_failed" /admin/audit/1
-    /admin/lookup "/admin/lookup?type=department" "/admin/lookup?type=location" /admin/lookup/create /admin/lookup/1/update /admin/settings)
+    /admin/lookup "/admin/lookup?type=department" "/admin/lookup?type=location" "/admin/lookup?type=supplier_category" /admin/lookup/create /admin/lookup/1/update /admin/settings)
 
 for role in admin analyst viewer; do
     echo "-- $role: read pages"
@@ -454,6 +460,41 @@ check admin "/cloud/accounts/$SACC" 404
 post analyst /controls/create /controls/create 200 "Control[title]=Smoke cloud check" "Control[status]=implemented" "Control[control_type]=preventive" \
     "Control[nature]=technical" "Control[cloud_check]=encryption" "Control[cloudScopeList]=" "Control[cloudScopeList][]=account"
 grep -q 'Only a check recorded on each asset' "$BODY" && ok || bad "computed cloud check on accounts accepted"
+
+# Supplier Register: validation, create with a check result, assurance, PDF, cloud account link, archive / delete guard
+SUP_DD=$(sql "SELECT id FROM control WHERE supplier_check='manual' AND archived_at IS NULL LIMIT 1")
+check viewer "/suppliers/$SUP5" 200
+grep -q 'Review overdue' "$BODY" && grep -q 'Notice deadline passed' "$BODY" && grep -q 'data-value="1"' "$BODY" && ok || bad "supplier flags / tier missing"
+post analyst /suppliers/create /suppliers/create 200 "Supplier[name]=" "Supplier[status]=active" "Supplier[criticality]=low" \
+    "Supplier[data_classification]=public" "Supplier[access_level]=none" "Supplier[website]=not a url"
+grep -q 'Supplier name cannot be blank' "$BODY" && grep -q 'not a valid URL' "$BODY" && ok || bad "supplier validation not shown"
+post analyst /suppliers/create /suppliers/create 302 "Supplier[name]=Smoke supplier" "Supplier[status]=active" "Supplier[criticality]=medium" \
+    "Supplier[data_classification]=confidential" "Supplier[access_level]=privileged" "Supplier[personal_data]=1" "Supplier[dpa_status]=not_signed" \
+    "Supplier[checks][$SUP_DD]=fail"
+SSUP=$(last_id supplier)
+check analyst "/suppliers/$SSUP" 200
+grep -q 'SUP-00' "$BODY" && grep -q 'data-value="non-compliant"' "$BODY" && grep -q 'privileged access to our systems' "$BODY" && ok || bad "supplier create / tier / posture failed"
+post analyst "/suppliers/$SSUP" "/suppliers/$SSUP/add-assurance" 302 "SupplierAssurance[type]=iso27001" "SupplierAssurance[expires_on]=$(date -d '+20 days' +%Y-%m-%d)"
+check analyst "/suppliers/$SSUP" 200
+grep -q 'Assurance expiring' "$BODY" && ok || bad "expiring assurance not flagged"
+req viewer GET "/suppliers/$SSUP/pdf"
+[[ "$CODE" == 200 ]] && head -c 5 "$BODY" | grep -q '%PDF-' && ok || bad "supplier PDF failed ($CODE)"
+post analyst "/cloud/accounts/$ACC2/update" "/cloud/accounts/$ACC2/update" 302 "CloudAccount[name]=Development (AWS)" "CloudAccount[provider]=aws" \
+    "CloudAccount[account_identifier]=444455556666" "CloudAccount[environment]=development" "CloudAccount[status]=active" "CloudAccount[criticality]=medium" \
+    "CloudAccount[data_classification]=internal" "CloudAccount[supplier_id]=$SSUP"
+check viewer "/cloud/accounts/$ACC2" 200
+grep -q 'Smoke supplier' "$BODY" && ok || bad "cloud account supplier link missing"
+post analyst "/suppliers/$SSUP" "/suppliers/$SSUP/archive" 302
+post analyst "/suppliers/$SSUP" "/suppliers/$SSUP/delete" 403
+post admin "/suppliers/$SSUP" "/suppliers/$SSUP/delete" 302
+[[ -n "$(sql "SELECT id FROM supplier WHERE id=$SSUP")" ]] && ok || bad "supplier with cloud accounts was deleted"
+post analyst "/cloud/accounts/$ACC2/update" "/cloud/accounts/$ACC2/update" 302 "CloudAccount[name]=Development (AWS)" "CloudAccount[provider]=aws" \
+    "CloudAccount[account_identifier]=444455556666" "CloudAccount[environment]=development" "CloudAccount[status]=active" "CloudAccount[criticality]=medium" \
+    "CloudAccount[data_classification]=internal" "CloudAccount[supplier_id]=$SUP1"
+post admin "/suppliers/$SSUP" "/suppliers/$SSUP/delete" 302
+check admin "/suppliers/$SSUP" 404
+check viewer / 200
+grep -q 'gw-attention__group--supplier-review' "$BODY" && grep -q 'gw-attention__group--supplier-checks' "$BODY" && ok || bad "supplier groups missing from Needs attention"
 
 # Control: validation, create with frameworks / ATT&CK / risk link, device check, tests, incident roles, archive/delete
 MFA_MIT=$(sql "SELECT id FROM attack_mitigation WHERE external_id='M1032'")

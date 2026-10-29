@@ -29,6 +29,7 @@ class Lookup extends ActiveRecord
     public const TYPE_INCIDENT_CATEGORY = 'incident_category';
     public const TYPE_DEPARTMENT = 'department';
     public const TYPE_LOCATION = 'location';
+    public const TYPE_SUPPLIER_CATEGORY = 'supplier_category';
 
     /** type => [label, [table, column] usages] */
     public static function types(): array
@@ -37,6 +38,7 @@ class Lookup extends ActiveRecord
             self::TYPE_RISK_CATEGORY => 'Risk categories',
             self::TYPE_DECISION_CATEGORY => 'Decision categories',
             self::TYPE_INCIDENT_CATEGORY => 'Incident categories',
+            self::TYPE_SUPPLIER_CATEGORY => 'Supplier categories',
             self::TYPE_DEPARTMENT => 'Departments',
             self::TYPE_LOCATION => 'Locations',
         ];
@@ -48,6 +50,7 @@ class Lookup extends ActiveRecord
             self::TYPE_RISK_CATEGORY => [['risk', 'category_id']],
             self::TYPE_DECISION_CATEGORY => [['decision', 'category_id']],
             self::TYPE_INCIDENT_CATEGORY => [['incident', 'category_id']],
+            self::TYPE_SUPPLIER_CATEGORY => [['supplier', 'category_id']],
             self::TYPE_DEPARTMENT => [['device', 'department_id']],
             self::TYPE_LOCATION => [['device', 'location_id']],
         ];

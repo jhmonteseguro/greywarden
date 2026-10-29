@@ -50,6 +50,9 @@ $this->params['pdf.badges'] = Badge::status('decision-status', $model->status, D
 <?php if ($model->cloudAssets): ?>
     <?= $this->render('@app/views/pdf/_records', ['title' => 'Related cloud assets', 'models' => $model->cloudAssets]) ?>
 <?php endif; ?>
+<?php if ($model->suppliers): ?>
+    <?= $this->render('@app/views/pdf/_records', ['title' => 'Related suppliers', 'models' => $model->suppliers]) ?>
+<?php endif; ?>
 <?php if ($model->supersedes): ?>
     <?= $this->render('@app/views/pdf/_records', ['title' => 'Supersedes', 'models' => $model->supersedes]) ?>
 <?php endif; ?>

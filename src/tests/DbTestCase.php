@@ -7,6 +7,7 @@ use app\models\Setting;
 use app\models\User;
 use app\modules\cloud\components\CloudChecks;
 use app\modules\inventory\components\DeviceChecks;
+use app\modules\supplier\components\SupplierChecks;
 use PHPUnit\Framework\TestCase;
 use Yii;
 use yii\db\Transaction;
@@ -24,6 +25,7 @@ abstract class DbTestCase extends TestCase
         parent::setUp();
         DeviceChecks::reset();
         CloudChecks::reset();
+        SupplierChecks::reset();
         Setting::reset();
         $this->tx = Yii::$app->db->beginTransaction();
     }
@@ -33,6 +35,7 @@ abstract class DbTestCase extends TestCase
         $this->tx?->rollBack();
         DeviceChecks::reset();
         CloudChecks::reset();
+        SupplierChecks::reset();
         Setting::reset();
         parent::tearDown();
     }

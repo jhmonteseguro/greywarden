@@ -13,6 +13,7 @@ use app\modules\decision\models\Decision;
 use app\modules\incident\components\IncidentMetrics;
 use app\modules\inventory\models\Device;
 use app\modules\risk\models\Risk;
+use app\modules\supplier\models\Supplier;
 use Yii;
 
 /**
@@ -77,6 +78,8 @@ class Incident extends DomainRecord
     public $deviceIds = null;
     /** @var int[]|string|null link ids (null = not submitted) */
     public $cloudAssetIds = null;
+    /** @var int[]|string|null link ids (null = not submitted) */
+    public $supplierIds = null;
     /** @var int[]|string|null link ids (null = not submitted) */
     public $riskIds = null;
     /** @var int[]|string|null ATT&CK technique ids (null = not submitted) */
@@ -165,6 +168,7 @@ class Incident extends DomainRecord
         return [
             'deviceIds' => ['table' => 'incident_device', 'self' => 'incident_id', 'other' => 'device_id', 'class' => Device::class, 'label' => 'Affected devices'],
             'cloudAssetIds' => ['table' => 'incident_cloud_asset', 'self' => 'incident_id', 'other' => 'cloud_asset_id', 'class' => CloudAsset::class, 'label' => 'Affected cloud assets'],
+            'supplierIds' => ['table' => 'incident_supplier', 'self' => 'incident_id', 'other' => 'supplier_id', 'class' => Supplier::class, 'label' => 'Suppliers involved'],
             'riskIds' => ['table' => 'risk_incident', 'self' => 'incident_id', 'other' => 'risk_id', 'class' => Risk::class, 'label' => 'Related risks'],
             'techniqueIds' => ['table' => 'incident_attack_technique', 'self' => 'incident_id', 'other' => 'technique_id', 'class' => AttackTechnique::class, 'label' => 'ATT&CK techniques'],
             'detectedByControlIds' => ['table' => 'incident_control', 'self' => 'incident_id', 'other' => 'control_id', 'class' => Control::class,
@@ -243,6 +247,7 @@ class Incident extends DomainRecord
             ['root_cause', 'required', 'when' => fn() => $this->status === self::STATUS_CLOSED && in_array($this->severity, [self::SEVERITY_CRITICAL, self::SEVERITY_HIGH], true), 'whenClient' => 'function(){return false;}', 'message' => 'Record the root cause before closing a high or critical incident.'],
             ['deviceIds', 'each', 'rule' => ['exist', 'targetClass' => Device::class, 'targetAttribute' => 'id']],
             ['cloudAssetIds', 'each', 'rule' => ['exist', 'targetClass' => CloudAsset::class, 'targetAttribute' => 'id']],
+            ['supplierIds', 'each', 'rule' => ['exist', 'targetClass' => Supplier::class, 'targetAttribute' => 'id']],
             ['riskIds', 'each', 'rule' => ['exist', 'targetClass' => Risk::class, 'targetAttribute' => 'id']],
             ['techniqueIds', 'each', 'rule' => ['exist', 'targetClass' => AttackTechnique::class, 'targetAttribute' => 'id']],
             [['detectedByControlIds', 'failedControlIds', 'responseControlIds'], 'each', 'rule' => ['exist', 'targetClass' => Control::class, 'targetAttribute' => 'id']],
@@ -356,6 +361,12 @@ class Incident extends DomainRecord
     public function getCloudAssets()
     {
         return $this->hasMany(CloudAsset::class, ['id' => 'cloud_asset_id'])->viaTable('incident_cloud_asset', ['incident_id' => 'id']);
+    }
+
+    public function getSuppliers()
+    {
+        return $this->hasMany(Supplier::class, ['id' => 'supplier_id'])->viaTable('incident_supplier', ['incident_id' => 'id'])
+            ->orderBy(['supplier.reference' => SORT_ASC]);
     }
 
     public function getRisks()

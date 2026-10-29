@@ -13,6 +13,7 @@ use app\modules\control\models\Control;
 use app\modules\decision\models\Decision;
 use app\modules\incident\models\Incident;
 use app\modules\risk\models\Risk;
+use app\modules\supplier\models\Supplier;
 use yii\helpers\Html;
 
 $fmt = Yii::$app->formatter;
@@ -45,6 +46,7 @@ $frameworks['ATT&CK mitigations'] = $model->mitigations;
     'Last tested' => $model->last_tested_on ? $fmt->asDate($model->last_tested_on) : null,
     'Next test due' => $model->next_test_due ? $fmt->asDate($model->next_test_due) . ' ' . $model->testFlag() : null,
     'Device check' => $model->device_check ? Html::encode($model->getDeviceScopeLabel()) : false,
+    'Supplier check' => $model->supplier_check ? Html::encode($model->getSupplierScopeLabel()) : false,
 ], static fn($v) => $v !== false)]) ?>
 <?php if ($weak = $model->weaknesses()): ?>
     <p class="highlight">Risks relying on this control should be reviewed: it is <?= Html::encode(implode(', ', $weak)) ?>.</p>
@@ -93,6 +95,10 @@ $frameworks['ATT&CK mitigations'] = $model->mitigations;
     'extra' => static fn(Risk $r) => Badge::score($r->getCurrentScore()) . ' ' . Badge::status('risk-status', $r->status, Risk::statusOptions())]) ?>
 <?= $this->render('@app/views/pdf/_records', ['title' => 'Related decisions', 'models' => $model->decisions, 'extraLabel' => 'Status',
     'extra' => static fn(Decision $d) => Badge::status('decision-status', $d->status, Decision::statusOptions())]) ?>
+<?php if ($model->suppliers): ?>
+    <?= $this->render('@app/views/pdf/_records', ['title' => 'Suppliers it relies on', 'models' => $model->suppliers, 'extraLabel' => 'Tier',
+        'extra' => static fn(Supplier $s) => Badge::tier($s->tier)]) ?>
+<?php endif; ?>
 <?php foreach (Incident::controlRoleOptions() as $role => $label): ?>
     <?php if ($incidents[$role]): ?>
         <?= $this->render('@app/views/pdf/_records', ['title' => 'Incidents: ' . lcfirst($label), 'models' => $incidents[$role], 'extraLabel' => 'Severity',

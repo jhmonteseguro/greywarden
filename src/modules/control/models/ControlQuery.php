@@ -64,6 +64,12 @@ class ControlQuery extends DomainQuery
         return $this->andWhere(['not', ['control.device_check' => null]]);
     }
 
+    /** Controls checked on suppliers */
+    public function supplierChecks(): static
+    {
+        return $this->andWhere(['not', ['control.supplier_check' => null]]);
+    }
+
     /** Controls checked on cloud assets / accounts */
     public function cloudChecks(): static
     {

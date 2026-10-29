@@ -47,6 +47,9 @@ $today = date('Y-m-d');
                 if ($m->cloud_check) {
                     $flags[] = Badge::render('control-type', 'cloud-check', 'Cloud check', ['title' => $m->getCloudScopeLabel(), 'icon' => 'cloud']);
                 }
+                if ($m->supplier_check) {
+                    $flags[] = Badge::render('control-type', 'supplier-check', 'Supplier check', ['title' => $m->getSupplierScopeLabel(), 'icon' => 'buildings']);
+                }
                 if ($flag = $m->testFlag($today)) {
                     $flags[] = $flag;
                 }

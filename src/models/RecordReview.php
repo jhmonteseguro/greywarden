@@ -11,7 +11,7 @@ use yii\behaviors\TimestampBehavior;
 use yii\db\ActiveRecord;
 
 /**
- * A completed periodic review of a risk or decision. Created only through
+ * A completed periodic review of a risk, decision or supplier. Created only through
  * record(), which also moves the record's review date on to the next review
  * date and writes one "Review recorded" entry into the record's history.
  * Reviews are never edited; the reviewer or an administrator may remove one
@@ -37,6 +37,7 @@ class RecordReview extends ActiveRecord
     public const ENTITY_TYPES = [
         'risk' => ['next_review_date', '+90 days'],
         'decision' => ['review_date', '+1 year'],
+        'supplier' => ['next_review_date', '+12 months'],
     ];
 
     public const MAX_LENGTH = 2000;
@@ -119,10 +120,11 @@ class RecordReview extends ActiveRecord
         return self::ENTITY_TYPES[$owner::entityType()][0] ?? throw new InvalidConfigException(sprintf('Records of type "%s" are not reviewed.', $owner::entityType()));
     }
 
-    /** A new, unsaved review of $owner with today's date, the current user and the usual next review date */
+    /** A new, unsaved review of $owner with today's date, the current user and the usual next review date (the record's own interval when it has one) */
     public static function draft(DomainRecord $owner): self
     {
         $interval = self::ENTITY_TYPES[$owner::entityType()][1] ?? throw new InvalidConfigException(sprintf('Records of type "%s" are not reviewed.', $owner::entityType()));
+        $interval = $owner->reviewInterval() ?? $interval;
         $today = Actor::today();
         return new self([
             'reviewed_on' => $today,

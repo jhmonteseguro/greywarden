@@ -9,7 +9,7 @@ PHP_T   := $(DC) exec -T php
 DB_NAME ?= greywarden
 DB_TEST_NAME ?= greywarden_test
 BACKUP_DIR ?= backups
-# AS= is the import actor (import-devices, import-cloud, sync-cloudflare, edge-pull); drop make's built-in AS (the assembler, "as")
+# AS= is the import actor (import-devices, import-cloud, sync-cloudflare, suppliers-from-cloud, edge-pull); drop make's built-in AS (the assembler, "as")
 ifeq ($(origin AS),default)
 AS :=
 endif
@@ -17,7 +17,7 @@ endif
 .DEFAULT_GOAL := help
 .PHONY: help env up down build rebuild restart ps logs shell composer yii migrate wait \
         reset-db create-admin seed test test-db test-all smoke hooks leak-check db-shell backup restore deploy attack-status attack-update intel-status intel-update import-devices \
-        import-cloud sync-cloudflare edge-pull edge-status expire-blocks cloudflare-migrate
+        import-cloud sync-cloudflare suppliers-from-cloud edge-pull edge-status expire-blocks cloudflare-migrate
 
 help: ## Show this help
 	@grep -hE '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
@@ -84,6 +84,9 @@ import-cloud: ## Import a cloud inventory export: make import-cloud FILE=resourc
 
 sync-cloudflare: ## Sync Cloudflare zones into the Cloud Inventory (CLOUDFLARE_API_TOKEN, Zone Read): make sync-cloudflare AS=jdoe [DRY_RUN=1]
 	$(PHP_T) php yii cloud/sync-cloudflare $(if $(AS),--user=$(AS)) $(if $(DRY_RUN),--dry-run=1)
+
+suppliers-from-cloud: ## Add one supplier per cloud provider in use (accounts are not linked): make suppliers-from-cloud AS=jdoe [DRY_RUN=1]
+	$(PHP_T) php yii supplier/from-cloud $(if $(AS),--user=$(AS)) $(if $(DRY_RUN),--dry-run=1)
 
 attack-status: ## Show the loaded MITRE ATT&CK release
 	$(PHP_T) php yii attack/status

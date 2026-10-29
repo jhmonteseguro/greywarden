@@ -17,6 +17,7 @@ use app\modules\intel\models\BlocklistEntry;
 use app\modules\intel\models\EdgeFinding;
 use app\modules\inventory\models\Device;
 use app\modules\risk\models\Risk;
+use app\modules\supplier\models\Supplier;
 use Yii;
 use yii\filters\AccessControl;
 use yii\web\Controller;
@@ -49,7 +50,7 @@ class SearchController extends Controller
         $investigate = $q !== '' && !ctype_digit($q) ? Indicator::parse($q) : null;
         if ($q !== '') {
             // Exact reference / asset tag / ATT&CK id match: jump straight to the record
-            foreach ([Risk::class, Control::class, Decision::class, Incident::class, Device::class, CloudAsset::class, CloudAccount::class, BlocklistEntry::class, AttackTechnique::class, AttackMitigation::class, FrameworkRequirement::class] as $class) {
+            foreach ([Risk::class, Control::class, Decision::class, Incident::class, Device::class, CloudAsset::class, CloudAccount::class, Supplier::class, BlocklistEntry::class, AttackTechnique::class, AttackMitigation::class, FrameworkRequirement::class] as $class) {
                 $query = $class::find()->where([$class::referenceAttribute() => $q]);
                 if ($class === FrameworkRequirement::class) {
                     $query->andWhere(FrameworkCatalogue::scopeCondition());   // not frameworks switched off
@@ -90,6 +91,9 @@ class SearchController extends Controller
                 'cloud-accounts' => ['label' => 'Cloud accounts', 'icon' => 'cloud-check', 'items' => CloudAccount::find()
                     ->where(['or', ['like', 'reference', $q], ['like', 'name', $q], ['like', 'account_identifier', $q]])
                     ->orderBy(['archived_at' => SORT_ASC, 'reference' => SORT_ASC])->limit(self::LIMIT)->all()],
+                'suppliers' => ['label' => 'Suppliers', 'icon' => 'buildings', 'items' => Supplier::find()
+                    ->where(['or', ['like', 'reference', $q], ['like', 'name', $q], ['like', 'legal_name', $q], ['like', 'website', $q], ['like', 'services', $q]])
+                    ->orderBy(['archived_at' => SORT_ASC, 'name' => SORT_ASC])->limit(self::LIMIT)->all()],
                 'techniques' => ['label' => 'ATT&CK techniques', 'icon' => 'crosshair', 'items' => AttackTechnique::find()->with('parent')
                     ->where(['or', ['like', 'external_id', $q], ['like', 'name', $q]])
                     ->orderBy(['is_deprecated' => SORT_ASC, 'is_subtechnique' => SORT_ASC, 'external_id' => SORT_ASC])->limit(self::LIMIT)->all()],

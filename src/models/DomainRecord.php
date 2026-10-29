@@ -180,6 +180,12 @@ abstract class DomainRecord extends ActiveRecord
         return false;
     }
 
+    /** Interval to the next review when it depends on the record (e.g. "+24 months"); null = RecordReview's default for the type */
+    public function reviewInterval(): ?string
+    {
+        return null;
+    }
+
     // ---- Soft delete ------------------------------------------------------
 
     public function getIsArchived(): bool

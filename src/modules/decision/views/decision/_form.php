@@ -11,6 +11,7 @@ use app\modules\control\models\Control;
 use app\modules\decision\models\Decision;
 use app\modules\incident\models\Incident;
 use app\modules\risk\models\Risk;
+use app\modules\supplier\models\Supplier;
 use app\widgets\ActiveForm;
 use yii\helpers\Html;
 
@@ -53,11 +54,12 @@ use yii\helpers\Html;
 <fieldset class="gw-fieldset">
     <legend class="gw-fieldset__title">Links</legend>
     <div class="row">
-        <div class="col-md-6 col-xl-3"><?= $form->field($model, 'controlIds')->listBox(Control::selectOptions($model->controlIds ?? []), ['multiple' => true, 'size' => 8, 'class' => 'form-select gw-multiselect'])
+        <div class="col-md-6 col-xl-4"><?= $form->field($model, 'controlIds')->listBox(Control::selectOptions($model->controlIds ?? []), ['multiple' => true, 'size' => 8, 'class' => 'form-select gw-multiselect'])
             ->hint('Controls this decision introduces or changes.') ?></div>
-        <div class="col-md-6 col-xl-3"><?= $form->field($model, 'riskIds')->listBox(Risk::selectOptions($model->riskIds ?? []), ['multiple' => true, 'size' => 8, 'class' => 'form-select gw-multiselect']) ?></div>
-        <div class="col-md-6 col-xl-3"><?= $form->field($model, 'incidentIds')->listBox(Incident::selectOptions($model->incidentIds ?? []), ['multiple' => true, 'size' => 8, 'class' => 'form-select gw-multiselect']) ?></div>
-        <div class="col-md-6 col-xl-3"><?= $form->field($model, 'cloudAssetIds')->listBox(CloudAsset::selectOptions($model->cloudAssetIds ?? []), ['multiple' => true, 'size' => 8, 'class' => 'form-select gw-multiselect', 'data-gw-picker' => 'Filter cloud assets…']) ?></div>
+        <div class="col-md-6 col-xl-4"><?= $form->field($model, 'riskIds')->listBox(Risk::selectOptions($model->riskIds ?? []), ['multiple' => true, 'size' => 8, 'class' => 'form-select gw-multiselect']) ?></div>
+        <div class="col-md-6 col-xl-4"><?= $form->field($model, 'incidentIds')->listBox(Incident::selectOptions($model->incidentIds ?? []), ['multiple' => true, 'size' => 8, 'class' => 'form-select gw-multiselect']) ?></div>
+        <div class="col-md-6 col-xl-4"><?= $form->field($model, 'cloudAssetIds')->listBox(CloudAsset::selectOptions($model->cloudAssetIds ?? []), ['multiple' => true, 'size' => 8, 'class' => 'form-select gw-multiselect', 'data-gw-picker' => 'Filter cloud assets…']) ?></div>
+        <div class="col-md-6 col-xl-4"><?= $form->field($model, 'supplierIds')->listBox(Supplier::selectOptions($model->supplierIds ?? []), ['multiple' => true, 'size' => 8, 'class' => 'form-select gw-multiselect', 'data-gw-picker' => 'Filter suppliers…']) ?></div>
     </div>
     <p class="form-text gw-field__hint">Hold Ctrl / Cmd to select multiple.</p>
 </fieldset>

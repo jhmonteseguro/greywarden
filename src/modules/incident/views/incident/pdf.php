@@ -17,6 +17,7 @@ use app\modules\incident\components\IncidentWording;
 use app\modules\incident\models\Incident;
 use app\modules\inventory\models\Device;
 use app\modules\risk\models\Risk;
+use app\modules\supplier\models\Supplier;
 use yii\helpers\Html;
 
 $fmt = Yii::$app->formatter;
@@ -145,6 +146,7 @@ $limit = 25;
 <?php foreach ([
     ['Affected devices', $model->devices, 'Criticality', static fn(Device $d) => Badge::criticality($d->criticality)],
     ['Affected cloud assets', $model->cloudAssets, 'Criticality', static fn(CloudAsset $a) => Badge::criticality($a->criticality)],
+    ['Suppliers involved', $model->suppliers, 'Tier', static fn(Supplier $s) => Badge::tier($s->tier)],
     ['ATT&CK techniques observed', $model->techniques, null, null],
     ['Related risks', $model->risks, 'Current score', static fn(Risk $r) => Badge::score($r->getCurrentScore())],
     ['Related decisions', $model->decisions, 'Status', static fn(Decision $d) => Badge::status('decision-status', $d->status, Decision::statusOptions())],

@@ -14,6 +14,7 @@ use app\modules\control\models\FrameworkRequirement;
 use app\modules\decision\models\Decision;
 use app\modules\inventory\models\Device;
 use app\modules\risk\models\Risk;
+use app\modules\supplier\models\Supplier;
 use app\widgets\ActiveForm;
 use yii\helpers\Html;
 
@@ -116,6 +117,16 @@ $pickerHints = [
     </div>
 </fieldset>
 
+<fieldset class="gw-fieldset gw-supplier-check-scope">
+    <legend class="gw-fieldset__title">Supplier check</legend>
+    <div class="row">
+        <div class="col-md-6"><?= $form->field($model, 'supplier_check')->dropDownList(Control::supplierCheckOptions(), ['prompt' => '— Not checked on suppliers —']) ?></div>
+        <div class="col-md-6" data-gw-depends="#control-supplier_check" data-gw-value="manual,dpa,assurance">
+            <?= $form->field($model, 'supplierTierList')->inline()->checkboxList(Supplier::tierOptions()) ?>
+        </div>
+    </div>
+</fieldset>
+
 <?php if ($frameworks = FrameworkCatalogue::enabled()): ?>
 <fieldset class="gw-fieldset">
     <legend class="gw-fieldset__title">Frameworks</legend>
@@ -141,8 +152,9 @@ $pickerHints = [
 <fieldset class="gw-fieldset">
     <legend class="gw-fieldset__title">Links</legend>
     <div class="row">
-        <div class="col-md-6"><?= $form->field($model, 'riskIds')->listBox(Risk::selectOptions($model->riskIds ?? []), ['multiple' => true, 'size' => 8, 'class' => 'form-select gw-multiselect']) ?></div>
-        <div class="col-md-6"><?= $form->field($model, 'decisionIds')->listBox(Decision::selectOptions($model->decisionIds ?? []), ['multiple' => true, 'size' => 8, 'class' => 'form-select gw-multiselect']) ?></div>
+        <div class="col-md-4"><?= $form->field($model, 'riskIds')->listBox(Risk::selectOptions($model->riskIds ?? []), ['multiple' => true, 'size' => 8, 'class' => 'form-select gw-multiselect']) ?></div>
+        <div class="col-md-4"><?= $form->field($model, 'decisionIds')->listBox(Decision::selectOptions($model->decisionIds ?? []), ['multiple' => true, 'size' => 8, 'class' => 'form-select gw-multiselect']) ?></div>
+        <div class="col-md-4"><?= $form->field($model, 'supplierIds')->listBox(Supplier::selectOptions($model->supplierIds ?? []), $picker('Filter suppliers…')) ?></div>
     </div>
     <p class="form-text gw-field__hint">Hold Ctrl / Cmd to select multiple. Incidents link to controls from the incident record.</p>
 </fieldset>

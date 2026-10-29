@@ -21,6 +21,8 @@ use app\modules\inventory\components\DeviceChecks;
 use app\modules\inventory\components\DevicePosture;
 use app\modules\inventory\models\Device;
 use app\modules\risk\models\Risk;
+use app\modules\supplier\components\SupplierChecks;
+use app\modules\supplier\models\Supplier;
 use app\widgets\Attachments;
 use app\widgets\AuditHistory;
 use app\widgets\DetailView;
@@ -60,6 +62,7 @@ foreach ($attachments as $a) {
     }
 }
 $risks = $model->risks;
+$suppliers = $model->suppliers;
 $decisions = $model->decisions;
 $incidents = $model->getIncidentsByRole();
 $mitigations = $model->mitigations;
@@ -283,12 +286,50 @@ if ($model->cloud_check) {
     <?php $cloudTab = ob_get_clean();
 }
 
+$supplierTab = null;
+if ($model->supplier_check) {
+    $check = SupplierChecks::fromControl($model);
+    $counts = [];
+    foreach (DevicePosture::resultLabels() as $result => $label) {
+        $counts[$result] = (int) Supplier::find()->active()->inService()->checkResult($check, $result)->count();
+    }
+    ob_start(); ?>
+    <section class="gw-panel">
+        <h2 class="gw-panel__title"><i class="bi bi-buildings" aria-hidden="true"></i> Checked on suppliers</h2>
+        <?php if (!$model->isInForce()): ?>
+            <div class="alert alert-info gw-callout" role="status"><i class="bi bi-info-circle" aria-hidden="true"></i>
+                This check is not in force: suppliers are only checked while the control is implementing or implemented.</div>
+        <?php endif; ?>
+        <dl class="gw-dl">
+            <dt>Method</dt><dd><?= Html::encode(Control::supplierCheckOptions()[$model->supplier_check] ?? $model->supplier_check) ?></dd>
+            <dt>Applies to</dt><dd><?= Html::encode($model->getSupplierScopeLabel()) ?></dd>
+        </dl>
+        <ul class="gw-check-counts gw-check-counts--supplier">
+            <?php foreach ($counts as $result => $n): ?>
+                <li class="gw-check-counts__item">
+                    <?= Badge::checkResult($result) ?>
+                    <?= Html::a('<strong>' . $n . '</strong> supplier' . ($n === 1 ? '' : 's') . ' in service',
+                        ['/supplier/supplier/index', 'filter' => 'active', 'control' => $model->id, 'result' => $result], ['class' => 'gw-check-counts__link']) ?>
+                </li>
+            <?php endforeach; ?>
+        </ul>
+        <p class="gw-muted gw-small mb-0"><?= match (true) {
+            $check->isDpa() => 'Read from each supplier\'s data processing agreement answer; only suppliers that process personal data are checked, and those answered "Unknown" are not assessed.',
+            $check->isAssurance() => 'Passes while a supplier has an unexpired certificate or report on its Assurance tab; fails once all have expired; not assessed when none is recorded.',
+            default => 'Record the result on each supplier\'s edit form, under Supplier checks.',
+        } ?></p>
+    </section>
+    <?php $supplierTab = ob_get_clean();
+}
+
 ob_start(); ?>
 <div class="row g-4">
     <div class="col-lg-6"><?= LinkedRecords::widget(['title' => 'Risks it mitigates', 'icon' => 'exclamation-triangle', 'models' => $risks,
         'extra' => static fn(Risk $r) => Badge::score($r->getCurrentScore()) . ' ' . Badge::status('risk-status', $r->status, Risk::statusOptions())]) ?></div>
     <div class="col-lg-6"><?= LinkedRecords::widget(['title' => 'Related decisions', 'icon' => 'journal-check', 'models' => $decisions,
         'extra' => static fn(Decision $d) => Badge::status('decision-status', $d->status, Decision::statusOptions())]) ?></div>
+    <div class="col-lg-6"><?= LinkedRecords::widget(['title' => 'Suppliers it relies on', 'icon' => 'buildings', 'models' => $suppliers,
+        'extra' => static fn(Supplier $s) => Badge::tier($s->tier) . ' ' . Badge::status('supplier-status', $s->status, Supplier::statusOptions())]) ?></div>
     <?php foreach (Incident::controlRoleOptions() as $role => $label): ?>
         <div class="col-lg-4"><?= LinkedRecords::widget(['title' => 'Incidents: ' . lcfirst($label), 'icon' => 'fire', 'models' => $incidents[$role],
             'emptyText' => 'None recorded.',
@@ -336,7 +377,8 @@ ob_start(); ?>
         ['label' => 'Testing (' . count($tests) . ')', 'content' => $testing, 'options' => ['id' => 'tab-testing'], 'active' => $test->hasErrors()],
         $deviceTab !== null ? ['label' => 'Device check', 'content' => $deviceTab, 'options' => ['id' => 'tab-devices']] : null,
         $cloudTab !== null ? ['label' => 'Cloud check', 'content' => $cloudTab, 'options' => ['id' => 'tab-cloud']] : null,
-        ['label' => 'Links (' . (count($risks) + count($decisions) + $incidentCount) . ')', 'content' => $links, 'options' => ['id' => 'tab-links']],
+        $supplierTab !== null ? ['label' => 'Supplier check', 'content' => $supplierTab, 'options' => ['id' => 'tab-suppliers']] : null,
+        ['label' => 'Links (' . (count($risks) + count($decisions) + count($suppliers) + $incidentCount) . ')', 'content' => $links, 'options' => ['id' => 'tab-links']],
         ['label' => 'Frameworks & ATT&CK (' . ($requirementCount + count($mitigations)) . ')', 'content' => $frameworks, 'options' => ['id' => 'tab-frameworks']],
         ['label' => 'Files (' . count($attachments) . ')', 'content' => Attachments::widget(['model' => $model, 'attachments' => $attachments]), 'options' => ['id' => 'tab-files']],
         ['label' => 'History', 'content' => AuditHistory::widget(['entityType' => 'control', 'entityId' => $model->id]), 'options' => ['id' => 'tab-history']],

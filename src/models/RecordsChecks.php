@@ -1,19 +1,18 @@
 <?php
 
-namespace app\modules\cloud\models;
+namespace app\models;
 
 use app\components\Actor;
-use app\modules\cloud\components\CloudCheck;
-use app\modules\cloud\components\CloudPosture;
+use app\modules\inventory\components\DevicePosture;
 use yii\db\Query;
 
 /**
- * Manual cloud-check results (pass / fail) recorded on a cloud account or cloud
- * asset, edited through the record's form like Device::$checks. The using class
- * declares `public $checks = null;` and implements checkTable(), checkColumn()
- * and manualChecks().
+ * Manual check results (pass / fail) recorded on a cloud account, cloud asset
+ * or supplier, edited through the record's form like Device::$checks. The using
+ * class declares `public $checks = null;` and implements checkTable(),
+ * checkColumn() and manualChecks().
  */
-trait RecordsCloudChecks
+trait RecordsChecks
 {
     /** @var array<int,string>|null recorded results (cache) */
     private ?array $checkResults = null;
@@ -24,7 +23,7 @@ trait RecordsCloudChecks
     /** Foreign key column in the results table, e.g. cloud_asset_id */
     abstract public static function checkColumn(): string;
 
-    /** @return CloudCheck[] manual checks that can be recorded on this kind of record */
+    /** @return array<int,object> manual checks (control id => check) that can be recorded on this kind of record */
     abstract public static function manualChecks(): array;
 
     /** @return array<int,string> recorded manual check results: control id => pass | fail */
@@ -46,8 +45,8 @@ trait RecordsCloudChecks
         }
         $manual = static::manualChecks();
         foreach ($this->checks as $id => $result) {
-            if (!isset($manual[(int) $id]) || !in_array($result, ['', CloudPosture::RESULT_PASS, CloudPosture::RESULT_FAIL], true)) {
-                $this->addError($attribute, 'Invalid cloud check result.');
+            if (!isset($manual[(int) $id]) || !in_array($result, ['', DevicePosture::RESULT_PASS, DevicePosture::RESULT_FAIL], true)) {
+                $this->addError($attribute, 'Invalid check result.');
                 return;
             }
         }
@@ -111,7 +110,7 @@ trait RecordsCloudChecks
                 $rows = (new Query())->select(['c.reference', 'c.title', 'r.result'])->from(['r' => static::checkTable()])
                     ->innerJoin(['c' => 'control'], 'c.id = r.control_id')->where(['r.' . static::checkColumn() => $model->id])
                     ->orderBy('c.reference')->all(static::getDb());
-                return array_map(static fn($r) => $r['reference'] . ' ' . $r['title'] . ': ' . (\app\modules\inventory\components\DevicePosture::resultLabels()[$r['result']] ?? $r['result']), $rows);
+                return array_map(static fn($r) => $r['reference'] . ' ' . $r['title'] . ': ' . (DevicePosture::resultLabels()[$r['result']] ?? $r['result']), $rows);
             },
         ];
     }

@@ -23,6 +23,7 @@ class ControlSearch extends Model
         'target-overdue' => 'Past target date',
         'device-checks' => 'Device checks',
         'cloud-checks' => 'Cloud checks',
+        'supplier-checks' => 'Supplier checks',
         'retired' => 'Retired',
         'archived' => 'Archived',
     ];
@@ -121,6 +122,9 @@ class ControlSearch extends Model
                 break;
             case 'cloud-checks':
                 $query->active()->cloudChecks();
+                break;
+            case 'supplier-checks':
+                $query->active()->supplierChecks();
                 break;
             case 'retired':
                 $query->active()->andWhere(['control.status' => Control::STATUS_RETIRED]);

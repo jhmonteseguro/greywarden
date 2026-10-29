@@ -35,7 +35,7 @@ class RecordNote extends ActiveRecord
      * Records that take notes (keys of AuditLog::entities()). Incidents keep
      * their dated narrative on the incident timeline instead.
      */
-    public const ENTITY_TYPES = ['risk', 'control', 'decision', 'cloud_account', 'cloud_asset'];
+    public const ENTITY_TYPES = ['risk', 'control', 'decision', 'cloud_account', 'cloud_asset', 'supplier'];
 
     public const MAX_LENGTH = 1000;
 

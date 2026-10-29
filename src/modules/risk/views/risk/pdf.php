@@ -109,6 +109,9 @@ $controlStatus = static fn(Control $c) => Badge::status('control-status', $c->st
 <?php if ($model->cloudAssets): ?>
     <?= $this->render('@app/views/pdf/_records', ['title' => 'Affected cloud assets', 'models' => $model->cloudAssets]) ?>
 <?php endif; ?>
+<?php if ($model->suppliers): ?>
+    <?= $this->render('@app/views/pdf/_records', ['title' => 'Related suppliers', 'models' => $model->suppliers]) ?>
+<?php endif; ?>
 
 <?= $this->render('@app/views/pdf/_reviews', ['reviews' => $reviews]) ?>
 

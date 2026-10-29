@@ -3,6 +3,7 @@
 namespace app\modules\cloud\models;
 
 use app\models\DomainRecord;
+use app\models\RecordsChecks;
 use app\models\User;
 use app\modules\cloud\components\CloudCatalogue;
 use app\modules\cloud\components\CloudChecks;
@@ -55,7 +56,7 @@ use yii\validators\IpValidator;
  */
 class CloudAsset extends DomainRecord
 {
-    use RecordsCloudChecks;
+    use RecordsChecks;
 
     public const STATUS_ACTIVE = 'active';
     /** Statuses in which the resource still exists and is checked (a stopped instance keeps its disks) */

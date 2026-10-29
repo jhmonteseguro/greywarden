@@ -58,6 +58,8 @@ ob_start(); ?>
                             ['attribute' => 'reference', 'contentOptions' => ['class' => 'gw-mono']],
                             'name',
                             ['attribute' => 'provider', 'value' => $model->getProviderLabel()],
+                            ['attribute' => 'supplier_id', 'format' => 'raw', 'value' => $model->supplier
+                                ? Html::a(Html::encode($model->supplier->name), $model->supplier->getViewUrl()) . ' ' . Badge::tier($model->supplier->tier) : null],
                             ['attribute' => 'account_identifier', 'contentOptions' => ['class' => 'gw-mono']],
                             ['attribute' => 'owner_id', 'value' => $model->owner->full_name ?? null],
                         ],

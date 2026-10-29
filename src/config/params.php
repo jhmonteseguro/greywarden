@@ -35,6 +35,11 @@ return [
     // Control Register: warn this many days before a control's next test is due
     'control.testDueSoonDays' => 14,
 
+    // Supplier Register: months between reviews per tier, and warning windows for notice periods and assurance expiry
+    'supplier.reviewMonths' => [1 => 12, 2 => 24, 3 => 36],
+    'supplier.renewalWarningDays' => 60,
+    'supplier.assuranceWarningDays' => 60,
+
     // Branding (Admin › Settings, components/Branding): the uploaded logo is stored here,
     // outside the web root (bind-mounted ./storage in Docker)
     'branding.path' => gw_env('BRANDING_PATH', '/var/www/storage/branding'),

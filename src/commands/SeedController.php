@@ -30,6 +30,10 @@ use app\modules\intel\models\IntelNote;
 use app\modules\inventory\components\DeviceChecks;
 use app\modules\inventory\models\Device;
 use app\modules\risk\models\Risk;
+use app\modules\supplier\components\SupplierCheck;
+use app\modules\supplier\components\SupplierChecks;
+use app\modules\supplier\models\Supplier;
+use app\modules\supplier\models\SupplierAssurance;
 use Yii;
 use yii\console\Controller;
 use yii\console\ExitCode;
@@ -131,7 +135,8 @@ class SeedController extends Controller
     public function actionDemo(): int
     {
         mt_srand(20261009);
-        $hasData = Risk::find()->exists() || Device::find()->exists() || Incident::find()->exists() || Decision::find()->exists() || CloudAccount::find()->exists();
+        $hasData = Risk::find()->exists() || Device::find()->exists() || Incident::find()->exists() || Decision::find()->exists() || CloudAccount::find()->exists()
+            || Supplier::find()->exists();
         if ($hasData && !$this->reset) {
             $this->stderr("Domain data already exists. Re-run with --reset=1 to wipe and reseed.\n", Console::FG_YELLOW);
             return ExitCode::OK;
@@ -162,6 +167,7 @@ class SeedController extends Controller
             $this->seedReviews($risks, $decisions);
             $controls = $this->seedControls($checks, $risks, $decisions, $incidents);
             [$accounts, $assets, $cloudControls] = $this->seedCloud($checks, $risks, $decisions, $incidents);
+            [$suppliers, $supplierControls] = $this->seedSuppliers($risks, $decisions, $incidents);
             $blocks = $this->seedIntel($incidents);
             $findings = $this->seedEdge();
             $tx->commit();
@@ -177,8 +183,8 @@ class SeedController extends Controller
         Actor::override(null);
         Yii::$app->cache->flush();
 
-        $this->stdout(sprintf("Seeded %d risks, %d controls, %d decisions, %d incidents, %d devices, %d cloud accounts, %d cloud assets, %d blocklist entries, %d edge findings.\n",
-            count($risks), $controls + $cloudControls, count($decisions), count($incidents), count($devices), $accounts, $assets, $blocks, $findings), Console::FG_GREEN);
+        $this->stdout(sprintf("Seeded %d risks, %d controls, %d decisions, %d incidents, %d devices, %d cloud accounts, %d cloud assets, %d suppliers, %d blocklist entries, %d edge findings.\n",
+            count($risks), $controls + $cloudControls + $supplierControls, count($decisions), count($incidents), count($devices), $accounts, $assets, $suppliers, $blocks, $findings), Console::FG_GREEN);
         $this->stdout(sprintf("Demo users (password from DEMO_PASSWORD): analyst, jpatel (analysts), viewer (read-only).\n"));
         return ExitCode::OK;
     }
@@ -195,19 +201,21 @@ class SeedController extends Controller
         }
         foreach (['risk_device', 'risk_incident', 'risk_decision', 'decision_incident', 'incident_device', 'incident_timeline',
                      'risk_cloud_asset', 'incident_cloud_asset', 'decision_cloud_asset', 'cloud_asset_control', 'cloud_account_control',
+                     'risk_supplier', 'incident_supplier', 'decision_supplier', 'control_supplier', 'supplier_control', 'supplier_assurance',
                      'incident_attack_technique', 'risk_attack_technique', 'decision_attack_mitigation',
                      'device_control', 'incident_control', 'risk_control', 'decision_control', 'control_attack_mitigation',
                      'control_framework_requirement', 'control_test', 'record_review'] as $t) {
             $db->createCommand()->delete($t)->execute();
         }
         $db->createCommand()->update('decision', ['superseded_by_id' => null])->execute();
-        foreach (['edge_finding', 'edge_pull', 'intel_blocklist', 'intel_note', 'intel_indicator', 'risk', 'incident', 'decision', 'device', 'cloud_asset', 'cloud_account', 'control'] as $t) {
+        foreach (['edge_finding', 'edge_pull', 'intel_blocklist', 'intel_note', 'intel_indicator', 'risk', 'incident', 'decision', 'device', 'cloud_asset', 'cloud_account', 'supplier', 'control'] as $t) {
             $db->createCommand()->delete($t)->execute();
         }
         $db->createCommand()->update('framework_requirement', ['applicable' => 1, 'justification' => null, 'updated_at' => null, 'updated_by' => null])->execute();
-        $db->createCommand()->delete('audit_log', ['entity_type' => ['risk', 'incident', 'decision', 'device', 'cloud_account', 'cloud_asset', 'blocklist', 'indicator', 'control', 'requirement', 'edge-finding']])->execute();
+        $db->createCommand()->delete('audit_log', ['entity_type' => ['risk', 'incident', 'decision', 'device', 'cloud_account', 'cloud_asset', 'supplier', 'blocklist', 'indicator', 'control', 'requirement', 'edge-finding']])->execute();
         DeviceChecks::reset();
         CloudChecks::reset();
+        SupplierChecks::reset();
         $this->stdout("Existing domain data removed.\n");
     }
 
@@ -216,7 +224,7 @@ class SeedController extends Controller
     {
         $db = Yii::$app->db;
         if ($db->driverName === 'mysql') {
-            foreach (['risk', 'incident', 'decision', 'device', 'cloud_account', 'cloud_asset', 'incident_timeline', 'intel_blocklist', 'intel_note', 'intel_indicator', 'control', 'control_test', 'record_review', 'record_note', 'attachment', 'edge_finding', 'edge_pull'] as $t) {
+            foreach (['risk', 'incident', 'decision', 'device', 'cloud_account', 'cloud_asset', 'supplier', 'supplier_assurance', 'incident_timeline', 'intel_blocklist', 'intel_note', 'intel_indicator', 'control', 'control_test', 'record_review', 'record_note', 'attachment', 'edge_finding', 'edge_pull'] as $t) {
                 $db->createCommand("ALTER TABLE {{{$t}}} AUTO_INCREMENT = 1")->execute();
             }
         }
@@ -1405,6 +1413,142 @@ class SeedController extends Controller
         $link('risk_cloud_asset', 'risk_id', $find($risks, 'Misconfigured cloud storage'), ['customer-exports', 'legacy-reports', 'dev-artifacts']);
         $link('decision_cloud_asset', 'decision_id', $find($decisions, 'Cloudflare for DDoS'), ['customer-portal-alb', 'Portal WAF ruleset', 'example.com']);
         return [count($accounts), count($assets), count($new)];
+    }
+
+    // ---- Suppliers ------------------------------------------------------------
+
+    /**
+     * Supplier Register: suppliers behind the demo cloud accounts plus an MSP, a
+     * payroll bureau, a registrar, a printer lessor and an MSSP in due diligence; three supplier
+     * checks; assurance in every state (current, expiring, expired, none); links
+     * from risks, incidents, decisions and a control.
+     *
+     * @return array{0:int, 1:int} suppliers, supplier-check controls
+     */
+    private function seedSuppliers(array $risks, array $decisions, array $incidents): array
+    {
+        $find = static fn(array $records, string $needle) => array_values(array_filter(
+            $records, static fn($r) => stripos($r->title, $needle) !== false))[0] ?? null;
+
+        $this->as('analyst');
+        $checks = [];
+        foreach ([
+            'diligence' => ['Supplier security due diligence', SupplierCheck::MANUAL, null,
+                'Before signing and at each review, the supplier\'s security is assessed (questionnaire, certifications, breach history) and the result recorded.',
+                ['A.5.19', 'A.5.21', 'CC9.2', 'GV.SC-06', 'GV.SC-07', 'A4.a']],
+            'dpa' => ['Data processing agreements with processors', SupplierCheck::DPA, null,
+                'Suppliers processing personal data on our behalf have a signed Article 28 data processing agreement.',
+                ['A.5.20', 'A.5.34', 'CC9.2', 'GV.SC-05']],
+            'assurance' => ['Current security assurance from critical suppliers', SupplierCheck::ASSURANCE, ['1', '2'],
+                'Tier 1 and 2 suppliers hold a current certificate or report (ISO 27001, SOC 2 Type II, Cyber Essentials Plus) or a recent questionnaire.',
+                ['A.5.22', 'CC9.2', 'GV.SC-07', 'A4.a']],
+        ] as $key => [$title, $method, $tiers, $description, $requirements]) {
+            $control = $this->save(new Control([
+                'title' => $title,
+                'description' => $description,
+                'control_type' => 'preventive',
+                'nature' => 'administrative',
+                'status' => Control::STATUS_IMPLEMENTED,
+                'owner_id' => $this->users['analyst'],
+                'implemented_on' => self::d(-240),
+                'test_frequency_months' => 12,
+                'supplier_check' => $method,
+                'supplierTierList' => $tiers,
+                'requirementIds' => $this->requirementIds($requirements),
+            ]));
+            $this->backdate($control, self::d(-240) . ' 10:00:00');
+            $this->save(new ControlTest(['control_id' => $control->id, 'tested_on' => self::d(-35), 'result' => Control::EFFECTIVENESS_EFFECTIVE,
+                'tested_by_id' => $this->users['jpatel'], 'method' => 'Sampled the Tier 1 suppliers\' records against the check']));
+            $checks[$key] = $control->id;
+        }
+
+        $category = fn(string $name) => $this->lookup(Lookup::TYPE_SUPPLIER_CATEGORY, $name);
+        // name => [category, legal name, website, services, status, criticality, classification, personal data, access, DPA, breach hours,
+        //          right to audit, contract end (days), notice days, next review (days), due diligence result, owner]
+        $rows = [
+            'Amazon Web Services' => ['Cloud infrastructure (IaaS / PaaS)', 'Amazon Web Services EMEA SARL', 'https://aws.amazon.com',
+                'Hosting for the customer portal, ERP database and backups (eu-west-2).', 'active', 'critical', 'restricted', true, 'none',
+                'signed', null, 'no', null, null, 160, 'pass', 'jpatel'],
+            'Cloudflare' => ['SaaS application', 'Cloudflare Ltd', 'https://www.cloudflare.com', 'DNS, WAF and DDoS protection for public sites.',
+                'active', 'medium', 'internal', false, 'none', null, null, 'no', 120, 30, 300, 'pass', 'jpatel'],
+            'Google' => ['SaaS application', 'Google Cloud EMEA Limited', 'https://workspace.google.com', 'Google Workspace: email, documents and identity.',
+                'active', 'high', 'confidential', true, 'none', 'signed', null, 'no', 200, 30, 90, 'pass', 'analyst'],
+            'GitHub' => ['SaaS application', 'GitHub B.V.', 'https://github.com', 'Source code hosting and CI/CD for the customer portal.',
+                'active', 'medium', 'confidential', false, 'none', null, null, 'no', 75, 30, 200, 'pass', 'jpatel'],
+            'Fabrikam Managed IT' => ['Managed IT / MSP', 'Fabrikam Managed IT Ltd', 'https://fabrikam.example', 'Out-of-hours service desk and server patching (domain admin).',
+                'active', 'high', 'confidential', true, 'privileged', 'signed', 24, 'yes', 40, 60, -15, 'pass', 'admin'],
+            'Contoso Payroll Services' => ['Professional services', 'Contoso Payroll Services Ltd', 'https://contoso-payroll.example', 'Monthly payroll and pension submissions.',
+                'active', 'medium', 'restricted', true, 'none', 'not_signed', 72, null, 250, 90, 120, '', 'admin'],
+            'Northwind Registrars' => ['Domains & DNS', null, 'https://northwind-registrars.example', 'Registrar for example.com and brand domains.',
+                'active', 'high', 'internal', false, 'none', null, null, null, 300, 30, 250, 'pass', 'jpatel'],
+            'Adventure Works Print' => ['Facilities & hardware', null, 'https://adventure-works-print.example', 'Office printer leasing and toner.',
+                'active', 'low', 'public', false, 'none', null, null, null, 180, 90, 700, 'pass', 'analyst'],
+            'Tailspin Security Operations' => ['Managed IT / MSP', null, 'https://tailspin-soc.example', 'Proposed 24x7 SOC monitoring (MSSP).',
+                'due_diligence', 'high', 'confidential', false, 'privileged', null, 24, 'yes', null, null, null, '', 'analyst'],
+        ];
+        $suppliers = [];
+        foreach ($rows as $name => [$cat, $legal, $website, $services, $status, $criticality, $classification, $personal, $access, $dpa, $breach,
+                     $audit, $end, $notice, $review, $diligence, $owner]) {
+            $this->as($owner);
+            $supplier = $this->save(new Supplier([
+                'name' => $name, 'legal_name' => $legal, 'website' => $website, 'category_id' => $category($cat), 'services' => $services,
+                'owner_id' => $this->users[$owner], 'status' => $status, 'criticality' => $criticality, 'data_classification' => $classification,
+                'personal_data' => $personal, 'access_level' => $access, 'dpa_status' => $dpa, 'breach_notice_hours' => $breach, 'right_to_audit' => $audit,
+                'contract_start' => $end === null ? null : self::d($end - 365), 'contract_end' => $end === null ? null : self::d($end), 'notice_days' => $notice,
+                'next_review_date' => $review === null ? null : self::d($review),
+                'security_contact' => str_ends_with((string) $website, '.example') ? 'security@' . parse_url($website, PHP_URL_HOST) : null,
+                'exit_plan' => $access === 'privileged' ? 'Revoke all accounts and VPN access on exit; rotate shared admin passwords; 90-day handover to the incoming provider.' : null,
+                'checks' => [$checks['diligence'] => $diligence],
+            ]));
+            $this->backdate($supplier, self::d(-280) . ' 09:30:00');
+            $suppliers[$name] = $supplier;
+        }
+
+        // Assurance in every state: [supplier, type, details, issued (days), expires (days; null = no expiry)]
+        $this->as('analyst');
+        foreach ([
+            ['Amazon Web Services', 'iso27001', 'Certificate covers all AWS regions', -500, 230],
+            ['Amazon Web Services', 'soc2_type2', 'Report period to 30 September', -60, 30],
+            ['Cloudflare', 'soc2_type2', 'Report period to 31 March', -150, 215],
+            ['Google', 'iso27001', 'Google Workspace and Google Cloud', -300, 400],
+            ['GitHub', 'soc2_type2', 'GitHub Enterprise Cloud', -420, -20],
+            ['Fabrikam Managed IT', 'cyber_essentials_plus', 'Whole organisation', -245, 120],
+            ['Northwind Registrars', 'questionnaire', 'Answered our security questionnaire', -500, -135],
+        ] as [$name, $type, $details, $issued, $expires]) {
+            $this->save(new SupplierAssurance(['supplier_id' => $suppliers[$name]->id, 'type' => $type, 'description' => $details,
+                'issued_on' => self::d($issued), 'expires_on' => $expires === null ? null : self::d($expires)]));
+        }
+
+        // Cloud accounts belong to their suppliers; links are inserted directly so the histories stay as seeded
+        $db = Yii::$app->db;
+        foreach (['Production (AWS)' => 'Amazon Web Services', 'Development (AWS)' => 'Amazon Web Services', 'Cloudflare' => 'Cloudflare',
+                     'Google Workspace' => 'Google', 'GitHub organisation' => 'GitHub'] as $account => $name) {
+            $db->createCommand()->update('cloud_account', ['supplier_id' => $suppliers[$name]->id], ['name' => $account])->execute();
+        }
+        $link = static function (string $table, string $column, ?ActiveRecord $owner, array $names) use ($db, $suppliers) {
+            if ($owner) {
+                $db->createCommand()->batchInsert($table, [$column, 'supplier_id', 'created_at'],
+                    array_map(static fn($n) => [$owner->id, $suppliers[$n]->id, Actor::now()], $names))->execute();
+            }
+        };
+        $link('risk_supplier', 'risk_id', $find($risks, 'Payroll provider'), ['Contoso Payroll Services']);
+        $link('risk_supplier', 'risk_id', $find($risks, 'Vendor remote access'), ['Fabrikam Managed IT']);
+        $link('risk_supplier', 'risk_id', $find($risks, 'Misconfigured cloud storage'), ['Amazon Web Services']);
+        $link('risk_supplier', 'risk_id', $find($risks, 'DDoS takes customer portal'), ['Cloudflare']);
+        $link('risk_supplier', 'risk_id', $find($risks, 'supply-chain attack'), ['GitHub']);
+        $link('incident_supplier', 'incident_id', $find($incidents, 'Publicly accessible S3'), ['Amazon Web Services']);
+        $link('decision_supplier', 'decision_id', $find($decisions, 'Cloudflare for DDoS'), ['Cloudflare']);
+        $link('decision_supplier', 'decision_id', $find($decisions, 'Outsource 24x7 SOC'), ['Tailspin Security Operations']);
+        $link('control_supplier', 'control_id', Control::find()->where(['like', 'title', 'Cloud storage guardrails'])->one(), ['Amazon Web Services']);
+
+        // One supplier review on record
+        $this->as('jpatel');
+        $review = RecordReview::record($suppliers['Cloudflare'], ['reviewed_on' => self::d(-65), 'next_review_date' => $suppliers['Cloudflare']->next_review_date,
+            'outcome' => 'Annual review: SOC 2 report read, no exceptions affecting us. Contract terms unchanged.']);
+        if ($review->hasErrors()) {
+            throw new \RuntimeException('RecordReview invalid: ' . json_encode($review->getErrors()));
+        }
+        return [count($suppliers), count($checks)];
     }
 
     private function linkDecisions(array $decisions, array $incidents): void

@@ -19,6 +19,7 @@ $config = [
         'incident' => ['class' => app\modules\incident\Module::class],
         'inventory' => ['class' => app\modules\inventory\Module::class],
         'cloud' => ['class' => app\modules\cloud\Module::class],
+        'supplier' => ['class' => app\modules\supplier\Module::class],
         'attack' => ['class' => app\modules\attack\Module::class],
         'intel' => ['class' => app\modules\intel\Module::class],
         'admin' => ['class' => app\modules\admin\Module::class],
@@ -103,6 +104,11 @@ $config = [
                 'cloud/accounts/<id:\d+>' => 'cloud/account/view',
                 'cloud/accounts/<id:\d+>/<action:[\w-]+>' => 'cloud/account/<action>',
                 'cloud/accounts/<action:[\w-]+>' => 'cloud/account/<action>',
+                // Supplier Register: /suppliers, /suppliers/4, /suppliers/4/update ...
+                'suppliers' => 'supplier/supplier/index',
+                'suppliers/<id:\d+>' => 'supplier/supplier/view',
+                'suppliers/<id:\d+>/<action:[\w-]+>' => 'supplier/supplier/<action>',
+                'suppliers/<action:[\w-]+>' => 'supplier/supplier/<action>',
 
                 'attachments/<id:\d+>' => 'attachment/download',
                 'attachments/<id:\d+>/<action:[\w-]+>' => 'attachment/<action>',

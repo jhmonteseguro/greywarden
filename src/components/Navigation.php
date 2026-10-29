@@ -27,6 +27,7 @@ final class Navigation
                     ['label' => 'Device Inventory', 'icon' => 'pc-display', 'url' => ['/inventory/device/index'], 'permission' => Rbac::PERM_VIEW, 'active' => ['inventory/']],
                     ['label' => 'Cloud Inventory', 'icon' => 'cloud', 'url' => ['/cloud/asset/index'], 'permission' => Rbac::PERM_VIEW, 'active' => ['cloud/asset/']],
                     ['label' => 'Cloud Accounts', 'icon' => 'cloud-check', 'url' => ['/cloud/account/index'], 'permission' => Rbac::PERM_VIEW, 'active' => ['cloud/account/']],
+                    ['label' => 'Supplier Register', 'icon' => 'buildings', 'url' => ['/supplier/supplier/index'], 'permission' => Rbac::PERM_VIEW, 'active' => ['supplier/']],
                 ],
             ],
             [

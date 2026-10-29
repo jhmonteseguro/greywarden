@@ -50,6 +50,12 @@ final class Badge
         'exposure' => ['internet' => 'warning'],
         'encryption' => ['yes' => 'success', 'no' => 'danger', 'unknown' => 'neutral'],
         'classification' => ['public' => 'low', 'internal' => 'info', 'confidential' => 'high', 'restricted' => 'critical'],
+        // Supplier Register (app\modules\supplier)
+        'supplier-status' => ['proposed' => 'neutral', 'due_diligence' => 'info', 'active' => 'success', 'offboarding' => 'warning', 'terminated' => 'muted'],
+        'tier' => ['1' => 'critical', '2' => 'medium', '3' => 'low'],
+        'access' => ['none' => 'neutral', 'user' => 'info', 'privileged' => 'high'],
+        'dpa' => ['signed' => 'success', 'not_signed' => 'danger'],
+        'assurance' => ['current' => 'success', 'expiring' => 'warning', 'expired' => 'danger'],
         'user-status' => ['10' => 'success', '0' => 'muted'],
         'role' => ['admin' => 'critical', 'analyst' => 'info', 'viewer' => 'neutral'],
         'compliance' => ['compliant' => 'success', 'non-compliant' => 'danger', 'not-assessed' => 'warning', 'n-a' => 'muted'],
@@ -84,7 +90,7 @@ final class Badge
         'audit-action' => [
             'create' => 'success', 'update' => 'info', 'archive' => 'warning', 'restore' => 'info', 'delete' => 'danger',
             'attach' => 'info', 'detach' => 'warning', 'export' => 'neutral',
-            'review' => 'success', 'review_remove' => 'warning',
+            'review' => 'success', 'review_remove' => 'warning', 'assurance' => 'info', 'assurance_remove' => 'warning',
             'login' => 'neutral', 'logout' => 'neutral', 'login_failed' => 'danger', 'login_blocked' => 'critical',
             'password_change' => 'info', 'password_reset' => 'warning', 'unlock' => 'info',
         ],
@@ -137,6 +143,12 @@ final class Badge
     public static function criticality(?string $criticality): string
     {
         return self::render('criticality', $criticality);
+    }
+
+    /** Supplier tier 1-3, with what puts it there as the tooltip */
+    public static function tier(int|string|null $tier, ?string $title = null): string
+    {
+        return self::render('tier', $tier, $tier ? 'Tier ' . (int) $tier : null, array_filter(['title' => $title]));
     }
 
     /** Status badge, labels supplied by the model's options array */

@@ -6,6 +6,24 @@ releases).
 
 ## [Unreleased]
 
+### Added
+
+- Supplier Register (*Operations › Supplier Register*): the third parties you rely on, with what they provide, the data
+  and access they have, the security terms of the contract (data processing agreement, breach notification, right to
+  audit, notice period), a security contact and an exit plan. Each supplier gets a **tier** (1 critical, 2 important,
+  3 standard) worked out from its criticality, data, personal data and access, which sets how often it is reviewed
+  (12 / 24 / 36 months). The supplier page has Assurance (certificates and reports with expiry dates), Reviews, Notes,
+  Links, Files and History tabs, and a PDF.
+- Supplier checks: a control can be checked on suppliers of chosen tiers, recorded per supplier (pass / fail), read
+  from the DPA answer (personal data only) or from the supplier's assurance (passes while something is current).
+  Suppliers show compliant / non-compliant / not assessed, and the *Supplier checks* filter lists these controls.
+- Cloud accounts belong to a supplier (*Supplier* on the account form), and risks, incidents, decisions and controls
+  link to suppliers. Suppliers appear in search, the incident / risk / decision / control PDFs, and on the dashboard:
+  overdue supplier reviews in the *Overdue reviews* tile, and *Needs attention* groups for suppliers failing checks,
+  overdue reviews, assurance expiring within 60 days and notice periods closing within 60 days.
+- `make suppliers-from-cloud AS=<user> [DRY_RUN=1]`: adds one supplier per vendor of the cloud accounts in service
+  (Google Cloud and Google Workspace become one *Google*), without linking the accounts.
+
 ## [0.10.1-alpha] - 2026-10-29
 
 ### Changed

@@ -13,6 +13,7 @@ use app\modules\control\models\Control;
 use app\modules\decision\models\Decision;
 use app\modules\incident\models\Incident;
 use app\modules\inventory\models\Device;
+use app\modules\supplier\models\Supplier;
 
 /**
  * Risk register entry.
@@ -76,6 +77,8 @@ class Risk extends DomainRecord
     public $deviceIds = null;
     /** @var int[]|string|null link ids (null = not submitted) */
     public $cloudAssetIds = null;
+    /** @var int[]|string|null link ids (null = not submitted) */
+    public $supplierIds = null;
     /** @var int[]|string|null link ids (null = not submitted) */
     public $incidentIds = null;
     /** @var int[]|string|null link ids (null = not submitted) */
@@ -141,6 +144,7 @@ class Risk extends DomainRecord
         return [
             'deviceIds' => ['table' => 'risk_device', 'self' => 'risk_id', 'other' => 'device_id', 'class' => Device::class, 'label' => 'Affected devices'],
             'cloudAssetIds' => ['table' => 'risk_cloud_asset', 'self' => 'risk_id', 'other' => 'cloud_asset_id', 'class' => CloudAsset::class, 'label' => 'Affected cloud assets'],
+            'supplierIds' => ['table' => 'risk_supplier', 'self' => 'risk_id', 'other' => 'supplier_id', 'class' => Supplier::class, 'label' => 'Related suppliers'],
             'incidentIds' => ['table' => 'risk_incident', 'self' => 'risk_id', 'other' => 'incident_id', 'class' => Incident::class, 'label' => 'Related incidents'],
             'decisionIds' => ['table' => 'risk_decision', 'self' => 'risk_id', 'other' => 'decision_id', 'class' => Decision::class, 'label' => 'Related decisions'],
             'techniqueIds' => ['table' => 'risk_attack_technique', 'self' => 'risk_id', 'other' => 'technique_id', 'class' => AttackTechnique::class, 'label' => 'ATT&CK techniques'],
@@ -200,6 +204,7 @@ class Risk extends DomainRecord
             // Links
             ['deviceIds', 'each', 'rule' => ['exist', 'targetClass' => Device::class, 'targetAttribute' => 'id']],
             ['cloudAssetIds', 'each', 'rule' => ['exist', 'targetClass' => CloudAsset::class, 'targetAttribute' => 'id']],
+            ['supplierIds', 'each', 'rule' => ['exist', 'targetClass' => Supplier::class, 'targetAttribute' => 'id']],
             ['incidentIds', 'each', 'rule' => ['exist', 'targetClass' => Incident::class, 'targetAttribute' => 'id']],
             ['decisionIds', 'each', 'rule' => ['exist', 'targetClass' => Decision::class, 'targetAttribute' => 'id']],
             ['techniqueIds', 'each', 'rule' => ['exist', 'targetClass' => AttackTechnique::class, 'targetAttribute' => 'id']],
@@ -309,6 +314,12 @@ class Risk extends DomainRecord
     public function getCloudAssets()
     {
         return $this->hasMany(CloudAsset::class, ['id' => 'cloud_asset_id'])->viaTable('risk_cloud_asset', ['risk_id' => 'id']);
+    }
+
+    public function getSuppliers()
+    {
+        return $this->hasMany(Supplier::class, ['id' => 'supplier_id'])->viaTable('risk_supplier', ['risk_id' => 'id'])
+            ->orderBy(['supplier.reference' => SORT_ASC]);
     }
 
     public function getIncidents()
