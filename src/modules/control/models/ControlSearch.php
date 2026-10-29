@@ -67,7 +67,7 @@ class ControlSearch extends Model
             'query' => $query,
             'pagination' => ['pageSize' => Yii::$app->params['pageSize'] ?? 25],
             'sort' => [
-                'defaultOrder' => ['reference' => SORT_ASC],
+                'defaultOrder' => ['reference' => SORT_DESC],
                 'attributes' => [
                     'reference' => ['asc' => ['control.id' => SORT_ASC], 'desc' => ['control.id' => SORT_DESC]],
                     'title', 'control_type', 'nature', 'owner_id', 'status', 'target_date', 'last_tested_on', 'updated_at',

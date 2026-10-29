@@ -57,7 +57,7 @@ class DecisionSearch extends Model
             'query' => $query,
             'pagination' => ['pageSize' => Yii::$app->params['pageSize'] ?? 25],
             'sort' => [
-                'defaultOrder' => ['decision_date' => SORT_DESC],
+                'defaultOrder' => ['reference' => SORT_DESC],
                 'attributes' => [
                     'reference' => ['asc' => ['decision.id' => SORT_ASC], 'desc' => ['decision.id' => SORT_DESC]],
                     'title', 'status', 'category_id', 'decision_makers',

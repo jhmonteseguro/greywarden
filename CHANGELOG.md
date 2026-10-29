@@ -22,6 +22,12 @@ releases).
   with no next date. The reviewer, whoever recorded the review, or an administrator can remove a review: the review
   date stays as it is and History keeps the text. Migration `m261029_300001`. The demo data includes a few reviews.
 
+### Changed
+
+- Controls, decisions, incidents, cloud accounts and cloud assets now list the latest record first (reference
+  descending) by default, as the Risk Register already did. Decisions were sorted by decision date and incidents by
+  detection time. Column sorting is unchanged.
+
 ## [0.8.1-alpha] - 2026-10-29
 
 ### Fixed

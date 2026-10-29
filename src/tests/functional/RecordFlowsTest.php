@@ -4,6 +4,7 @@ namespace tests\functional;
 
 use app\models\AuditLog;
 use app\models\Lookup;
+use app\modules\cloud\models\CloudAccount;
 use app\modules\control\models\Control;
 use app\modules\control\models\ControlTest;
 use app\modules\control\models\FrameworkRequirement;
@@ -422,5 +423,34 @@ class RecordFlowsTest extends FunctionalTestCase
         $this->assertSee('gw-attention__group--stale-devices');
         $this->assertSee('gw-attention__group--unsupported-os');
         $this->assertSee('gw-attention__group--control-tests-soon');
+    }
+
+    public function testRegistersListTheLatestRecordFirst(): void
+    {
+        $control = fn(string $title) => new Control(['title' => $title, 'status' => Control::STATUS_IMPLEMENTING, 'control_type' => 'preventive', 'nature' => 'technical']);
+        // The newer record has the older date, so only the reference decides the order
+        $decision = fn(string $title, string $date) => new Decision(['title' => $title, 'decision_date' => $date, 'decision_text' => 'x',
+            'decision_makers' => 'CISO', 'status' => Decision::STATUS_APPROVED, 'category_id' => $this->lookupId(Lookup::TYPE_DECISION_CATEGORY)]);
+        $incident = fn(string $title, string $at) => new Incident(['title' => $title, 'category_id' => $this->lookupId(Lookup::TYPE_INCIDENT_CATEGORY),
+            'severity' => Incident::SEVERITY_LOW, 'status' => Incident::STATUS_INVESTIGATING, 'detected_at' => $at]);
+        $account = fn(string $name, string $id) => new CloudAccount(['name' => $name, 'provider' => 'aws', 'account_identifier' => $id, 'environment' => 'production',
+            'status' => CloudAccount::STATUS_ACTIVE, 'criticality' => 'high', 'data_classification' => 'confidential']);
+        $pairs = [
+            '/controls' => [$control('Older control'), $control('Newer control')],
+            '/decisions' => [$decision('Older decision', '2026-10-20'), $decision('Newer decision', '2026-01-01')],
+            '/incidents' => [$incident('Older incident', '2026-10-20 09:00:00'), $incident('Newer incident', '2026-01-01 09:00:00')],
+            '/cloud/accounts' => [$account('Older account', '900000000001'), $account('Newer account', '900000000002')],
+        ];
+        $this->loginAs('viewer');
+        foreach ($pairs as $url => [$older, $newer]) {
+            foreach ([$older, $newer] as $record) {
+                $this->assertTrue($record->save(), json_encode($record->getErrors()));
+            }
+            $this->get("$url?filter=all");
+            $this->assertOk();
+            $first = strpos($this->body, $newer->reference);
+            $this->assertNotFalse($first, $url);
+            $this->assertLessThan(strpos($this->body, $older->reference), $first, "$url lists {$newer->reference} first");
+        }
     }
 }

@@ -74,7 +74,7 @@ class IncidentSearch extends Model
             'query' => $query,
             'pagination' => ['pageSize' => Yii::$app->params['pageSize'] ?? 25],
             'sort' => [
-                'defaultOrder' => ['detected_at' => SORT_DESC],
+                'defaultOrder' => ['reference' => SORT_DESC],
                 'attributes' => [
                     'reference' => ['asc' => ['incident.id' => SORT_ASC], 'desc' => ['incident.id' => SORT_DESC]],
                     'title', 'category_id', 'assigned_to_id', 'personal_data_involved',

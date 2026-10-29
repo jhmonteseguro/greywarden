@@ -70,7 +70,7 @@ class CloudAssetSearch extends Model
             'query' => $query,
             'pagination' => ['pageSize' => Yii::$app->params['pageSize'] ?? 25],
             'sort' => [
-                'defaultOrder' => ['reference' => SORT_ASC],
+                'defaultOrder' => ['reference' => SORT_DESC],
                 'attributes' => [
                     'reference' => ['asc' => ['cloud_asset.reference' => SORT_ASC], 'desc' => ['cloud_asset.reference' => SORT_DESC]],
                     'name' => ['asc' => ['cloud_asset.name' => SORT_ASC], 'desc' => ['cloud_asset.name' => SORT_DESC]],

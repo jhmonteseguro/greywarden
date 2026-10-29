@@ -63,7 +63,7 @@ class CloudAccountSearch extends Model
             'query' => $query,
             'pagination' => ['pageSize' => Yii::$app->params['pageSize'] ?? 25],
             'sort' => [
-                'defaultOrder' => ['reference' => SORT_ASC],
+                'defaultOrder' => ['reference' => SORT_DESC],
                 'attributes' => [
                     'reference', 'name', 'provider', 'environment', 'owner_id', 'status', 'updated_at',
                     'criticality' => [
