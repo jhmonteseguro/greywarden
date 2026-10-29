@@ -461,6 +461,20 @@ post viewer "/controls/$CID" "/controls/$CID/record-test" 403 "ControlTest[teste
 post analyst "/controls/$CID" "/controls/$CID/delete-test?test=$TID" 302
 check analyst "/controls/$CID" 200
 grep -q 'Smoke findings' "$BODY" && bad "deleted test still shown" || ok
+# Dated notes on the control: viewers read them, analysts add and remove their own, they go into the PDF
+post analyst "/controls/$CID" "/notes/add?entity=control&id=$CID" 302 "body=Smoke note: emailed DevOps"
+NID=$(last_id record_note)
+post analyst "/controls/$CID" "/notes/add?entity=control&id=$CID" 302 "body="
+[[ "$(sql "SELECT COUNT(*) FROM record_note WHERE entity_type='control' AND entity_id=$CID")" == "1" ]] && ok || bad "blank note accepted"
+check viewer "/controls/$CID" 200
+grep -q 'Smoke note: emailed DevOps' "$BODY" && grep -q 'id="tab-notes"' "$BODY" && ! grep -q 'id="note-form"' "$BODY" && ok || bad "note not shown to viewers (or form shown)"
+post viewer "/controls/$CID" "/notes/add?entity=control&id=$CID" 403 "body=Viewer note"
+post viewer "/controls/$CID" "/notes/$NID/remove" 403
+req viewer GET "/controls/$CID/pdf"
+[[ "$CODE" == "200" ]] && head -c 5 "$BODY" | grep -q '%PDF-' && ok || bad "control PDF with a note -> $CODE"
+post analyst "/controls/$CID" "/notes/$NID/remove" 302
+[[ "$(sql "SELECT COUNT(*) FROM record_note WHERE id=$NID")" == "0" ]] && [[ "$(sql "SELECT COUNT(*) FROM audit_log WHERE entity_type='control' AND entity_id=$CID AND action IN ('note','note_remove')")" == "2" ]] && ok || bad "note not removed / not in history"
+post analyst "/controls/$CID" "/notes/add?entity=control&id=$CID" 302 "body=Smoke note kept until the control is deleted"
 post analyst "/incidents/$I1/update" "/incidents/$I1/update" 302 \
     "Incident[title]=$(sql "SELECT title FROM incident WHERE id=$I1")" "Incident[category_id]=$(sql "SELECT category_id FROM incident WHERE id=$I1")" \
     "Incident[severity]=$(sql "SELECT severity FROM incident WHERE id=$I1")" "Incident[status]=$(sql "SELECT status FROM incident WHERE id=$I1")" \
@@ -482,6 +496,7 @@ post analyst "/controls/$CID" "/controls/$CID/record-test" 302 "ControlTest[test
 post analyst "/controls/$CID" "/controls/$CID/delete" 403
 post admin "/controls/$CID" "/controls/$CID/delete" 302
 check admin "/controls/$CID" 404
+[[ "$(sql "SELECT COUNT(*) FROM record_note WHERE entity_type='control' AND entity_id=$CID")" == "0" ]] && ok || bad "notes left behind by a deleted control"
 
 # Archive the smoke risk/decision/incident (read-only once archived), then hard delete as admin
 for ent in risks:$RID decisions:$DID incidents:$IID; do

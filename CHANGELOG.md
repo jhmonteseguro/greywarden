@@ -6,6 +6,14 @@ releases).
 
 ## [Unreleased]
 
+### Added
+
+- Notes on controls: a **Notes** tab logs short dated notes ("Emailed DevOps requesting xyz, copy saved in Files"),
+  stamped with the time and author and never edited. A note can link a file already on the control or attach a new
+  one in the same step, and keeps the file's name if the file is later removed. Notes appear in the control's
+  History (*Note added* / *Note removed*) and in a **Notes** section of the control PDF. Authors and administrators
+  can remove a note; archived controls are read-only.
+
 ## [0.6.2-alpha] - 2026-10-29
 
 ### Fixed

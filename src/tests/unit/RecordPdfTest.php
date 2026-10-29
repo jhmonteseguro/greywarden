@@ -4,7 +4,9 @@ namespace tests\unit;
 
 use app\components\Branding;
 use app\components\RecordPdf;
+use app\models\Attachment;
 use app\models\Lookup;
+use app\models\RecordNote;
 use app\models\Setting;
 use app\modules\control\models\Control;
 use app\modules\control\models\ControlTest;
@@ -76,6 +78,34 @@ class RecordPdfTest extends DbTestCase
         $this->assertStringContainsString('Control Register', $html);
         $this->assertStringContainsString('Compared object counts', $html);
         $this->assertStringContainsString('Partially effective', $html);
+        $this->assertStringNotContainsString('<h2>Notes</h2>', $html, 'no notes, no section');
+    }
+
+    public function testControlDocumentListsNotesOldestFirst(): void
+    {
+        $control = $this->control();
+        $attachments = Yii::$app->params['attachments.path'];
+        Yii::$app->params['attachments.path'] = $dir = sys_get_temp_dir() . '/gw-pdf-notes-' . bin2hex(random_bytes(4));
+        try {
+            $tmp = tempnam(sys_get_temp_dir(), 'gwpn');
+            file_put_contents($tmp, "Email copy\n");
+            $file = Attachment::attach($control, new \yii\web\UploadedFile(['name' => 'email.txt', 'tempName' => $tmp, 'type' => 'text/plain', 'size' => 9, 'error' => UPLOAD_ERR_OK]));
+            unlink($tmp);
+            $first = RecordNote::add($control, 'Emailed DevOps <requesting> xyz', $file);
+            $second = RecordNote::add($control, 'Change scheduled');
+            RecordNote::updateAll(['created_at' => '2026-10-29 09:00:00'], ['id' => $first->id]);
+            RecordNote::updateAll(['created_at' => '2026-10-29 11:00:00'], ['id' => $second->id]);
+            $file->remove();
+
+            $html = $this->html($control, 'control');
+            $this->assertStringContainsString('<h2>Notes</h2>', $html);
+            $this->assertStringContainsString('Emailed DevOps &lt;requesting&gt; xyz', $html);
+            $this->assertStringContainsString('File: email.txt (since removed)', $html);
+            $this->assertLessThan(strpos($html, 'Change scheduled'), strpos($html, 'Emailed DevOps'), 'oldest first');
+        } finally {
+            Yii::$app->params['attachments.path'] = $attachments;
+            FileHelper::removeDirectory($dir);
+        }
     }
 
     public function testDecisionRendersToPdf(): void

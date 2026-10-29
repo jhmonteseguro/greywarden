@@ -7,6 +7,7 @@
 
 use app\helpers\Badge;
 use app\models\Attachment;
+use app\models\RecordNote;
 use app\modules\control\components\FrameworkCatalogue;
 use app\modules\control\models\Control;
 use app\modules\decision\models\Decision;
@@ -53,6 +54,8 @@ $frameworks['ATT&CK mitigations'] = $model->mitigations;
 <?= $this->render('@app/views/pdf/_text', ['label' => 'Description', 'text' => $model->description]) ?>
 <?= $this->render('@app/views/pdf/_text', ['label' => 'Implementation', 'text' => $model->implementation]) ?>
 <?= $this->render('@app/views/pdf/_text', ['label' => 'Evidence', 'text' => $model->evidence]) ?>
+
+<?= $this->render('@app/views/pdf/_notes', ['notes' => RecordNote::listFor($model, true)]) ?>
 
 <h2>Test history</h2>
 <?php if (!$tests): ?>

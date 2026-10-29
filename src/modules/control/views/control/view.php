@@ -8,6 +8,7 @@
 use app\components\Rbac;
 use app\helpers\Badge;
 use app\models\Attachment;
+use app\models\RecordNote;
 use app\modules\attack\widgets\TechniqueTags;
 use app\modules\cloud\components\CloudChecks;
 use app\modules\cloud\models\CloudAccount;
@@ -24,6 +25,7 @@ use app\widgets\Attachments;
 use app\widgets\AuditHistory;
 use app\widgets\DetailView;
 use app\widgets\LinkedRecords;
+use app\widgets\Notes;
 use app\widgets\RecordActions;
 use yii\bootstrap5\Tabs;
 use yii\helpers\Html;
@@ -47,6 +49,7 @@ $canEdit = Rbac::canManage() && !$model->getIsArchived();
 
 $tests = $model->tests;
 $attachments = Attachment::listFor($model);
+$notes = RecordNote::listFor($model);
 $testFiles = [];
 foreach ($attachments as $a) {
     if ($a->control_test_id) {
@@ -317,6 +320,7 @@ ob_start(); ?>
     'tabContentOptions' => ['class' => 'gw-tab-content'],
     'items' => array_values(array_filter([
         ['label' => 'Details', 'content' => $details, 'options' => ['id' => 'tab-details']],
+        ['label' => 'Notes (' . count($notes) . ')', 'content' => Notes::widget(['model' => $model, 'notes' => $notes, 'attachments' => $attachments]), 'options' => ['id' => 'tab-notes']],
         ['label' => 'Testing (' . count($tests) . ')', 'content' => $testing, 'options' => ['id' => 'tab-testing'], 'active' => $test->hasErrors()],
         $deviceTab !== null ? ['label' => 'Device check', 'content' => $deviceTab, 'options' => ['id' => 'tab-devices']] : null,
         $cloudTab !== null ? ['label' => 'Cloud check', 'content' => $cloudTab, 'options' => ['id' => 'tab-cloud']] : null,

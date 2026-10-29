@@ -2002,6 +2002,8 @@ a.gw-intel-flagchip:hover { color: var(--gw-text-strong); border-color: var(--gw
 .gw-attachments__name { display: flex; align-items: center; gap: .45rem; font-weight: 500; word-break: break-word; }
 .gw-attachments__name > .bi { color: var(--gw-text-muted); }
 .gw-attachments__name .gw-icon-btn { width: 24px; height: 24px; }
+.gw-notes__remove { width: 24px; height: 24px; }
+.gw-notes__file { display: flex; align-items: center; gap: .4rem; margin-top: .4rem; word-break: break-word; }
 .gw-attachments__desc { margin-top: .15rem; color: var(--gw-text); }
 .gw-control-tests__notes { margin-top: .2rem; color: var(--gw-text-muted); font-size: var(--gw-fs-xs); max-width: 70ch; }
 .gw-check-counts { display: grid; gap: .4rem; list-style: none; margin: 1rem 0 .75rem; padding: 0; }

@@ -275,10 +275,13 @@ abstract class DomainRecord extends ActiveRecord
         parent::afterSave($insert, $changedAttributes);
     }
 
-    /** Hard delete: attached files go with the record. */
+    /** Hard delete: notes and attached files go with the record. */
     public function afterDelete(): void
     {
         parent::afterDelete();
+        if (RecordNote::takesNotes(static::entityType())) {
+            RecordNote::deleteAllFor(static::entityType(), $this->id);
+        }
         if (in_array(static::entityType(), Attachment::ENTITY_TYPES, true)) {
             Attachment::deleteAllFor(static::entityType(), $this->id);
         }
