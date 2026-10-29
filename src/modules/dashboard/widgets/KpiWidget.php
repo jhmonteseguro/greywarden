@@ -20,7 +20,8 @@ abstract class KpiWidget extends Widget
 
     /**
      * @return array{value: int|float|string, unit?: string, tone?: string, url?: array|string|null,
-     *               caption?: string, breakdown?: array<array{label: string, value: int|string, tone?: string}>}
+     *               caption?: string, breakdown?: array<array{label: string, value: int|string, tone?: string, url?: array|string|null}>}
+     *         A breakdown item's url only renders when the tile itself has no url (links cannot nest).
      */
     abstract protected function compute(): array;
 

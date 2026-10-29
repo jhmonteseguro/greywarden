@@ -29,9 +29,12 @@ if ($data['url']) {
         <ul class="gw-kpi__breakdown">
             <?php foreach ($data['breakdown'] as $item): ?>
                 <li class="gw-kpi__breakdown-item gw-kpi__breakdown-item--<?= Html::encode($item['tone'] ?? 'neutral') ?>">
+                    <?php $itemUrl = $data['url'] ? null : ($item['url'] ?? null); ?>
+                    <?= $itemUrl ? Html::beginTag('a', ['class' => 'gw-kpi__breakdown-link', 'href' => Url::to($itemUrl)]) : '' ?>
                     <span class="gw-kpi__dot" aria-hidden="true"></span>
                     <span class="gw-kpi__breakdown-label"><?= Html::encode($item['label']) ?></span>
                     <strong class="gw-kpi__breakdown-value"><?= Html::encode((string) $item['value']) ?></strong>
+                    <?= $itemUrl ? Html::endTag('a') : '' ?>
                 </li>
             <?php endforeach; ?>
         </ul>

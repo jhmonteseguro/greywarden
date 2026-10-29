@@ -14,6 +14,12 @@ releases).
   History (*Note added* / *Note removed*) and in a **Notes** section of the control PDF. Authors and administrators
   can remove a note; archived controls are read-only.
 
+### Fixed
+
+- Dashboard **Overdue reviews** tile: it counts risks and decisions but always opened the risk list, which was empty
+  when only decisions were overdue. It now opens the list that has overdue reviews. When both lists do, the
+  **Risks** and **Decisions** rows each link to their own list.
+
 ## [0.6.2-alpha] - 2026-10-29
 
 ### Fixed

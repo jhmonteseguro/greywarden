@@ -18,13 +18,22 @@ class OverdueReviewsKpi extends KpiWidget
         $decisions = (int) Decision::find()->active()
             ->andWhere(['status' => Decision::REVIEWABLE_STATUSES])
             ->andWhere(['<', 'review_date', $today])->count();
+        $risksUrl = ['/risk/risk/index', 'filter' => 'review-overdue'];
+        $decisionsUrl = ['/decision/decision/index', 'filter' => 'review-overdue'];
         return [
             'value' => $risks + $decisions,
             'tone' => ($risks + $decisions) ? 'warning' : 'success',
-            'url' => ['/risk/risk/index', 'filter' => 'review-overdue'],
+            // The tile links to whichever list has overdue reviews; when both do, each breakdown row links instead
+            'url' => match (true) {
+                $risks && $decisions => null,
+                $decisions > 0 => $decisionsUrl,
+                default => $risksUrl,
+            },
             'breakdown' => [
-                ['label' => 'Risks', 'value' => $risks, 'tone' => $risks ? 'warning' : 'neutral'],
-                ['label' => 'Decisions', 'value' => $decisions, 'tone' => $decisions ? 'warning' : 'neutral'],
+                ['label' => 'Risks', 'value' => $risks, 'tone' => $risks ? 'warning' : 'neutral',
+                    'url' => $risks && $decisions ? $risksUrl : null],
+                ['label' => 'Decisions', 'value' => $decisions, 'tone' => $decisions ? 'warning' : 'neutral',
+                    'url' => $risks && $decisions ? $decisionsUrl : null],
             ],
         ];
     }

@@ -1033,6 +1033,8 @@ a.gw-kpi:hover { color: var(--gw-text); border-color: color-mix(in srgb, var(--g
 .gw-kpi__breakdown-item--danger .gw-kpi__dot { background: var(--gw-danger); }
 .gw-kpi__breakdown-item--info .gw-kpi__dot { background: var(--gw-info); }
 .gw-kpi__breakdown-value { color: var(--gw-text-strong); font-weight: 600; font-variant-numeric: tabular-nums; }
+.gw-kpi__breakdown-link { display: inline-flex; align-items: center; gap: .3rem; color: inherit; text-decoration: underline; text-decoration-color: var(--gw-border); text-underline-offset: 2px; }
+.gw-kpi__breakdown-link:hover, .gw-kpi__breakdown-link:focus-visible { color: var(--gw-text-strong); text-decoration-color: currentColor; }
 .gw-kpi__caption { font-size: var(--gw-fs-xs); color: var(--gw-text-muted); line-height: 1.35; }
 .gw-kpi__go { position: absolute; right: .8rem; bottom: .7rem; font-size: .8rem; color: var(--gw-kpi-text); opacity: 0; transform: translate(-3px, 3px); transition: opacity .15s, transform .15s var(--gw-ease); }
 a.gw-kpi:hover .gw-kpi__go, a.gw-kpi:focus-visible .gw-kpi__go { opacity: 1; transform: none; }
