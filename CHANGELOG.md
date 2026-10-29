@@ -6,6 +6,8 @@ releases).
 
 ## [Unreleased]
 
+## [0.8.1-alpha] - 2026-10-29
+
 ### Fixed
 
 - Scheduler container: it inherited the php-fpm image's `SIGQUIT` stop signal, so CLI `php yii schedule/run` dumped
@@ -241,7 +243,8 @@ First public release.
 - Repository safeguards: git hooks with a leak check and signed-push rules, and CI with all test suites, a secret
   scan and a production image build.
 
-[Unreleased]: https://github.com/jhmonteseguro/greywarden/compare/v0.8.0-alpha...HEAD
+[Unreleased]: https://github.com/jhmonteseguro/greywarden/compare/v0.8.1-alpha...HEAD
+[0.8.1-alpha]: https://github.com/jhmonteseguro/greywarden/compare/v0.8.0-alpha...v0.8.1-alpha
 [0.8.0-alpha]: https://github.com/jhmonteseguro/greywarden/compare/v0.7.0-alpha...v0.8.0-alpha
 [0.7.0-alpha]: https://github.com/jhmonteseguro/greywarden/compare/v0.6.2-alpha...v0.7.0-alpha
 [0.6.2-alpha]: https://github.com/jhmonteseguro/greywarden/compare/v0.6.1-alpha...v0.6.2-alpha
