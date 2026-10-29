@@ -100,7 +100,7 @@ ob_start(); ?>
                         'format' => 'raw',
                         'visible' => Cloudflare::isConfigured() || $model->cloudflare_added_at !== null,
                         'value' => $model->cloudflare_added_at
-                            ? '<i class="bi bi-cloud-check gw-intel-cf" aria-hidden="true"></i> In the “' . Html::encode(Cloudflare::ruleName()) . '” rule since ' . $fmt->asDatetime($model->cloudflare_added_at)
+                            ? '<i class="bi bi-cloud-check gw-intel-cf" aria-hidden="true"></i> In ' . Html::encode($model->getCloudflareLocation()) . ' since ' . $fmt->asDatetime($model->cloudflare_added_at)
                             : '<span class="gw-muted">Not added</span>',
                     ],
                 ],
@@ -110,7 +110,7 @@ ob_start(); ?>
         <?php if ($rules): ?>
             <section class="gw-panel">
                 <h2 class="gw-panel__title"><i class="bi bi-terminal" aria-hidden="true"></i> Firewall rules</h2>
-                <p class="gw-muted gw-attack-tab__intro">Copy-ready examples; adapt the table and chain names to your firewall. The Cloudflare line is the condition “Add to Cloudflare” puts in the WAF rule.</p>
+                <p class="gw-muted gw-attack-tab__intro">Copy-ready examples; adapt the table and chain names to your firewall. The Cloudflare line is an equivalent rule condition; “Add to Cloudflare” puts addresses and networks in the <?= Html::encode(Cloudflare::listName()) ?> IP list and ASNs in the <?= Html::encode(Cloudflare::ruleName()) ?> rule.</p>
                 <?php foreach ($rules as $engine => $lines): ?>
                     <div class="gw-terminal gw-terminal--compact">
                         <div class="gw-terminal__bar" aria-hidden="true"><span></span><span></span><span></span><code><?= $engine ?></code></div>

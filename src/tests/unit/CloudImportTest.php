@@ -510,7 +510,7 @@ class CloudImportTest extends DbTestCase
         Http::$fake = static fn(array $r) => ['body' => json_encode(['success' => true, 'result' => null])];
         $this->assertTrue(Cloudflare::hasToken());
         $this->expectExceptionMessage('Cloudflare: the response has no result.');
-        Cloudflare::replace(null, '(ip.src eq 192.0.2.1)');
+        Cloudflare::sync([], [], []);
     }
 
     // ---- Console commands ---------------------------------------------------------

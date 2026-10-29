@@ -47,7 +47,7 @@ final class EdgeAdvisor
             $out[] = ['key' => 'block', 'tone' => 'high', 'icon' => 'slash-circle', 'action' => 'block',
                 'title' => sprintf('Block the address for %d days', EdgeSettings::blockDays()),
                 'detail' => 'Scanner addresses change often, so a time-limited block keeps the Cloudflare rule short. '
-                    . (Cloudflare::isConfigured() ? 'It is added to the Cloudflare rule and taken out again when it expires.' : 'Cloudflare is not configured, so it is only recorded on the blocklist.')];
+                    . (Cloudflare::isConfigured() ? sprintf('It is added to the Cloudflare list “%s” and taken out again when it expires.', Cloudflare::listName()) : 'Cloudflare is not configured, so it is only recorded on the blocklist.')];
         }
         if (array_intersect_key($signals, ['probe' => 1, 'enumeration' => 1])) {
             $out[] = ['key' => 'waf', 'tone' => 'medium', 'icon' => 'shield-plus', 'action' => 'waf',

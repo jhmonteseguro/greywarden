@@ -22,8 +22,20 @@ releases).
 
 ### Changed
 
-- Expired blocklist entries are now taken out of the Cloudflare rule (`make expire-blocks`, also run by every edge
-  pull) instead of staying in it until unblocked.
+- *Add to Cloudflare* now puts addresses and networks into a Cloudflare IP list (`greywarden_blocklist`, created on
+  first use) instead of writing each one into the rule, so the rule stays short however many are blocked. A single
+  WAF custom rule named **Greywarden Blocklist** blocks the list and every blocked ASN; Greywarden owns its expression
+  and keeps its action on Block. When the rule is missing, Greywarden creates it disabled and tells you to move it to
+  the right place in Cloudflare and enable it. The token also needs Account › Account Filter Lists › Edit and
+  Zone › Zone › Read (or set `CLOUDFLARE_ACCOUNT_ID`); `CLOUDFLARE_RULE_NAME` is no longer used.
+- Expired blocklist entries are now taken out of Cloudflare (`make expire-blocks`, also run by every edge pull)
+  instead of staying in it until unblocked.
+
+### Upgrading
+
+- Run `make cloudflare-migrate DRY_RUN=1`, then `make cloudflare-migrate` once: it moves the entries already in
+  Cloudflare into the list and the new rule, and takes Greywarden's conditions out of the old "Block Bad Actors"
+  rule (`OLD_RULE=` for another name), keeping anything you wrote by hand.
 
 ## [0.5.0-alpha] - 2026-10-28
 

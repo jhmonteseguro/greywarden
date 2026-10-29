@@ -187,7 +187,8 @@ Composer, Gii or the runtime create are owned by you. Uploaded files are stored 
 | `make import-cloud FILE=resources.json PROVIDER=aws\|azure\|gcp AS=<user> [ACCOUNT=ACC-0003] [DRY_RUN=1]` | import an AWS, Azure or Google Cloud inventory export (see [Importing cloud assets](#importing-cloud-assets)) |
 | `make sync-cloudflare AS=<user> [DRY_RUN=1]` | add / refresh the Cloudflare zones as cloud assets, using `CLOUDFLARE_API_TOKEN` |
 | `make edge-pull [AS=<user>] [MINUTES=60] [DRY_RUN=1]` / `make edge-status` | read the Cloudflare traffic since the last pull and update the edge findings (run from cron) / show the zone's analytics limits and recent pulls (see [Edge findings](#edge-findings-cloudflare-traffic)) |
-| `make expire-blocks` | take expired blocklist entries out of the Cloudflare rule (`make edge-pull` does this too) |
+| `make expire-blocks` | take expired blocklist entries out of Cloudflare (`make edge-pull` does this too) |
+| `make cloudflare-migrate [OLD_RULE="Block Bad Actors"] [DRY_RUN=1]` | one-off: move *Add to Cloudflare* entries from the old rule into the IP list and the **Greywarden Blocklist** rule (see [Threat intel](#threat-intel-ip--asn-investigation)) |
 | `make intel-status` / `make intel-update` | show the local threat-feed status / download every feed now (stale feeds also refresh automatically in the background) |
 | `make hooks` / `make leak-check [REV=<tag>]` | install the git hooks in `.githooks` / check the index (or a commit) for private files, terms and `.env` secrets (see [Leak check and git hooks](#leak-check-and-git-hooks)) |
 | `make deploy REF=<tag>` | production checkout only: deploy a signed release tag (see [Production](#production)) |
@@ -221,10 +222,10 @@ and `IPINFO_TOKEN` only raise rate limits. `INTEL_ENABLE_IPAPI=1` opts in to ip-
 non-commercial only. `INTEL_DISABLE=otx,dnsbl,...` switches sources or feeds off. Run `make up` after changing
 keys: it recreates the php container with the new `.env` (`make restart` does not reload `.env`).
 
-*Add to Cloudflare* on the blocklist needs `CLOUDFLARE_API_TOKEN` (a token with **Zone › Zone WAF › Edit** on the
-zone) and `CLOUDFLARE_ZONE_ID`. The WAF custom rule it updates, `CLOUDFLARE_RULE_NAME` (default `Block Bad Actors`),
-must already exist in the zone. `make sync-cloudflare` reuses the token to list zones, which also needs
-**Zone › Zone › Read** (no zone ID needed).
+*Add to Cloudflare* on the blocklist needs `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ZONE_ID`. The token needs
+**Zone › Zone WAF › Edit** (the rule), **Account › Account Filter Lists › Edit** (the IP list) and **Zone › Zone › Read**
+(to find the zone's account; or set `CLOUDFLARE_ACCOUNT_ID`). `CLOUDFLARE_LIST_NAME` renames the IP list (default
+`greywarden_blocklist`). `make sync-cloudflare` reuses the token to list zones (**Zone › Zone › Read**, no zone ID needed).
 Edge findings (`make edge-pull`) read the zone's traffic analytics with the same token and zone ID, which needs
 **Zone › Analytics › Read**.
 
@@ -670,12 +671,21 @@ Module `src/modules/intel`, under **Threat Intel** in the sidebar: *IP Investiga
   expiry (quick 24 h / 7 d / 30 d / 90 d), a related incident and a full audit history. Unblocking keeps the entry (it can be re-instated); admins can
   delete unblocked entries. Networks broader than /8 (IPv4) or /16 (IPv6) are refused. Reports flag an address that is
   covered by a blocked IP, network or ASN.
-* **Cloudflare**: tick *Add to Cloudflare* when blocking (form or Block dialog) to append the entry to the zone's
-  "Block Bad Actors" WAF custom rule as an OR condition: `(ip.src eq 203.0.113.7)`, `(ip.src in {198.51.100.0/24})`
-  or `(ip.src.asnum eq 64496)`. The rule is updated first, so a Cloudflare error stops the save and is shown on the
-  checkbox. Editing the value replaces the condition, unticking or unblocking removes it (an unblock is refused while
-  Cloudflare can't be updated), and only that exact condition is ever removed. When an entry expires, the next
-  `make edge-pull` (or `make expire-blocks`) takes it out of the rule; the entry stays under *Expired*.
+* **Cloudflare**: tick *Add to Cloudflare* when blocking (form or Block dialog). Addresses and networks go into the
+  account IP list `greywarden_blocklist` (created on first use); ASNs go into the zone's WAF custom rule
+  **Greywarden Blocklist** (IP lists can't hold ASNs below Enterprise), which blocks the list and every ASN:
+  `(ip.src in $greywarden_blocklist) or (ip.src.asnum eq 64496) or (ip.src.asnum eq 64511)`. Greywarden owns that
+  rule: it rewrites the expression on every change and keeps the action on Block, so don't edit it by hand. If the
+  rule is missing, Greywarden creates it **disabled** at the end of the custom rules and says so: move it to the top
+  (or second, below any rule that allows or skips trusted traffic) in Security › WAF › Custom rules, then enable it.
+  Cloudflare is updated first, so an error stops the save and is shown on the checkbox. Editing the value moves the
+  entry, unticking or unblocking removes it (an unblock is refused while Cloudflare can't be updated). When an entry
+  expires, the next `make edge-pull` (or `make expire-blocks`) takes it out; the entry stays under *Expired*.
+* **Moving from the old rule**: before 0.6, *Add to Cloudflare* wrote every entry into a rule named by
+  `CLOUDFLARE_RULE_NAME` (default `Block Bad Actors`). `make cloudflare-migrate DRY_RUN=1` shows the plan;
+  `make cloudflare-migrate [OLD_RULE="Block Bad Actors"]` pushes every entry still in force to the list and the
+  new rule, drops expired ones, and takes Greywarden's conditions out of the old rule, keeping anything written by
+  hand (if nothing else is left it tells you to delete the old rule).
   Outbound-only entries can't be added.
 * **Feeds** live in `intel_feed` / `intel_feed_entry` as merged, non-overlapping hex ranges, so a lookup is an indexed
   query. They refresh after the response has been sent (PHP-FPM `fastcgi_finish_request`) when stale, or with
@@ -688,7 +698,7 @@ Module `src/modules/intel`, under **Threat Intel** in the sidebar: *IP Investiga
 *Threat Intel › Edge Findings* (`/intel/edge`) turns the zone's Cloudflare traffic into a short triage queue, so you
 don't have to scroll through the logs for addresses that slipped past your rules.
 
-* **Setup**: `CLOUDFLARE_API_TOKEN` with **Zone › Analytics › Read** (plus **Zone › Zone WAF › Edit** to block) and
+* **Setup**: `CLOUDFLARE_API_TOKEN` with **Zone › Analytics › Read** (plus the blocking permissions under [Configuration](#configuration-env)) and
   `CLOUDFLARE_ZONE_ID` in `.env`, then pull every 15 minutes from the host's crontab:
 
   ```cron

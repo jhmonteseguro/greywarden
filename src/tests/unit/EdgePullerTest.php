@@ -5,6 +5,7 @@ namespace tests\unit;
 use app\components\Actor;
 use app\models\AuditLog;
 use app\models\Setting;
+use app\modules\intel\components\Cloudflare;
 use app\modules\intel\components\edge\CloudflareTraffic;
 use app\modules\intel\components\edge\EdgePuller;
 use app\modules\intel\components\Http;
@@ -14,12 +15,13 @@ use app\modules\intel\models\EdgePull;
 use app\modules\intel\models\IntelIndicator;
 use RuntimeException;
 use tests\DbTestCase;
+use tests\support\FakeCloudflare;
 use Yii;
 use yii\mutex\FileMutex;
 
 /**
- * Edge pulls against a fake Cloudflare GraphQL Analytics API (and Rulesets API
- * for the blocklist): windows, plan limits, findings opened / merged / reopened,
+ * Edge pulls against a fake Cloudflare GraphQL Analytics API (and the rules and
+ * lists APIs for the blocklist, tests\support\FakeCloudflare): windows, plan limits, findings opened / merged / reopened,
  * partial failures and expired blocks. No test reaches Cloudflare.
  */
 class EdgePullerTest extends DbTestCase
@@ -32,37 +34,21 @@ class EdgePullerTest extends DbTestCase
     private array $data = [];
     /** @var array[] decoded GraphQL requests */
     private array $queries = [];
-    private array $rules;
+    private FakeCloudflare $cf;
 
     protected function setUp(): void
     {
         parent::setUp();
-        putenv('CLOUDFLARE_API_TOKEN=test-token');
-        putenv('CLOUDFLARE_ZONE_ID=zone1');
         Yii::$app->cache->flush();
         $this->limits = ['enabled' => true, 'availableFields' => ['clientIP', 'clientRequestPath', 'clientRequestQuery', 'requestSource', 'edgeResponseStatus'],
             'maxDuration' => 86400, 'maxPageSize' => 1000, 'notOlderThan' => 3 * 86400];
-        $this->rules = [['id' => 'r-block', 'description' => 'Block Bad Actors', 'action' => 'block', 'expression' => '(ip.src eq 192.0.2.1)', 'enabled' => true]];
-        Http::$fake = function (array $r): array {
-            if (str_ends_with($r['url'], '/graphql')) {
-                return $this->graphql(json_decode($r['body'], true));
-            }
-            if ($r['method'] === 'GET' && str_contains($r['url'], '/rulesets/phases/')) {
-                return ['body' => json_encode(['success' => true, 'result' => ['id' => 'rs1', 'rules' => $this->rules]])];
-            }
-            if ($r['method'] === 'PATCH') {
-                $this->rules[0] = ['id' => 'r-block'] + json_decode($r['body'], true);
-                return ['body' => json_encode(['success' => true, 'result' => ['id' => 'rs1', 'rules' => $this->rules]])];
-            }
-            return ['status' => 404, 'body' => '{}'];
-        };
+        $this->cf = (new FakeCloudflare())->install();
+        $this->cf->graphql = fn(array $request): array => $this->graphql($request);
     }
 
     protected function tearDown(): void
     {
-        Http::$fake = null;
-        putenv('CLOUDFLARE_API_TOKEN');
-        putenv('CLOUDFLARE_ZONE_ID');
+        FakeCloudflare::uninstall();
         Yii::$app->cache->flush();
         Actor::override(null);
         parent::tearDown();
@@ -345,22 +331,21 @@ class EdgePullerTest extends DbTestCase
         $entry = new BlocklistEntry(['value' => '192.0.2.70', 'severity' => 'high', 'direction' => 'inbound', 'reason' => 'test', 'cloudflare' => true,
             'expires_at' => date('Y-m-d H:i:s', time() + 3600)]);
         $this->assertTrue($entry->validate() && $entry->syncCloudflare() && $entry->save(false));
-        $this->assertStringContainsString('192.0.2.70', $this->rules[0]['expression']);
+        $this->assertSame(['192.0.2.70'], $this->cf->items());
         BlocklistEntry::updateAll(['expires_at' => date('Y-m-d H:i:s', time() - 60)], ['id' => $entry->id]);
 
-        // The Rulesets API refuses: a warning, and the entry stays in Cloudflare
-        $fake = Http::$fake;
-        Http::$fake = static fn(array $r) => str_ends_with($r['url'], '/graphql') ? $fake($r) : ['status' => 403, 'body' => json_encode(['success' => false, 'errors' => [['message' => 'Authentication error']]])];
+        // The Cloudflare API refuses: a warning, and the entry stays in Cloudflare
+        $this->cf->failWith = ['status' => 403, 'body' => json_encode(['success' => false, 'errors' => [['message' => 'Authentication error']]])];
         $pull = $this->puller(['minutes' => 15])->run();
         $this->assertStringContainsString("{$entry->reference} could not be taken out of Cloudflare: Cloudflare: Authentication error", $pull->message);
         $entry->refresh();
         $this->assertNotNull($entry->cloudflare_added_at);
-        Http::$fake = $fake;
+        $this->cf->failWith = null;
 
         $pull = $this->puller(['minutes' => 15])->run();
         $this->assertSame(EdgePull::STATUS_PARTIAL, $pull->status);
         $this->assertStringContainsString("Expired blocks taken out of Cloudflare: {$entry->reference}", $pull->message);
-        $this->assertSame('(ip.src eq 192.0.2.1)', $this->rules[0]['expression']);
+        $this->assertSame([], $this->cf->items());
         $entry->refresh();
         $this->assertNull($entry->cloudflare_added_at);
         $this->assertSame('expired', $entry->getState());

@@ -3,6 +3,7 @@
 namespace tests\unit;
 
 use app\components\Actor;
+use app\modules\intel\components\Cloudflare;
 use app\modules\intel\components\edge\CloudflareTraffic;
 use app\modules\intel\components\edge\EdgePuller;
 use app\modules\intel\components\Http;
@@ -10,6 +11,7 @@ use app\modules\intel\models\BlocklistEntry;
 use app\modules\intel\models\EdgeFinding;
 use app\modules\intel\models\EdgePull;
 use tests\DbTestCase;
+use tests\support\FakeCloudflare;
 use tests\support\OutputCapture;
 use Yii;
 use yii\console\ExitCode;
@@ -20,42 +22,29 @@ use yii\mutex\FileMutex;
  */
 class EdgeConsoleTest extends DbTestCase
 {
-    private bool $failRules = false;
-    private array $rules = [['id' => 'r1', 'description' => 'Block Bad Actors', 'action' => 'block', 'expression' => '(ip.src eq 192.0.2.1)', 'enabled' => true]];
+    private FakeCloudflare $cf;
 
     protected function setUp(): void
     {
         parent::setUp();
-        putenv('CLOUDFLARE_API_TOKEN=test-token');
-        putenv('CLOUDFLARE_ZONE_ID=zone1');
         Yii::$app->cache->flush();
-        Http::$fake = function (array $r): array {
-            if (str_ends_with($r['url'], '/graphql')) {
-                $q = json_decode($r['body'], true)['query'];
-                if (str_contains($q, 'EdgeSettings')) {
-                    $limits = ['enabled' => true, 'availableFields' => ['clientIP', 'clientRequestPath', 'edgeResponseStatus'], 'maxDuration' => 86400, 'maxPageSize' => 1000, 'notOlderThan' => 86400];
-                    return ['body' => json_encode(['data' => ['viewer' => ['zones' => [['settings' => [CloudflareTraffic::HTTP => $limits, CloudflareTraffic::FIREWALL => ['enabled' => false]]]]]]])];
-                }
-                $rows = str_contains($q, 'clientAsn')
-                    ? [['count' => 4, 'dimensions' => ['clientIP' => '192.0.2.90', 'clientAsn' => 64501, 'clientCountryName' => 'NL', 'userAgent' => 'sqlmap/1.8', 'clientRequestHTTPMethodName' => 'GET']]]
-                    : [];
-                return ['body' => json_encode(['data' => ['viewer' => ['zones' => [['rows' => $rows]]]]])];
+        $this->cf = (new FakeCloudflare())->install();
+        $this->cf->graphql = static function (array $request): array {
+            $q = $request['query'];
+            if (str_contains($q, 'EdgeSettings')) {
+                $limits = ['enabled' => true, 'availableFields' => ['clientIP', 'clientRequestPath', 'edgeResponseStatus'], 'maxDuration' => 86400, 'maxPageSize' => 1000, 'notOlderThan' => 86400];
+                return ['body' => json_encode(['data' => ['viewer' => ['zones' => [['settings' => [CloudflareTraffic::HTTP => $limits, CloudflareTraffic::FIREWALL => ['enabled' => false]]]]]]])];
             }
-            if ($this->failRules) {
-                return ['status' => 403, 'body' => json_encode(['success' => false, 'errors' => [['code' => 10000, 'message' => 'Authentication error']]])];
-            }
-            if ($r['method'] === 'PATCH') {
-                $this->rules[0] = ['id' => 'r1'] + json_decode($r['body'], true);
-            }
-            return ['body' => json_encode(['success' => true, 'result' => ['id' => 'rs1', 'rules' => $this->rules]])];
+            $rows = str_contains($q, 'clientAsn')
+                ? [['count' => 4, 'dimensions' => ['clientIP' => '192.0.2.90', 'clientAsn' => 64501, 'clientCountryName' => 'NL', 'userAgent' => 'sqlmap/1.8', 'clientRequestHTTPMethodName' => 'GET']]]
+                : [];
+            return ['body' => json_encode(['data' => ['viewer' => ['zones' => [['rows' => $rows]]]]])];
         };
     }
 
     protected function tearDown(): void
     {
-        Http::$fake = null;
-        putenv('CLOUDFLARE_API_TOKEN');
-        putenv('CLOUDFLARE_ZONE_ID');
+        FakeCloudflare::uninstall();
         Yii::$app->cache->flush();
         Actor::override(null);
         parent::tearDown();
@@ -154,7 +143,7 @@ class EdgeConsoleTest extends DbTestCase
         Actor::override(null);
         BlocklistEntry::updateAll(['expires_at' => date('Y-m-d H:i:s', time() - 60)], ['id' => $entry->id]);
 
-        $this->failRules = true;
+        $this->cf->failWith = ['status' => 403, 'body' => json_encode(['success' => false, 'errors' => [['code' => 10000, 'message' => 'Authentication error']]])];
         [$code, $out] = OutputCapture::run('intel/expire-blocks');
         $this->assertSame(ExitCode::UNAVAILABLE, $code);
         $this->assertStringContainsString("{$entry->reference}: Cloudflare: Authentication error", $out);
@@ -165,10 +154,10 @@ class EdgeConsoleTest extends DbTestCase
         $this->assertStringContainsString('Cloudflare is not configured', $out);
 
         putenv('CLOUDFLARE_ZONE_ID=zone1');
-        $this->failRules = false;
+        $this->cf->failWith = null;
         [$code, $out] = OutputCapture::run('intel/expire-blocks');
         $this->assertSame(ExitCode::OK, $code);
         $this->assertStringContainsString("{$entry->reference} taken out of Cloudflare", $out);
-        $this->assertSame('(ip.src eq 192.0.2.1)', $this->rules[0]['expression']);
+        $this->assertSame([], $this->cf->items());
     }
 }

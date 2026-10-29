@@ -175,7 +175,7 @@ class BlocklistEntry extends DomainRecord
             'expires_at' => 'Optional. Leave empty for a permanent block.',
             'direction' => 'Which traffic the block should apply to on your firewalls.',
             'cloudflare' => Cloudflare::isConfigured()
-                ? sprintf('Adds it to the “%s” WAF rule as an OR condition. It stays there until it is unblocked here or expires (expired entries are taken out by `make expire-blocks`, which every edge pull also runs).', Cloudflare::ruleName())
+                ? sprintf('Adds an address or network to the Cloudflare IP list “%s”, an ASN to the WAF rule “%s” (created, disabled, if it is missing). It stays there until it is unblocked here or expires (expired entries are taken out by `make expire-blocks`, which every edge pull also runs).', Cloudflare::listName(), Cloudflare::ruleName())
                 : 'Set CLOUDFLARE_API_TOKEN and CLOUDFLARE_ZONE_ID in .env to enable.',
         ];
     }
@@ -240,45 +240,75 @@ class BlocklistEntry extends DomainRecord
         }
     }
 
-    /** The condition this entry adds to the Cloudflare rule */
+    /** An equivalent rule-language condition (addresses and networks are blocked through the IP list) */
     public function getCloudflareClause(): string
     {
         return Cloudflare::clause($this->indicator_type, $this->value);
     }
 
+    /** Where "Add to Cloudflare" puts the entry: the IP list for addresses and networks, the rule for ASNs */
+    public function getCloudflareLocation(): string
+    {
+        return $this->indicator_type === self::TYPE_ASN
+            ? sprintf('the Cloudflare rule “%s”', Cloudflare::ruleName())
+            : sprintf('the Cloudflare list “%s” (rule “%s”)', Cloudflare::listName(), Cloudflare::ruleName());
+    }
+
     /**
-     * Bring the Cloudflare rule in line with $cloudflare (and a changed value) before saving:
-     * adds, removes or replaces this entry's condition and sets cloudflare_added_at.
-     * Call after validate(); on failure the error is added to `cloudflare`.
+     * ASNs currently in the Cloudflare rule: entries in force with "Add to Cloudflare" ticked.
+     * @return int[]
+     */
+    public static function cloudflareAsns(?int $exceptId = null): array
+    {
+        $now = Actor::now();
+        return array_map('intval', self::find()->active()->select('asn')
+            ->andWhere(['indicator_type' => self::TYPE_ASN])->andWhere(['not', ['cloudflare_added_at' => null]])
+            ->andWhere(['or', ['expires_at' => null], ['>', 'expires_at', $now]])
+            ->andFilterWhere(['<>', 'id', $exceptId])->orderBy(['asn' => SORT_ASC])->column());
+    }
+
+    /**
+     * Bring Cloudflare in line with $cloudflare (and a changed value) before saving: an
+     * address or network is added to / removed from the IP list, an ASN to / from the
+     * rule, and cloudflare_added_at is set. Call after validate(); on failure the error
+     * is added to `cloudflare`.
      */
     public function syncCloudflare(): bool
     {
         $wasAdded = $this->getOldAttribute('cloudflare_added_at') !== null;
-        $old = $wasAdded ? Cloudflare::clause($this->getOldAttribute('indicator_type'), $this->getOldAttribute('value')) : null;
-        $new = $this->cloudflare && !$this->getIsArchived() ? $this->getCloudflareClause() : null;
+        $old = $wasAdded ? [$this->getOldAttribute('indicator_type'), $this->getOldAttribute('value')] : null;
+        $new = $this->cloudflare && !$this->getIsArchived() ? [$this->indicator_type, $this->value] : null;
         if ($old === $new) {
             return true;
         }
+        $add = $new !== null && $new[0] !== self::TYPE_ASN
+            ? [$new[1] => trim(($this->reference ? $this->reference . ': ' : 'Greywarden: ') . $this->reason)] : [];
+        $remove = $old !== null && $old[0] !== self::TYPE_ASN ? [$old[1]] : [];
+        $asns = self::cloudflareAsns($this->id);
+        if ($new !== null && $new[0] === self::TYPE_ASN) {
+            $asns[] = (int) $this->asn;
+        }
         try {
-            $result = Cloudflare::replace($old, $new);
+            $result = Cloudflare::sync($add, $remove, $asns);
         } catch (RuntimeException $e) {
             $this->addError('cloudflare', $e->getMessage());
             return false;
         }
         $this->cloudflare_added_at = $new !== null ? Actor::now() : null;
-        $rule = Cloudflare::ruleName();
+        $where = $this->getCloudflareLocation();
         $this->cloudflareNotice = match (true) {
-            $new === null => sprintf('Removed from the Cloudflare rule “%s”.', $rule),
-            $old === null => sprintf('Added to the Cloudflare rule “%s”.', $rule),
-            default => sprintf('Updated in the Cloudflare rule “%s”.', $rule),
-        } . ($new !== null && !$result['enabled'] ? ' The rule is disabled in Cloudflare, so it is not blocking yet.' : '');
+            $new === null => sprintf('Removed from %s.', $where),
+            $old === null => sprintf('Added to %s.', $where),
+            default => sprintf('Updated in %s.', $where),
+        } . ($result['created'] ? ' ' . Cloudflare::createdRuleMessage()
+            : ($new !== null && !$result['enabled'] ? ' The rule is disabled in Cloudflare, so it is not blocking yet.' : ''));
         return true;
     }
 
     /**
-     * Takes expired entries out of the Cloudflare rule; they stay on the blocklist
-     * as Expired, so editing the expiry and ticking "Add to Cloudflare" again
-     * puts them back.
+     * Takes expired entries out of Cloudflare (IP list and rule, in one update); they
+     * stay on the blocklist as Expired, so editing the expiry and ticking "Add to
+     * Cloudflare" again puts them back.
      *
      * @return array{removed: string[], failed: array<string, string>} references, and reference => error
      */
@@ -287,19 +317,19 @@ class BlocklistEntry extends DomainRecord
         $out = ['removed' => [], 'failed' => []];
         $expired = self::find()->active()->andWhere(['not', ['cloudflare_added_at' => null]])
             ->andWhere(['<=', 'expires_at', Actor::now()])->orderBy(['id' => SORT_ASC])->all();
-        if ($expired && !Cloudflare::isConfigured()) {
+        if (!$expired) {
+            return $out;
+        }
+        try {
+            Cloudflare::sync([], array_map(static fn(self $e) => $e->value,
+                array_filter($expired, static fn(self $e) => $e->indicator_type !== self::TYPE_ASN)), self::cloudflareAsns());
+        } catch (RuntimeException $e) {
             foreach ($expired as $entry) {
-                $out['failed'][$entry->reference] = 'Cloudflare is not configured.';
+                $out['failed'][$entry->reference] = $e->getMessage();
             }
             return $out;
         }
         foreach ($expired as $entry) {
-            try {
-                Cloudflare::replace($entry->getCloudflareClause(), null);
-            } catch (RuntimeException $e) {
-                $out['failed'][$entry->reference] = $e->getMessage();
-                continue;
-            }
             $entry->cloudflare_added_at = null;
             $entry->cloudflare = false;
             $entry->save(false);

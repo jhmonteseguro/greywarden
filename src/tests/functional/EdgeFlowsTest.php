@@ -12,6 +12,7 @@ use app\modules\intel\models\BlocklistEntry;
 use app\modules\intel\models\EdgeFinding;
 use app\modules\intel\models\EdgePull;
 use tests\FunctionalTestCase;
+use tests\support\FakeCloudflare;
 use Yii;
 
 /**
@@ -158,22 +159,20 @@ class EdgeFlowsTest extends FunctionalTestCase
         putenv('CLOUDFLARE_ZONE_ID=z');
         $f = $this->finding('192.0.2.151');
         $this->loginAs('analyst');
-        // The Rulesets API refuses: nothing is blocked
+        // The Cloudflare API refuses: nothing is blocked
         Http::$fake = static fn() => ['status' => 403, 'body' => json_encode(['success' => false, 'errors' => [['code' => 10000, 'message' => 'Authentication error']]])];
         $this->post("/intel/edge/{$f->id}/block", ['days' => 7]);
         $this->assertStringContainsString('was not blocked: Cloudflare: Authentication error', $this->flash('danger'));
         $this->assertSame(EdgeFinding::STATUS_NEW, $this->finding('192.0.2.151')->status);
 
-        $rules = [['id' => 'r1', 'description' => 'Block Bad Actors', 'action' => 'block', 'expression' => '(ip.src eq 192.0.2.1)', 'enabled' => true]];
-        Http::$fake = static function (array $r) use (&$rules) {
-            if ($r['method'] === 'PATCH') {
-                $rules[0] = ['id' => 'r1'] + json_decode($r['body'], true);
-            }
-            return ['body' => json_encode(['success' => true, 'result' => ['id' => 'rs1', 'rules' => $rules]])];
-        };
+        $cf = (new FakeCloudflare(null, false))->install();
         $this->post("/intel/edge/{$f->id}/block", ['days' => 7]);
-        $this->assertStringContainsString('Added to the Cloudflare rule', $this->flash('success'));
-        $this->assertStringContainsString('(ip.src eq 192.0.2.151)', $rules[0]['expression']);
+        $flash = $this->flash('success');
+        $this->assertStringContainsString('Added to the Cloudflare list “greywarden_blocklist”', $flash);
+        $this->assertStringContainsString('Greywarden created the custom rule "Greywarden Blocklist" in Cloudflare, disabled', $flash);
+        $this->assertSame(['192.0.2.151'], $cf->items());
+        $this->assertFalse($cf->rule()['enabled']);
+        FakeCloudflare::uninstall();
     }
 
     public function testRaiseIncident(): void

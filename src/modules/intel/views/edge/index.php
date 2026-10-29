@@ -50,7 +50,7 @@ $this->params['actions'] = implode("\n", $actions);
 <?php if (!$configured): ?>
     <div class="alert alert-info gw-callout" role="status">
         <i class="bi bi-cloud-slash" aria-hidden="true"></i>
-        <span>Cloudflare is not configured. Set <code>CLOUDFLARE_API_TOKEN</code> (with Zone › Analytics › Read, plus Zone › Zone WAF › Edit to block) and <code>CLOUDFLARE_ZONE_ID</code> in <code>.env</code>,
+        <span>Cloudflare is not configured. Set <code>CLOUDFLARE_API_TOKEN</code> (with Zone › Analytics › Read; to block, also Zone › Zone WAF › Edit and Account › Account Filter Lists › Edit) and <code>CLOUDFLARE_ZONE_ID</code> in <code>.env</code>,
         then run <code>make edge-pull</code> every 15 minutes from cron.</span>
     </div>
 <?php elseif ($last && $last->getIsError()): ?>
