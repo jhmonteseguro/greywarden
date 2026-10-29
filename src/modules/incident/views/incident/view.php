@@ -128,7 +128,7 @@ ob_start(); ?>
     'tabContentOptions' => ['class' => 'gw-tab-content'],
     'items' => [
         ['label' => 'Details', 'content' => $details, 'options' => ['id' => 'tab-details']],
-        ['label' => 'Timeline', 'content' => $this->render('_timeline', ['model' => $model, 'entry' => $entry]), 'options' => ['id' => 'tab-timeline']],
+        ['label' => 'Timeline', 'content' => $this->render('_timeline', ['model' => $model, 'entry' => $entry, 'attachments' => $attachments]), 'options' => ['id' => 'tab-timeline']],
         ['label' => 'ATT&CK (' . count($techniques) . ')', 'content' => $this->render('@app/modules/attack/views/partials/_record-tab', [
             'techniques' => $techniques,
             'intro' => 'Adversary techniques observed in this incident.',

@@ -424,7 +424,9 @@ greywarden/
 * Risks, controls, decisions, cloud accounts and cloud assets have a **Notes** tab: a running log of progress, e.g.
   "Emailed DevOps requesting the firewall change, copy saved in Files". Each note (up to 1,000 characters, plain
   text) is stamped with the date, time and author and cannot be edited or back-dated; correct a note by adding another.
-  Incidents keep their dated narrative on the incident **Timeline** instead.
+  Incidents keep their dated narrative on the incident **Timeline** instead; a timeline entry can likewise link a file
+  already on the incident or attach a new one (which also appears on the Files tab), and the incident PDF names the
+  file under the entry.
 * A note can **link a file**: one already on the record's Files tab, or a new one attached in the same step (it is
   checked like any other upload and also appears on the Files tab). The note keeps the file's name, so it still reads
   correctly if the file is removed later.

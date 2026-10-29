@@ -3,19 +3,24 @@
 namespace app\modules\incident\models;
 
 use app\components\Actor;
+use app\models\Attachment;
 use app\models\User;
 use yii\behaviors\BlameableBehavior;
 use yii\behaviors\TimestampBehavior;
 use yii\db\ActiveRecord;
 
 /**
- * Timestamped note/action on an incident. Entries are append-only.
+ * Timestamped note/action on an incident. Entries are append-only. An entry may
+ * link one of the incident's files; the file's name is kept on the entry so it
+ * still reads correctly after the file is removed.
  *
  * @property int $id
  * @property int $incident_id
  * @property string $entry_at
  * @property string $entry_type
  * @property string $body
+ * @property int|null $attachment_id
+ * @property string|null $attachment_name
  * @property string $created_at
  * @property string $updated_at
  * @property int|null $created_by
@@ -23,6 +28,7 @@ use yii\db\ActiveRecord;
  *
  * @property-read Incident $incident
  * @property-read User|null $creator
+ * @property-read Attachment|null $attachment
  */
 class IncidentTimeline extends ActiveRecord
 {
@@ -97,6 +103,35 @@ class IncidentTimeline extends ActiveRecord
     public function getCreator()
     {
         return $this->hasOne(User::class, ['id' => 'created_by']);
+    }
+
+    public function getAttachment()
+    {
+        return $this->hasOne(Attachment::class, ['id' => 'attachment_id']);
+    }
+
+    /** Links one of the incident's files to the entry, keeping its name */
+    public function linkFile(?Attachment $file): void
+    {
+        $this->attachment_id = $file?->id;
+        $this->attachment_name = $file?->original_name;
+    }
+
+    /** The linked file's name, whether or not the file is still attached */
+    public function getFileName(): ?string
+    {
+        return $this->attachment->original_name ?? $this->attachment_name;
+    }
+
+    public function getIsFileRemoved(): bool
+    {
+        return $this->attachment_name !== null && $this->attachment === null;
+    }
+
+    /** Session key holding a refused entry, so the form can offer it again */
+    public static function draftKey(int $incidentId): string
+    {
+        return 'timeline-draft.' . $incidentId;
     }
 
     public function getTypeLabel(): string

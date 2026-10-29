@@ -27,7 +27,7 @@ $this->params['pdf.badges'] = Badge::severity($model->severity) . ' ' . Badge::s
 $summary = $model->management_summary ?: $model->description;
 $impacts = IncidentWording::impacts($model);
 $controlsByRole = $model->getControlsByRole();
-$timeline = $model->getTimeline()->with('creator')->orderBy(['entry_at' => SORT_ASC, 'id' => SORT_ASC])->all();
+$timeline = $model->getTimeline()->with(['creator', 'attachment'])->orderBy(['entry_at' => SORT_ASC, 'id' => SORT_ASC])->all();
 $notYet = $open ? 'Not yet' : null;
 $glance = static fn(string $value, string $meaning = '') => '<div class="glance__value">' . Html::encode($value) . '</div>'
     . ($meaning !== '' ? '<div class="glance__meaning">' . Html::encode($meaning) . '</div>' : '');
@@ -113,7 +113,12 @@ $limit = 25;
             <tr>
                 <td class="timeline__when"><?= $fmt->asDatetime($entry->entry_at) ?></td>
                 <td class="timeline__type"><?= Html::encode($entry->getTypeLabel()) ?></td>
-                <td><?= nl2br(Html::encode($entry->body)) ?></td>
+                <td>
+                    <?= nl2br(Html::encode($entry->body)) ?>
+                    <?php if ($name = $entry->getFileName()): ?>
+                        <div class="muted small">File: <?= Html::encode($name) ?><?= $entry->getIsFileRemoved() ? ' (since removed)' : '' ?></div>
+                    <?php endif; ?>
+                </td>
                 <td class="timeline__by"><?= Html::encode($entry->creator->full_name ?? 'system') ?></td>
             </tr>
         <?php endforeach; ?>

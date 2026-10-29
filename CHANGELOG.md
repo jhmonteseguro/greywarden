@@ -8,6 +8,9 @@ releases).
 
 ### Added
 
+- Files on incident timeline entries: an entry can link a file already on the incident or attach a new one in the
+  same step (it also appears on the incident's **Files** tab). The entry keeps the file's name if the file is later
+  removed, and the incident PDF names the file under the entry. A refused entry keeps its text for another try.
 - Notes on risks, decisions, cloud accounts and cloud assets: the same **Notes** tab as controls (dated, signed,
   never edited, optionally linking a file), with *Note added* / *Note removed* in each record's History and a
   **Notes** section in the risk and decision PDFs. Incidents keep using their Timeline.

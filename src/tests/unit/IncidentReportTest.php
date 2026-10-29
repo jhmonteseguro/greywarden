@@ -3,6 +3,7 @@
 namespace tests\unit;
 
 use app\components\RecordPdf;
+use app\models\Attachment;
 use app\models\AuditLog;
 use app\models\Lookup;
 use app\models\Setting;
@@ -16,6 +17,8 @@ use app\modules\inventory\models\Device;
 use tests\DbTestCase;
 use Yii;
 use yii\base\UnknownPropertyException;
+use yii\helpers\FileHelper;
+use yii\web\UploadedFile;
 use yii\web\View;
 
 /**
@@ -225,6 +228,39 @@ class IncidentReportTest extends DbTestCase
         $this->assertStringNotContainsString('<h3>Regulator</h3>', $html);
         // Full timeline, oldest first
         $this->assertLessThan(strpos($html, 'Recipient asked to delete it.'), strpos($html, "Mail recalled.<br />\nDLP rule drafted."));
+    }
+
+    public function testTimelineEntriesNameTheirFilesEvenOnceRemoved(): void
+    {
+        $incident = $this->saved();
+        $path = Yii::$app->params['attachments.path'];
+        Yii::$app->params['attachments.path'] = $dir = sys_get_temp_dir() . '/gw-timeline-' . bin2hex(random_bytes(4));
+        try {
+            $tmp = tempnam(sys_get_temp_dir(), 'gwtl');
+            file_put_contents($tmp, "user,ip\n");
+            $file = Attachment::attach($incident, new UploadedFile(['name' => 'signins.csv', 'tempName' => $tmp, 'type' => 'text/csv', 'size' => 8, 'error' => UPLOAD_ERR_OK]));
+            unlink($tmp);
+            $this->assertInstanceOf(Attachment::class, $file);
+            $entry = IncidentTimeline::add($incident->id, IncidentTimeline::TYPE_EVIDENCE, 'Sign-in logs exported', '2026-10-01 10:30:00');
+            $entry->linkFile($file);
+            $this->assertTrue($entry->save(false));
+            $plain = IncidentTimeline::add($incident->id, IncidentTimeline::TYPE_NOTE, 'No file here', '2026-10-01 10:40:00');
+            $this->assertNull($plain->getFileName());
+            $this->assertFalse($plain->getIsFileRemoved());
+
+            $html = $this->html($incident);
+            $this->assertStringContainsString('File: signins.csv</div>', $html);
+
+            $this->assertTrue($file->remove());
+            $entry = IncidentTimeline::findOne($entry->id);
+            $this->assertNull($entry->attachment_id);
+            $this->assertSame('signins.csv', $entry->getFileName());
+            $this->assertTrue($entry->getIsFileRemoved());
+            $this->assertStringContainsString('File: signins.csv (since removed)', $this->html($incident));
+        } finally {
+            Yii::$app->params['attachments.path'] = $path;
+            FileHelper::removeDirectory($dir);
+        }
     }
 
     public function testLongLinkListsAreCutShort(): void

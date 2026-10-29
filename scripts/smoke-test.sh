@@ -332,6 +332,16 @@ post analyst "/incidents/$IID/update" "/incidents/$IID/update" 302 \
     "Incident[detected_at]=$NOW" "Incident[personal_data_involved]=1" "Incident[regulator_notification_required]=1"
 check analyst "/incidents/$IID" 200
 grep -q 'Smoke test timeline entry' "$BODY" && ok || bad "timeline entry missing"
+# A timeline entry can attach a file, which also lands on the incident's Files tab
+TOKEN=$(csrf analyst "/incidents/$IID")
+printf 'user,ip\nsmoke,192.0.2.1\n' > "$WORK/smoke-signins.csv"
+CODE=$(curl -s -o "$WORK/body.html" -w '%{http_code}' -b "$(jar analyst)" -c "$(jar analyst)" -F "_csrf=$TOKEN" \
+    -F "IncidentTimeline[entry_type]=evidence" -F "IncidentTimeline[entry_at]=$NOW" -F "IncidentTimeline[body]=Smoke timeline file" \
+    -F "file=@$WORK/smoke-signins.csv;type=text/csv" "$BASE/incidents/$IID/add-entry")
+[[ "$CODE" == "302" ]] && ok || bad "timeline entry with a file -> $CODE"
+[[ "$(sql "SELECT COUNT(*) FROM incident_timeline t JOIN attachment a ON a.id = t.attachment_id WHERE t.incident_id=$IID AND a.entity_type='incident' AND a.entity_id=$IID AND a.original_name='smoke-signins.csv'")" == "1" ]] && ok || bad "timeline file not attached to the incident"
+check viewer "/incidents/$IID" 200
+grep -q 'Smoke timeline file' "$BODY" && grep -q 'Files (1)' "$BODY" && ok || bad "timeline file not on the Files tab"
 grep -q 'Status changed from New to Contained' "$BODY" && ok || bad "automatic status timeline entry missing"
 grep -q "href=\"/incidents/$IID/pdf\"" "$BODY" && ok || bad "incident PDF button missing"
 
