@@ -62,7 +62,7 @@ Composer and self-hosted. Nothing loads from a CDN at runtime, and there is no N
 
 ```bash
 cp .env.example .env      # adjust passwords if you like (works as-is for local dev)
-make up                   # builds the PHP image, starts nginx + php-fpm + mariadb, runs composer install
+make up                   # builds the PHP image, starts nginx + php-fpm + mariadb + the scheduler, runs composer install
 make migrate              # creates the schema, roles and the initial admin
 make seed                 # OPTIONAL: demo data (25 risks, 18 controls, 15 decisions, 20 incidents, 40 devices)
 ```
@@ -186,7 +186,7 @@ Composer, Gii or the runtime create are owned by you. Uploaded files are stored 
 | `make import-devices FILE=devices.csv AS=<user> [DRY_RUN=1]` | import a Google Workspace device export (see [Device import](#device-import-google-workspace)) |
 | `make import-cloud FILE=resources.json PROVIDER=aws\|azure\|gcp AS=<user> [ACCOUNT=ACC-0003] [DRY_RUN=1]` | import an AWS, Azure or Google Cloud inventory export (see [Importing cloud assets](#importing-cloud-assets)) |
 | `make sync-cloudflare AS=<user> [DRY_RUN=1]` | add / refresh the Cloudflare zones as cloud assets, using `CLOUDFLARE_API_TOKEN` |
-| `make edge-pull [AS=<user>] [MINUTES=60] [DRY_RUN=1]` / `make edge-status` | read the Cloudflare traffic since the last pull and update the edge findings (run from cron) / show the zone's analytics limits and recent pulls (see [Edge findings](#edge-findings-cloudflare-traffic)) |
+| `make edge-pull [AS=<user>] [MINUTES=60] [DRY_RUN=1]` / `make edge-status` | read the Cloudflare traffic since the last pull and update the edge findings now (the scheduler container also does this every `EDGE_PULL_INTERVAL` minutes) / show the zone's analytics limits and recent pulls (see [Edge findings](#edge-findings-cloudflare-traffic)) |
 | `make expire-blocks` | take expired blocklist entries out of Cloudflare (`make edge-pull` does this too) |
 | `make cloudflare-migrate [OLD_RULE="Block Bad Actors"] [DRY_RUN=1]` | one-off: move *Add to Cloudflare* entries from the old rule into the IP list and the **Greywarden Blocklist** rule (see [Threat intel](#threat-intel-ip--asn-investigation)) |
 | `make intel-status` / `make intel-update` | show the local threat-feed status / download every feed now (stale feeds also refresh automatically in the background) |
@@ -197,7 +197,7 @@ Composer, Gii or the runtime create are owned by you. Uploaded files are stored 
 
 ## Configuration (`.env`)
 
-All configuration comes from `.env`, which docker compose passes to the PHP container. Key settings:
+All configuration comes from `.env`, which docker compose passes to the PHP and scheduler containers. Key settings:
 
 * `YII_DEBUG=1`, `YII_ENV=dev`: debug toolbar and Gii (`/gii`). For production use `YII_DEBUG=0`, `YII_ENV=prod`.
 * `DEBUG_ALLOWED_IPS`: IPs/CIDRs that may see the debug toolbar and Gii. The default covers localhost and the
@@ -205,6 +205,9 @@ All configuration comes from `.env`, which docker compose passes to the PHP cont
 * `COOKIE_VALIDATION_KEY`: leave empty to auto-generate `src/runtime/cookie_validation.key`.
 * `COOKIE_SECURE=1` when served over HTTPS. `SESSION_TIMEOUT` is the idle timeout in seconds.
 * `APP_TIMEZONE`: the timezone used for storing and displaying dates.
+* `EDGE_PULL_INTERVAL` (default `15`, `0` = off): minutes between the scheduler container's Cloudflare edge pulls
+  (see [Edge findings](#edge-findings-cloudflare-traffic)). The **scheduler** service (`php yii schedule/run`, same
+  image as php) runs Greywarden's scheduled jobs, so no host crontab is needed; `make logs s=scheduler` shows them.
 * `APP_NAME` (default `Greywarden`): the product name, used when no display name is set in **Admin › Settings**.
   Branding (display name, organisation, logo, sign-in text, PDF marking) is set there, not in `.env`; see
   [Branding](#branding-admin--settings).
@@ -699,14 +702,11 @@ Module `src/modules/intel`, under **Threat Intel** in the sidebar: *IP Investiga
 don't have to scroll through the logs for addresses that slipped past your rules.
 
 * **Setup**: `CLOUDFLARE_API_TOKEN` with **Zone › Analytics › Read** (plus the blocking permissions under [Configuration](#configuration-env)) and
-  `CLOUDFLARE_ZONE_ID` in `.env`, then pull every 15 minutes from the host's crontab:
-
-  ```cron
-  */15 * * * * cd /path/to/greywarden && make edge-pull >> backups/edge-pull.log 2>&1
-  ```
-
-  `make edge-status` shows what the zone's plan allows (how far back, how wide a query) and the recent pulls.
-  *Pull now* on the page does the same as the cron job.
+  `CLOUDFLARE_ZONE_ID` in `.env`, then `make up` (or deploy) so the containers pick them up. The **scheduler**
+  container pulls every `EDGE_PULL_INTERVAL` minutes (default 15, `0` = off); no host crontab is needed.
+  `make edge-status` shows what the zone's plan allows (how far back, how wide a query) and the recent pulls, and
+  `make logs s=scheduler` what the scheduler did. *Pull now* on the page and `make edge-pull` pull straight away;
+  a lock stops two pulls overlapping.
 * **Data**: the GraphQL Analytics API (`httpRequestsAdaptiveGroups` and `firewallEventsAdaptiveGroups`, available
   on every plan). The counts are sampled estimates. Each pull reads from where the last one ended, cut to the plan's
   limits, and is logged with any warnings. Raw logs (Logpush) are not needed.

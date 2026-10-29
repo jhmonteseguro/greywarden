@@ -17,6 +17,7 @@ use app\components\Rbac;
 use app\helpers\Badge;
 use app\modules\intel\components\Assessment;
 use app\modules\intel\components\edge\EdgeAdvisor;
+use app\modules\intel\components\edge\EdgeSettings;
 use app\modules\intel\models\EdgeFinding;
 use app\modules\intel\models\EdgeFindingSearch;
 use app\widgets\grid\ReferenceColumn;
@@ -51,7 +52,7 @@ $this->params['actions'] = implode("\n", $actions);
     <div class="alert alert-info gw-callout" role="status">
         <i class="bi bi-cloud-slash" aria-hidden="true"></i>
         <span>Cloudflare is not configured. Set <code>CLOUDFLARE_API_TOKEN</code> (with Zone › Analytics › Read; to block, also Zone › Zone WAF › Edit and Account › Account Filter Lists › Edit) and <code>CLOUDFLARE_ZONE_ID</code> in <code>.env</code>,
-        then run <code>make edge-pull</code> every 15 minutes from cron.</span>
+        then <code>make up</code>: the scheduler container pulls every <code>EDGE_PULL_INTERVAL</code> minutes (default 15).</span>
     </div>
 <?php elseif ($last && $last->getIsError()): ?>
     <div class="alert alert-danger gw-callout" role="alert">
@@ -68,7 +69,7 @@ $this->params['actions'] = implode("\n", $actions);
     <div class="gw-kpis__item"><a class="gw-kpi gw-kpi--info" href="<?= Html::encode(Url::to(['index', 'filter' => 'blocked'])) ?>"><div class="gw-kpi__head"><span class="gw-kpi__label">Blocked from findings</span><span class="gw-kpi__icon"><i class="bi bi-slash-circle"></i></span></div>
         <span class="gw-kpi__value"><?= number_format($counts['blocked']) ?></span><span class="gw-kpi__caption"><?= $counts['escalated'] ?> incident<?= $counts['escalated'] === 1 ? '' : 's' ?> raised</span></a></div>
     <div class="gw-kpis__item"><div class="gw-kpi gw-kpi--<?= $last ? Badge::TONES['edge-pull'][$last->status] : 'neutral' ?>"><div class="gw-kpi__head"><span class="gw-kpi__label">Last pull</span><span class="gw-kpi__icon"><i class="bi bi-cloud-download"></i></span></div>
-        <span class="gw-kpi__value"><?= $last ? Assessment::compactNumber((int) $last->requests) : '—' ?></span><span class="gw-kpi__caption"><?= $last ? sprintf('requests from %s addresses', number_format($last->ips)) : 'run make edge-pull' ?></span></div></div>
+        <span class="gw-kpi__value"><?= $last ? Assessment::compactNumber((int) $last->requests) : '—' ?></span><span class="gw-kpi__caption"><?= $last ? sprintf('requests from %s addresses', number_format($last->ips)) : 'waiting for the scheduler' ?></span></div></div>
 </section>
 
 <?= QuickFilters::widget([
@@ -183,7 +184,9 @@ $this->params['actions'] = implode("\n", $actions);
         <section class="gw-panel">
             <h2 class="gw-panel__title"><i class="bi bi-clock-history" aria-hidden="true"></i> Recent pulls</h2>
             <?php if (!$pulls): ?>
-                <p class="gw-empty">No pulls yet. Run <code>make edge-pull</code>, or schedule it every 15 minutes.</p>
+                <p class="gw-empty">No pulls yet. <?= EdgeSettings::pullInterval() > 0
+                    ? sprintf('The scheduler container pulls every %d minutes once Cloudflare is configured;', EdgeSettings::pullInterval())
+                    : 'Scheduled pulls are off (<code>EDGE_PULL_INTERVAL=0</code>);' ?> <em>Pull now</em> or <code>make edge-pull</code> pull straight away.</p>
             <?php else: ?>
                 <ul class="gw-edge-pulls">
                     <?php foreach ($pulls as $pull): ?>
@@ -191,7 +194,7 @@ $this->params['actions'] = implode("\n", $actions);
                             <?= Badge::render('edge-pull', $pull->status) ?>
                             <span><?= $fmt->asDatetime($pull->started_at, 'short') ?></span>
                             <span class="gw-muted"><?= $pull->getIsError() ? '' : sprintf('%s req · %d new · %d updated', Assessment::compactNumber((int) $pull->requests), $pull->findings_new, $pull->findings_updated) ?>
-                                · <?= Html::encode($pull->runner->full_name ?? 'cron') ?></span>
+                                · <?= Html::encode($pull->runner->full_name ?? 'scheduler') ?></span>
                             <?php if ($pull->message): ?><div class="gw-edge-pulls__message"><?= Html::encode($pull->message) ?></div><?php endif; ?>
                         </li>
                     <?php endforeach; ?>

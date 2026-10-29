@@ -6,6 +6,13 @@ releases).
 
 ## [Unreleased]
 
+### Added
+
+- A `scheduler` container (same image as php, `php yii schedule/run`) runs Greywarden's scheduled jobs, so no host
+  crontab is needed: Cloudflare edge pulls every `EDGE_PULL_INTERVAL` minutes (default 15, `0` = off), and expired
+  blocks out of Cloudflare hourly when edge pulls are off. Jobs that need Cloudflare wait until it is configured.
+  `make logs s=scheduler` shows what it did; `php yii schedule/status` lists the jobs.
+
 ## [0.6.0-alpha] - 2026-10-29
 
 ### Added

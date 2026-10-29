@@ -91,7 +91,7 @@ attack-status: ## Show the loaded MITRE ATT&CK release
 attack-update: ## Download the latest MITRE ATT&CK Enterprise release, refresh data/attack and import it
 	$(PHP_T) php yii attack/update
 
-edge-pull: ## Pull Cloudflare traffic and update edge findings (cron every 15 min): make edge-pull [AS=jdoe] [MINUTES=60] [DRY_RUN=1]
+edge-pull: ## Pull Cloudflare traffic and update edge findings now (the scheduler container does it every EDGE_PULL_INTERVAL min): make edge-pull [AS=jdoe] [MINUTES=60] [DRY_RUN=1]
 	$(PHP_T) php yii edge/pull $(if $(AS),--user=$(AS)) $(if $(MINUTES),--minutes=$(MINUTES)) $(if $(DRY_RUN),--dry-run=1)
 
 edge-status: ## Show the Cloudflare analytics limits for the zone and the recent edge pulls

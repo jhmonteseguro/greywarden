@@ -17,7 +17,7 @@ use yii\helpers\Console;
 /**
  * Edge findings from the Cloudflare traffic analytics.
  *
- *   php yii edge/pull                       # traffic since the last pull (run every 15 minutes from cron)
+ *   php yii edge/pull                       # traffic since the last pull (the scheduler container runs it every EDGE_PULL_INTERVAL minutes)
  *   php yii edge/pull --minutes=60          # the last hour instead
  *   php yii edge/pull --user=jdoe           # record jdoe as the actor (default: system)
  *   php yii edge/pull --dry-run=1           # show what would change, save nothing

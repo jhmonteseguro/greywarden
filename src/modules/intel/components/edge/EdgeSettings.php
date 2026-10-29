@@ -14,6 +14,8 @@ use app\modules\intel\components\IpAddress;
  *   edge.min_score     lowest score that opens a finding
  *   edge.block_days    default length of a block from a finding
  *   edge.volume_rpm    requests per minute from one address that count as a flood
+ *
+ * and, from .env, EDGE_PULL_INTERVAL: minutes between the scheduler container's pulls.
  */
 final class EdgeSettings
 {
@@ -49,6 +51,13 @@ final class EdgeSettings
     public static function volumeRpm(): int
     {
         return max(1, (int) self::get('volume_rpm'));
+    }
+
+    /** Minutes between the scheduler's edge pulls (EDGE_PULL_INTERVAL, default 15, 0 = off, at most a day) */
+    public static function pullInterval(): int
+    {
+        $value = gw_env('EDGE_PULL_INTERVAL');
+        return $value === null || $value === false || $value === '' ? 15 : max(0, min(1440, (int) $value));
     }
 
     /** @return string[] lines of a list setting, trimmed, without blanks and # comments */

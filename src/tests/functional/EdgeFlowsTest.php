@@ -78,6 +78,23 @@ class EdgeFlowsTest extends FunctionalTestCase
         $this->assertSee('High-priority edge findings');
     }
 
+    public function testBeforeTheFirstPull(): void
+    {
+        EdgePull::deleteAll();
+        $this->loginAs('viewer');
+        $this->get('/intel/edge');
+        $this->assertSee('Not pulled yet');
+        $this->assertSee('waiting for the scheduler');
+        $this->assertSee('The scheduler container pulls every 15 minutes once Cloudflare is configured');
+        putenv('EDGE_PULL_INTERVAL=0');
+        try {
+            $this->get('/intel/edge');
+        } finally {
+            putenv('EDGE_PULL_INTERVAL');
+        }
+        $this->assertSee('Scheduled pulls are off');
+    }
+
     public function testFindingPage(): void
     {
         $f = $this->finding('192.0.2.150');

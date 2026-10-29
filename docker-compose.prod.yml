@@ -13,7 +13,7 @@ services:
     volumes: !override
       - web-assets:/var/www/html/web/assets:ro
 
-  php:
+  php: &php
     build:
       context: .
       dockerfile: docker/php/Dockerfile
@@ -26,6 +26,11 @@ services:
       - ./storage:/var/www/storage
       - runtime:/var/www/html/runtime
       - web-assets:/var/www/html/web/assets
+
+
+  # Same image and volumes as php (the runtime volume holds the lock that stops two pulls overlapping)
+  scheduler:
+    <<: *php
 
 volumes:
   runtime:
