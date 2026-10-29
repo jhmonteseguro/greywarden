@@ -5,6 +5,7 @@ namespace tests\unit;
 use app\models\Lookup;
 use app\modules\incident\components\IncidentMetrics;
 use app\modules\incident\models\Incident;
+use app\modules\incident\models\IncidentSearch;
 use app\modules\incident\models\IncidentTimeline;
 use tests\DbTestCase;
 
@@ -19,6 +20,21 @@ class IncidentModelTest extends DbTestCase
             'status' => Incident::STATUS_NEW,
             'detected_at' => '2026-03-02T09:15',
         ]);
+    }
+
+    public function testIncidentLogListsAllIncidentsByDefault(): void
+    {
+        $open = $this->makeIncident(['severity' => Incident::SEVERITY_LOW]);
+        $this->assertTrue($open->save(), json_encode($open->getErrors()));
+        $closed = $this->makeIncident(['severity' => Incident::SEVERITY_LOW, 'status' => Incident::STATUS_CLOSED]);
+        $this->assertTrue($closed->save(), json_encode($closed->getErrors()));
+
+        $ids = static fn(array $params) => array_map('intval', (new IncidentSearch())->search($params)->query->select('incident.id')->column());
+        $this->assertSame('all', (new IncidentSearch())->filter);
+        $this->assertContains($open->id, $ids([]));
+        $this->assertContains($closed->id, $ids([]));
+        $this->assertContains($open->id, $ids(['filter' => 'open']));
+        $this->assertNotContains($closed->id, $ids(['filter' => 'open']));
     }
 
     public function testDatetimeLocalInputIsNormalised(): void

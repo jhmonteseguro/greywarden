@@ -6,6 +6,11 @@ releases).
 
 ## [Unreleased]
 
+### Changed
+
+- Incident Log: the grid now opens on **All** incidents (closed ones included) instead of only open ones. The
+  **Open** filter is still one click away, and the dashboard's open-incident links keep using it.
+
 ## [0.10.0-alpha] - 2026-10-29
 
 ### Added
