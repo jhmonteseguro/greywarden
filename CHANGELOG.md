@@ -6,6 +6,13 @@ releases).
 
 ## [Unreleased]
 
+### Added
+
+- Risk form: a collapsible **How to score likelihood and impact** guide above the inherent score. It explains each
+  of the five likelihood levels (over the next 12 months) and impact levels (the realistic worst case), how
+  inherent, residual and target scores differ, and the rating bands. Controls that only monitor or report, such as
+  DMARC `p=none`, do not lower residual likelihood.
+
 ## [0.7.0-alpha] - 2026-10-29
 
 ### Added

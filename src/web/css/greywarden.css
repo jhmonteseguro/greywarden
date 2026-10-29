@@ -902,6 +902,14 @@ select[multiple].form-select, .gw-multiselect { min-height: 10rem; padding: .35r
 }
 .gw-panel .gw-form__actions { margin-bottom: 0; }
 .gw-score-preview { display: flex; flex-direction: column; gap: .35rem; }
+.gw-scoring-guide { margin-bottom: 1rem; font-size: var(--gw-fs-sm); }
+.gw-scoring-guide > summary { cursor: pointer; color: var(--gw-text-muted); font-weight: 500; }
+.gw-scoring-guide > summary:hover { color: var(--gw-accent-hover); }
+.gw-scoring-guide__body { margin-top: .6rem; padding: .75rem .9rem; border: 1px solid var(--gw-border-subtle); border-radius: 6px; background: var(--gw-inset); }
+.gw-scoring-guide__body > p { margin-bottom: .6rem; }
+.gw-scoring-guide__table td, .gw-scoring-guide__table th { vertical-align: top; }
+.gw-scoring-guide__tips { margin: .75rem 0 0; padding-left: 1.1rem; }
+.gw-scoring-guide__tips li + li { margin-top: .25rem; }
 .gw-score-preview__label { font-size: var(--gw-fs-xs); color: var(--gw-text-muted); font-weight: 550; }
 .gw-score-preview__value.gw-badge { align-self: flex-start; height: 2.375rem; padding: 0 .9rem; font-size: var(--gw-fs-sm); font-family: var(--gw-font-mono); }
 .gw-error-summary ul { margin: .25rem 0 0; padding-left: 1.1rem; }

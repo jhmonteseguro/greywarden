@@ -118,6 +118,30 @@ final class RiskMatrix
         return [1 => 'Negligible', 2 => 'Minor', 3 => 'Moderate', 4 => 'Major', 5 => 'Severe'];
     }
 
+    /** What each likelihood level means, over the next 12 months, for the scoring guide */
+    public static function likelihoodGuidance(): array
+    {
+        return [
+            1 => 'Under 5%. It would be a surprise.',
+            2 => '5 to 25%. It could happen but is not expected.',
+            3 => '25 to 50%. It could well happen.',
+            4 => '50 to 90%. More likely than not.',
+            5 => 'Over 90%, or several times a year.',
+        ];
+    }
+
+    /** What each impact level means (the realistic worst case) for the scoring guide */
+    public static function impactGuidance(): array
+    {
+        return [
+            1 => 'No real cost. Nobody outside notices.',
+            2 => 'Small cost, quick fix, one unhappy client.',
+            3 => 'Noticeable cost, several clients affected or days of disruption.',
+            4 => 'Significant loss (e.g. a fraudulent payment), a lost client or a possible report to a regulator.',
+            5 => 'Threatens the business: a major breach or serious legal or regulatory action.',
+        ];
+    }
+
     /** "3 - Possible" style options for dropdowns */
     public static function axisOptions(string $axis): array
     {

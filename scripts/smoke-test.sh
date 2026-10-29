@@ -269,6 +269,8 @@ ANALYST_ID=$(sql "SELECT id FROM user WHERE username='analyst'")
 VIEWER_ID=$(sql "SELECT id FROM user WHERE username='viewer'")
 
 # Risk create (analyst)
+check analyst /risks/create 200
+grep -q 'gw-scoring-guide' "$BODY" && grep -q 'Over 90%, or several times a year.' "$BODY" && ok || bad "5x5 scoring guide missing from the risk form"
 post analyst /risks/create /risks/create 302 \
     "Risk[title]=Smoke test risk" "Risk[status]=assessed" "Risk[category_id]=$RISK_CAT" "Risk[owner_id]=$ANALYST_ID" "Risk[date_identified]=$TODAY" \
     "Risk[inherent_likelihood]=4" "Risk[inherent_impact]=4" "Risk[residual_likelihood]=2" "Risk[residual_impact]=3" "Risk[treatment]=mitigate" \

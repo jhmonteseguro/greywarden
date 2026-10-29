@@ -51,6 +51,11 @@ class RecordFlowsTest extends FunctionalTestCase
         $this->get('/risks/create');
         $this->assertOk();
         $this->assertSee(date('Y-m-d'));
+        // Scoring guide: every level explained, rating bands from the matrix
+        $this->assertSee('How to score likelihood and impact');
+        $this->assertSee('Over 90%, or several times a year.');
+        $this->assertSee('Threatens the business');
+        $this->assertSee('Critical 20–25');
 
         // Residual above inherent is rejected
         $this->post('/risks/create', $this->riskForm(['inherent_likelihood' => 2, 'inherent_impact' => 2, 'residual_likelihood' => 5, 'residual_impact' => 5]));

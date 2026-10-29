@@ -76,6 +76,16 @@ class RiskMatrixTest extends TestCase
         $this->assertSame('5 - Severe', RiskMatrix::axisOptions('impact')[5]);
     }
 
+    public function testGuidanceCoversEveryLevel(): void
+    {
+        $levels = range(RiskMatrix::MIN, RiskMatrix::MAX);
+        $this->assertSame($levels, array_keys(RiskMatrix::likelihoodGuidance()));
+        $this->assertSame($levels, array_keys(RiskMatrix::impactGuidance()));
+        $this->assertSame(array_keys(RiskMatrix::likelihoodLabels()), array_keys(RiskMatrix::likelihoodGuidance()));
+        $this->assertSame(array_keys(RiskMatrix::impactLabels()), array_keys(RiskMatrix::impactGuidance()));
+        $this->assertStringContainsString('Over 90%', RiskMatrix::likelihoodGuidance()[5]);
+    }
+
     public function testBandsAreConfigurableViaParams(): void
     {
         $original = \Yii::$app->params['risk.ratingBands'];

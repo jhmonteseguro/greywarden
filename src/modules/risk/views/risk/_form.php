@@ -40,6 +40,7 @@ $bands = Json::encode(RiskMatrix::bands());
 
 <fieldset class="gw-fieldset">
     <legend class="gw-fieldset__title">Inherent risk (before controls)</legend>
+    <?= $this->render('_scoring-guide') ?>
     <div class="row align-items-end">
         <div class="col-md-4"><?= $form->field($model, 'inherent_likelihood')->dropDownList(RiskMatrix::axisOptions('likelihood'), ['prompt' => '—']) ?></div>
         <div class="col-md-4"><?= $form->field($model, 'inherent_impact')->dropDownList(RiskMatrix::axisOptions('impact'), ['prompt' => '—']) ?></div>
