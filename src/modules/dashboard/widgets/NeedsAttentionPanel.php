@@ -7,6 +7,7 @@ use app\modules\cloud\models\CloudAccount;
 use app\modules\cloud\models\CloudAsset;
 use app\modules\control\models\Control;
 use app\modules\incident\models\Incident;
+use app\modules\intel\models\EdgeFinding;
 use app\modules\inventory\components\OsLifecycle;
 use app\modules\inventory\models\Device;
 use app\modules\risk\models\Risk;
@@ -50,6 +51,14 @@ class NeedsAttentionPanel extends PanelWidget
                 'query' => Incident::find()->active()->regulatorOverdue()->orderBy(['detected_at' => SORT_ASC]),
                 'url' => ['/incident/incident/index', 'filter' => 'regulator-overdue'],
                 'meta' => static fn(Incident $i) => 'Deadline ' . Yii::$app->formatter->asRelativeTime($i->getRegulatorDeadline()?->getTimestamp()),
+            ],
+            [
+                'key' => 'edge-findings',
+                'label' => 'High-priority edge findings',
+                'icon' => 'binoculars',
+                'query' => EdgeFinding::find()->where(['status' => EdgeFinding::STATUS_NEW, 'priority' => 'high'])->orderBy(['exposure' => SORT_DESC, 'score' => SORT_DESC]),
+                'url' => ['/intel/edge/index', 'filter' => 'high'],
+                'meta' => static fn(EdgeFinding $f) => $f->headline,
             ],
             [
                 'key' => 'risk-review',

@@ -1,11 +1,13 @@
 <?php
 /**
- * Admin › Settings: branding, the compliance frameworks switched on and the
- * wording of incident PDF reports (separate forms, so each saves on its own).
+ * Admin › Settings: branding, the compliance frameworks switched on, the
+ * wording of incident PDF reports and edge monitoring (separate forms, so each
+ * saves on its own).
  * @var yii\web\View $this
  * @var app\modules\admin\models\BrandingForm $model
  * @var app\modules\admin\models\ComplianceForm $compliance
  * @var app\modules\admin\models\IncidentReportForm $incidentReport
+ * @var app\modules\admin\models\EdgeForm $edge
  */
 
 use app\components\Branding;
@@ -102,5 +104,27 @@ $check = static fn(string $class) => static fn($index, $label, $name, $checked, 
 
 <div class="gw-form__actions">
     <?= Html::submitButton('Save incident report wording', ['class' => 'btn btn-primary gw-btn']) ?>
+</div>
+<?php ActiveForm::end(); ?>
+
+<?php $form = ActiveForm::begin(['id' => 'edge-form', 'options' => ['class' => 'gw-form gw-form--settings']]); ?>
+<?= $form->errorSummary($edge, ['class' => 'alert alert-danger gw-error-summary']) ?>
+
+<fieldset class="gw-fieldset" id="edge">
+    <legend class="gw-fieldset__title">Edge monitoring</legend>
+    <p class="form-text gw-field__hint">How Threat Intel › Edge Findings reads your Cloudflare traffic.</p>
+    <div class="row">
+        <div class="col-md-6"><?= $form->field($edge, 'ignore_paths')->textarea(['rows' => 4, 'placeholder' => "/wp-admin\n/api/"]) ?></div>
+        <div class="col-md-6"><?= $form->field($edge, 'allowlist')->textarea(['rows' => 4, 'placeholder' => "203.0.113.10   # office\nAS64500        # uptime monitor"]) ?></div>
+    </div>
+    <div class="row">
+        <div class="col-md-4"><?= $form->field($edge, 'min_score')->input('number', ['min' => 1, 'max' => 99]) ?></div>
+        <div class="col-md-4"><?= $form->field($edge, 'block_days')->input('number', ['min' => 1, 'max' => 365]) ?></div>
+        <div class="col-md-4"><?= $form->field($edge, 'volume_rpm')->input('number', ['min' => 1]) ?></div>
+    </div>
+</fieldset>
+
+<div class="gw-form__actions">
+    <?= Html::submitButton('Save edge monitoring', ['class' => 'btn btn-primary gw-btn']) ?>
 </div>
 <?php ActiveForm::end(); ?>

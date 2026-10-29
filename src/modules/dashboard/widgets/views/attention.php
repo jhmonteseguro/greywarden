@@ -14,6 +14,7 @@ $any = array_sum(array_column($groups, 'total')) > 0;
 $tones = [
     'critical-incidents' => 'critical',
     'regulator' => 'critical',
+    'edge-findings' => 'high',
     'risk-treatment' => 'high',
     'non-compliant' => 'high',
     'weak-controls' => 'high',

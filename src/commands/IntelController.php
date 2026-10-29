@@ -6,6 +6,7 @@ use app\modules\intel\components\FeedCatalogue;
 use app\modules\intel\components\Feeds;
 use app\modules\intel\components\Indicator;
 use app\modules\intel\components\Investigator;
+use app\modules\intel\models\BlocklistEntry;
 use yii\console\Controller;
 use yii\console\ExitCode;
 use yii\helpers\Console;
@@ -17,6 +18,7 @@ use yii\helpers\Console;
  *   php yii intel/update                  # download feeds that are stale
  *   php yii intel/update --force=1        # download every feed now
  *   php yii intel/lookup 203.0.113.7      # investigate from the command line (also AS64496)
+ *   php yii intel/expire-blocks           # take expired blocklist entries out of the Cloudflare rule
  */
 class IntelController extends Controller
 {
@@ -67,6 +69,21 @@ class IntelController extends Controller
             }
         }
         return $failed ? ExitCode::UNAVAILABLE : ExitCode::OK;
+    }
+
+    public function actionExpireBlocks(): int
+    {
+        $result = BlocklistEntry::removeExpiredFromCloudflare();
+        foreach ($result['removed'] as $ref) {
+            $this->stdout("  $ref taken out of Cloudflare\n", Console::FG_GREEN);
+        }
+        foreach ($result['failed'] as $ref => $error) {
+            $this->stderr("  $ref: $error\n", Console::FG_RED);
+        }
+        if (!$result['removed'] && !$result['failed']) {
+            $this->stdout("No expired entries in Cloudflare.\n");
+        }
+        return $result['failed'] ? ExitCode::UNAVAILABLE : ExitCode::OK;
     }
 
     public function actionLookup(string $indicator): int

@@ -66,6 +66,7 @@ class AuditLog extends ActiveRecord
             'setting' => ['Settings', \app\modules\admin\models\BrandingForm::class, '/admin/settings/index'],
             'blocklist' => ['Blocklist entry', \app\modules\intel\models\BlocklistEntry::class, '/intel/blocklist/view'],
             'indicator' => ['Intel indicator', \app\modules\intel\models\IntelIndicator::class, '/intel/investigate/indicator'],
+            'edge-finding' => ['Edge finding', \app\modules\intel\models\EdgeFinding::class, '/intel/edge/view'],
         ];
     }
 

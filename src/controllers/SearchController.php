@@ -14,6 +14,7 @@ use app\modules\decision\models\Decision;
 use app\modules\incident\models\Incident;
 use app\modules\intel\components\Indicator;
 use app\modules\intel\models\BlocklistEntry;
+use app\modules\intel\models\EdgeFinding;
 use app\modules\inventory\models\Device;
 use app\modules\risk\models\Risk;
 use Yii;
@@ -99,6 +100,9 @@ class SearchController extends Controller
                     ? BlocklistEntry::findForIp($investigate->value)
                     : BlocklistEntry::find()->where(['or', ['like', 'reference', $q], ['like', 'value', $q], ['like', 'reason', $q]])
                         ->orderBy(['archived_at' => SORT_ASC, 'id' => SORT_DESC])->limit(self::LIMIT)->all()],
+                'edge' => ['label' => 'Edge findings', 'icon' => 'binoculars', 'items' => EdgeFinding::find()
+                    ->where(['or', ['like', 'reference', $q], ['like', 'ip', $q]])
+                    ->orderBy(['last_seen_at' => SORT_DESC])->limit(self::LIMIT)->all()],
             ];
             if (!FrameworkCatalogue::enabled()) {
                 unset($results['requirements']);

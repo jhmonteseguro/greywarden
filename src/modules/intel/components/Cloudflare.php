@@ -17,7 +17,8 @@ use RuntimeException;
  *
  * .env: CLOUDFLARE_API_TOKEN (Zone > Zone WAF > Edit), CLOUDFLARE_ZONE_ID.
  * The Cloud Inventory's zone sync (`make sync-cloudflare`) reuses the token and
- * also needs Zone > Zone > Read on the zones to list.
+ * also needs Zone > Zone > Read on the zones to list; edge findings
+ * (`make edge-pull`) need Zone > Analytics > Read for graphql().
  */
 class Cloudflare
 {
@@ -147,5 +148,52 @@ class Cloudflare
         }
         $errors = array_map(static fn(array $e) => trim(($e['message'] ?? '') . (isset($e['code']) ? ' (' . $e['code'] . ')' : '')), $data['errors'] ?? []);
         throw new RuntimeException('Cloudflare: ' . ($errors ? implode('; ', $errors) : Http::errorText($response)));
+    }
+
+    /**
+     * One GraphQL Analytics API query (POST /graphql) with the configured token.
+     * The token needs Zone > Analytics > Read.
+     *
+     * @return array the `data` object
+     * @throws RuntimeException when the request fails or the query reports errors
+     */
+    public static function graphql(string $query, array $variables = []): array
+    {
+        $result = self::graphqlAll(['q' => [$query, $variables]])['q'];
+        if ($result['error'] !== null) {
+            throw new RuntimeException($result['error']);
+        }
+        return $result['data'];
+    }
+
+    /**
+     * Several GraphQL queries in parallel, so one failing query does not lose the others.
+     *
+     * @param array<string, array{string, array}> $queries name => [query, variables]
+     * @return array<string, array{data: ?array, error: ?string}>
+     */
+    public static function graphqlAll(array $queries): array
+    {
+        $requests = [];
+        foreach ($queries as $name => [$query, $variables]) {
+            $requests[$name] = [
+                'url' => self::API . '/graphql',
+                'method' => 'POST',
+                'headers' => ['Authorization: Bearer ' . gw_env('CLOUDFLARE_API_TOKEN'), 'Content-Type: application/json'],
+                'body' => json_encode(['query' => $query, 'variables' => (object) $variables], JSON_UNESCAPED_SLASHES),
+                'timeout' => 30,
+            ];
+        }
+        $out = [];
+        foreach (Http::fetchAll($requests) as $name => $response) {
+            $data = Http::json($response);
+            $errors = array_filter(array_map(static fn($e) => trim((string) (is_array($e) ? ($e['message'] ?? '') : $e)), (array) ($data['errors'] ?? [])));
+            $out[$name] = match (true) {
+                (bool) $errors => ['data' => null, 'error' => 'Cloudflare analytics: ' . implode('; ', array_unique($errors))],
+                !is_array($data['data'] ?? null) => ['data' => null, 'error' => 'Cloudflare analytics: ' . ($response['status'] === 200 ? 'the response has no data.' : Http::errorText($response))],
+                default => ['data' => $data['data'], 'error' => null],
+            };
+        }
+        return $out;
     }
 }

@@ -9,7 +9,7 @@ PHP_T   := $(DC) exec -T php
 DB_NAME ?= greywarden
 DB_TEST_NAME ?= greywarden_test
 BACKUP_DIR ?= backups
-# AS= is the import actor (import-devices, import-cloud, sync-cloudflare); drop make's built-in AS (the assembler, "as")
+# AS= is the import actor (import-devices, import-cloud, sync-cloudflare, edge-pull); drop make's built-in AS (the assembler, "as")
 ifeq ($(origin AS),default)
 AS :=
 endif
@@ -17,7 +17,7 @@ endif
 .DEFAULT_GOAL := help
 .PHONY: help env up down build rebuild restart ps logs shell composer yii migrate wait \
         reset-db create-admin seed test test-db test-all smoke hooks leak-check db-shell backup restore deploy attack-status attack-update intel-status intel-update import-devices \
-        import-cloud sync-cloudflare
+        import-cloud sync-cloudflare edge-pull edge-status expire-blocks
 
 help: ## Show this help
 	@grep -hE '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
@@ -90,6 +90,15 @@ attack-status: ## Show the loaded MITRE ATT&CK release
 
 attack-update: ## Download the latest MITRE ATT&CK Enterprise release, refresh data/attack and import it
 	$(PHP_T) php yii attack/update
+
+edge-pull: ## Pull Cloudflare traffic and update edge findings (cron every 15 min): make edge-pull [AS=jdoe] [MINUTES=60] [DRY_RUN=1]
+	$(PHP_T) php yii edge/pull $(if $(AS),--user=$(AS)) $(if $(MINUTES),--minutes=$(MINUTES)) $(if $(DRY_RUN),--dry-run=1)
+
+edge-status: ## Show the Cloudflare analytics limits for the zone and the recent edge pulls
+	$(PHP_T) php yii edge/status
+
+expire-blocks: ## Take expired blocklist entries out of the Cloudflare rule (edge-pull also does this)
+	$(PHP_T) php yii intel/expire-blocks
 
 intel-status: ## Show the local threat-intel feed status
 	$(PHP_T) php yii intel/status

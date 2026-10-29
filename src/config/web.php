@@ -114,7 +114,7 @@ $config = [
                 'attack/mitigations/<id:[Mm]\d{4}>' => 'attack/mitigation/view',
                 'attack/<id:[Tt]\d{4}(?:\.\d{3})?>' => 'attack/technique/view',
 
-                // Threat intel: /intel, /intel/ip/203.0.113.7, /intel/asn/AS64496, /intel/blocklist, /intel/sources
+                // Threat intel: /intel, /intel/ip/203.0.113.7, /intel/asn/AS64496, /intel/edge, /intel/blocklist, /intel/sources
                 'intel' => 'intel/investigate/index',
                 // IPv6 colons stay readable in the URL (the pattern only admits hex digits, ':' and '.')
                 ['pattern' => 'intel/ip/<ip:[0-9A-Fa-f:.]+>', 'route' => 'intel/investigate/ip', 'encodeParams' => false],
@@ -123,6 +123,10 @@ $config = [
                 'intel/indicator/<id:\d+>' => 'intel/investigate/indicator',
                 'intel/sources' => 'intel/source/index',
                 'intel/sources/update' => 'intel/source/update-feeds',
+                'intel/edge' => 'intel/edge/index',
+                'intel/edge/<id:\d+>' => 'intel/edge/view',
+                'intel/edge/<id:\d+>/<action:[\w-]+>' => 'intel/edge/<action>',
+                'intel/edge/<action:[\w-]+>' => 'intel/edge/<action>',
                 'intel/blocklist' => 'intel/blocklist/index',
                 'intel/blocklist/<id:\d+>' => 'intel/blocklist/view',
                 'intel/blocklist/<id:\d+>/<action:[\w-]+>' => 'intel/blocklist/<action>',

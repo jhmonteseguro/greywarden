@@ -43,6 +43,7 @@ final class Navigation
                     ['label' => 'ATT&CK Matrix', 'icon' => 'crosshair', 'url' => ['/attack/technique/index'], 'permission' => Rbac::PERM_VIEW, 'active' => ['attack/technique/']],
                     ['label' => 'Mitigations', 'icon' => 'shield-check', 'url' => ['/attack/mitigation/index'], 'permission' => Rbac::PERM_VIEW, 'active' => ['attack/mitigation/']],
                     ['label' => 'IP Investigation', 'icon' => 'radar', 'url' => ['/intel/investigate/index'], 'permission' => Rbac::PERM_VIEW, 'active' => ['intel/investigate/']],
+                    ['label' => 'Edge Findings', 'icon' => 'binoculars', 'url' => ['/intel/edge/index'], 'permission' => Rbac::PERM_VIEW, 'active' => ['intel/edge/']],
                     ['label' => 'Blocklist', 'icon' => 'slash-circle', 'url' => ['/intel/blocklist/index'], 'permission' => Rbac::PERM_VIEW, 'active' => ['intel/blocklist/']],
                     ['label' => 'Intel Sources', 'icon' => 'broadcast', 'url' => ['/intel/source/index'], 'permission' => Rbac::PERM_VIEW, 'active' => ['intel/source/']],
                 ],

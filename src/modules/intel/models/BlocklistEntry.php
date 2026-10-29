@@ -175,7 +175,7 @@ class BlocklistEntry extends DomainRecord
             'expires_at' => 'Optional. Leave empty for a permanent block.',
             'direction' => 'Which traffic the block should apply to on your firewalls.',
             'cloudflare' => Cloudflare::isConfigured()
-                ? sprintf('Adds it to the “%s” WAF rule as an OR condition. It stays there until it is unblocked here; expiry does not remove it.', Cloudflare::ruleName())
+                ? sprintf('Adds it to the “%s” WAF rule as an OR condition. It stays there until it is unblocked here or expires (expired entries are taken out by `make expire-blocks`, which every edge pull also runs).', Cloudflare::ruleName())
                 : 'Set CLOUDFLARE_API_TOKEN and CLOUDFLARE_ZONE_ID in .env to enable.',
         ];
     }
@@ -273,6 +273,39 @@ class BlocklistEntry extends DomainRecord
             default => sprintf('Updated in the Cloudflare rule “%s”.', $rule),
         } . ($new !== null && !$result['enabled'] ? ' The rule is disabled in Cloudflare, so it is not blocking yet.' : '');
         return true;
+    }
+
+    /**
+     * Takes expired entries out of the Cloudflare rule; they stay on the blocklist
+     * as Expired, so editing the expiry and ticking "Add to Cloudflare" again
+     * puts them back.
+     *
+     * @return array{removed: string[], failed: array<string, string>} references, and reference => error
+     */
+    public static function removeExpiredFromCloudflare(): array
+    {
+        $out = ['removed' => [], 'failed' => []];
+        $expired = self::find()->active()->andWhere(['not', ['cloudflare_added_at' => null]])
+            ->andWhere(['<=', 'expires_at', Actor::now()])->orderBy(['id' => SORT_ASC])->all();
+        if ($expired && !Cloudflare::isConfigured()) {
+            foreach ($expired as $entry) {
+                $out['failed'][$entry->reference] = 'Cloudflare is not configured.';
+            }
+            return $out;
+        }
+        foreach ($expired as $entry) {
+            try {
+                Cloudflare::replace($entry->getCloudflareClause(), null);
+            } catch (RuntimeException $e) {
+                $out['failed'][$entry->reference] = $e->getMessage();
+                continue;
+            }
+            $entry->cloudflare_added_at = null;
+            $entry->cloudflare = false;
+            $entry->save(false);
+            $out['removed'][] = $entry->reference;
+        }
+        return $out;
     }
 
     public function getIncident()

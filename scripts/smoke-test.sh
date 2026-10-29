@@ -96,6 +96,7 @@ R1=$(id_of risk reference RSK-0001); R2=$(id_of risk reference RSK-0002); R5=$(i
 D1=$(id_of decision reference DEC-0001); D7=$(id_of decision reference DEC-0007); D11=$(id_of decision reference DEC-0011)
 I1=$(id_of incident reference INC-0001); I13=$(id_of incident reference INC-0013); I17=$(id_of incident reference INC-0017); I19=$(id_of incident reference INC-0019)
 B1=$(id_of intel_blocklist reference BLK-0001); B6=$(id_of intel_blocklist reference BLK-0006)
+E1=$(id_of edge_finding ip 192.0.2.150); E2=$(id_of edge_finding ip 203.0.113.9)
 V1=$(id_of device asset_tag DEV-0001); V26=$(id_of device asset_tag DEV-0026); V38=$(id_of device asset_tag DEV-0038)
 C1=$(id_of control reference CTL-0001); C5=$(id_of control reference CTL-0005); C8=$(id_of control reference CTL-0008); C18=$(id_of control reference CTL-0018)
 CLD1=$(id_of cloud_asset reference CLD-0001); CLD10=$(id_of cloud_asset reference CLD-0010); ACC1=$(id_of cloud_account reference ACC-0001); ACC2=$(id_of cloud_account reference ACC-0002)
@@ -105,7 +106,7 @@ REQ_NIST=$(sql "SELECT id FROM framework_requirement WHERE external_id='PR.AA-01
 # Manual device checks in force, as Device[checks][<id>]=<result> fields
 CHECKS=($(sql "SELECT id FROM control WHERE device_check='manual' AND status IN ('implementing','implemented') AND archived_at IS NULL ORDER BY id"))
 checks() { local r=$1; for c in "${CHECKS[@]}"; do echo "Device[checks][$c]=$r"; done; }
-if [[ -z "$R1" || -z "$I19" || -z "$V38" || -z "$B1" || -z "$C18" || -z "$REQ_ISO" || -z "$CLD10" || -z "$ACC2" ]]; then echo "Demo data missing - run: make seed"; exit 1; fi
+if [[ -z "$R1" || -z "$I19" || -z "$V38" || -z "$B1" || -z "$E1" || -z "$C18" || -z "$REQ_ISO" || -z "$CLD10" || -z "$ACC2" ]]; then echo "Demo data missing - run: make seed"; exit 1; fi
 
 # ---------------------------------------------------------------- temporary admin + cleanup
 SMOKE_USER="smoke.user.$$"
@@ -194,6 +195,9 @@ READ_PAGES=(
     "/intel?sort=-last_score" /intel/blocklist "/intel/blocklist?kind=asn" "/intel/blocklist?filter=expired" "/intel/blocklist?filter=unblocked"
     "/intel/blocklist?filter=all&sort=-value&severity=critical" "/intel/blocklist?filter=expiring&q=DDoS" /intel/blocklist/$B1 /intel/blocklist/$B6 /intel/sources
     "/search?q=203.0.113.66" "/search?q=AS64511" "/search?q=bulletproof"
+    # Edge findings (Cloudflare traffic): queue, filters, findings
+    /intel/edge "/intel/edge?filter=all&sort=-score" "/intel/edge?filter=blocked&q=sqlmap" "/intel/edge?filter=exposure" "/intel/edge?filter=all&priority=high"
+    /intel/edge/$E1 /intel/edge/$E2 "/search?q=192.0.2.150"
 )
 WRITE_PAGES=(/risks/create /risks/$R1/update /controls/create /controls/$C1/update /controls/$C5/update /decisions/create /decisions/$D1/update /incidents/create /incidents/$I1/update /devices/create /devices/$V1/update
     /cloud/assets/create "/cloud/assets/create?account=$ACC1" /cloud/assets/$CLD1/update /cloud/accounts/create /cloud/accounts/$ACC1/update
@@ -513,6 +517,16 @@ check admin "/intel/blocklist/$BID" 404
 post viewer /intel/ip/192.0.2.99 /intel/note 403 indicator=192.0.2.99 "IntelNote[body]=Smoke test nope"
 post viewer /intel/ip/192.0.2.99 /intel/verdict 403 indicator=192.0.2.99 verdict=benign
 post viewer /intel/blocklist /intel/blocklist/create 403 "BlocklistEntry[value]=192.0.2.98"
+
+# Edge findings: the exposure is on top of the queue; dismiss and reopen a finding; viewers cannot act
+check analyst /intel/edge 200
+grep -q 'Sensitive file served' "$BODY" && grep -q 'id="edge-waf"' "$BODY" && ok || bad "edge queue / suggested WAF rule missing"
+post analyst "/intel/edge/$E2" "/intel/edge/$E2/dismiss" 302 "note=Smoke test dismiss"
+check analyst "/intel/edge/$E2" 200
+grep -q 'Smoke test dismiss' "$BODY" && grep -q 'Reopen' "$BODY" && ok || bad "dismissed edge finding not shown as dismissed"
+post analyst "/intel/edge/$E2" "/intel/edge/$E2/reopen" 302
+post viewer "/intel/edge/$E2" "/intel/edge/$E2/ignore" 403
+post viewer /intel/edge /intel/edge/pull 403
 post viewer /intel/sources /intel/sources/update 403
 check viewer /intel/ip/203.0.113.66 200
 grep -q 'gw-block-modal' "$BODY" && bad "viewer sees the block dialog" || ok

@@ -76,6 +76,10 @@ final class Badge
             'hit' => 'danger', 'clean' => 'success', 'info' => 'info', 'error' => 'warning', 'skipped' => 'muted', 'unconfigured' => 'muted',
         ],
         'block-state' => ['blocked' => 'danger', 'expired' => 'warning', 'unblocked' => 'muted'],
+        // Edge findings (app\modules\intel\components\edge)
+        'edge-status' => ['new' => 'warning', 'blocked' => 'success', 'escalated' => 'danger', 'dismissed' => 'muted', 'ignored' => 'neutral'],
+        'edge-priority' => ['high' => 'high', 'medium' => 'medium', 'low' => 'low'],
+        'edge-pull' => ['ok' => 'success', 'partial' => 'warning', 'error' => 'danger'],
         'block-type' => ['ip' => 'info', 'cidr' => 'info', 'asn' => 'high'],
         'audit-action' => [
             'create' => 'success', 'update' => 'info', 'archive' => 'warning', 'restore' => 'info', 'delete' => 'danger',

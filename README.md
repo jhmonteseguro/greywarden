@@ -37,6 +37,10 @@ For real data, see [Production](#production); for the full setup, see [Developme
   and the assets in them (instances, VPCs, security groups, buckets, databases, IAM roles, DNS zones, repositories...)
   with exposure, encryption, OS support and posture against **cloud checks** from the Control Register, linked to
   risks, incidents and decisions; imported from AWS, Azure and Google Cloud inventory exports and synced from Cloudflare
+* **Edge findings**: pulls the zone's Cloudflare traffic analytics every 15 minutes, flags addresses that probe for
+  secrets and admin pages, enumerate paths, send attack payloads or use scanner tools (scored and explained), and
+  recommends what to do: raise an incident when a sensitive path answered 200, block for a few days, block the probe
+  paths for everyone with a suggested WAF rule, or block a network that keeps sending scanners
 * **Dashboard**: KPI tiles, residual heatmap, incident trend, device posture, a "needs attention" list,
   control effectiveness with progress against each framework switched on, recent activity
 * **MITRE ATT&CK** (Enterprise v20, bundled for offline use): techniques observed on incidents, threat techniques on risks,
@@ -182,6 +186,8 @@ Composer, Gii or the runtime create are owned by you. Uploaded files are stored 
 | `make import-devices FILE=devices.csv AS=<user> [DRY_RUN=1]` | import a Google Workspace device export (see [Device import](#device-import-google-workspace)) |
 | `make import-cloud FILE=resources.json PROVIDER=aws\|azure\|gcp AS=<user> [ACCOUNT=ACC-0003] [DRY_RUN=1]` | import an AWS, Azure or Google Cloud inventory export (see [Importing cloud assets](#importing-cloud-assets)) |
 | `make sync-cloudflare AS=<user> [DRY_RUN=1]` | add / refresh the Cloudflare zones as cloud assets, using `CLOUDFLARE_API_TOKEN` |
+| `make edge-pull [AS=<user>] [MINUTES=60] [DRY_RUN=1]` / `make edge-status` | read the Cloudflare traffic since the last pull and update the edge findings (run from cron) / show the zone's analytics limits and recent pulls (see [Edge findings](#edge-findings-cloudflare-traffic)) |
+| `make expire-blocks` | take expired blocklist entries out of the Cloudflare rule (`make edge-pull` does this too) |
 | `make intel-status` / `make intel-update` | show the local threat-feed status / download every feed now (stale feeds also refresh automatically in the background) |
 | `make hooks` / `make leak-check [REV=<tag>]` | install the git hooks in `.githooks` / check the index (or a commit) for private files, terms and `.env` secrets (see [Leak check and git hooks](#leak-check-and-git-hooks)) |
 | `make deploy REF=<tag>` | production checkout only: deploy a signed release tag (see [Production](#production)) |
@@ -219,6 +225,8 @@ keys: it recreates the php container with the new `.env` (`make restart` does no
 zone) and `CLOUDFLARE_ZONE_ID`. The WAF custom rule it updates, `CLOUDFLARE_RULE_NAME` (default `Block Bad Actors`),
 must already exist in the zone. `make sync-cloudflare` reuses the token to list zones, which also needs
 **Zone › Zone › Read** (no zone ID needed).
+Edge findings (`make edge-pull`) read the zone's traffic analytics with the same token and zone ID, which needs
+**Zone › Analytics › Read**.
 
 Business rules live in `src/config/params.php`:
 
@@ -630,7 +638,7 @@ instead, stop the stack and archive the Docker volume `greywarden_db-data`.
 
 ### Threat intel (IP / ASN investigation)
 
-Module `src/modules/intel`, under **Threat Intel** in the sidebar: *IP Investigation*, *Blocklist*, *Intel Sources*.
+Module `src/modules/intel`, under **Threat Intel** in the sidebar: *IP Investigation*, *Edge Findings* (see [below](#edge-findings-cloudflare-traffic)), *Blocklist*, *Intel Sources*.
 
 * **Investigate** (`/intel`, or type an IP / `AS…` into the global search): paste anything containing an address. Log
   lines, `ip:port` and defanged forms (`198.51.100[.]7`, `hxxp://[2001:db8::1]/`) all work. `/intel/ip/<ip>` and
@@ -666,13 +674,47 @@ Module `src/modules/intel`, under **Threat Intel** in the sidebar: *IP Investiga
   "Block Bad Actors" WAF custom rule as an OR condition: `(ip.src eq 203.0.113.7)`, `(ip.src in {198.51.100.0/24})`
   or `(ip.src.asnum eq 64496)`. The rule is updated first, so a Cloudflare error stops the save and is shown on the
   checkbox. Editing the value replaces the condition, unticking or unblocking removes it (an unblock is refused while
-  Cloudflare can't be updated), and only that exact condition is ever removed. Expiry does not remove it.
+  Cloudflare can't be updated), and only that exact condition is ever removed. When an entry expires, the next
+  `make edge-pull` (or `make expire-blocks`) takes it out of the rule; the entry stays under *Expired*.
   Outbound-only entries can't be added.
 * **Feeds** live in `intel_feed` / `intel_feed_entry` as merged, non-overlapping hex ranges, so a lookup is an indexed
   query. They refresh after the response has been sent (PHP-FPM `fastcgi_finish_request`) when stale, or with
   `make intel-update` and *Update feeds now*. *Intel Sources* shows every source, its key status and terms, and each feed's age and errors.
 * Demo data (`make seed`) uses documentation ranges only (192.0.2.0/24, 198.51.100.0/24, 203.0.113.0/24, AS64500–64511).
 * Respect each provider's terms (shown on *Intel Sources*). Several free tiers are for low-volume or non-commercial use.
+
+## Edge findings (Cloudflare traffic)
+
+*Threat Intel › Edge Findings* (`/intel/edge`) turns the zone's Cloudflare traffic into a short triage queue, so you
+don't have to scroll through the logs for addresses that slipped past your rules.
+
+* **Setup**: `CLOUDFLARE_API_TOKEN` with **Zone › Analytics › Read** (plus **Zone › Zone WAF › Edit** to block) and
+  `CLOUDFLARE_ZONE_ID` in `.env`, then pull every 15 minutes from the host's crontab:
+
+  ```cron
+  */15 * * * * cd /path/to/greywarden && make edge-pull >> backups/edge-pull.log 2>&1
+  ```
+
+  `make edge-status` shows what the zone's plan allows (how far back, how wide a query) and the recent pulls.
+  *Pull now* on the page does the same as the cron job.
+* **Data**: the GraphQL Analytics API (`httpRequestsAdaptiveGroups` and `firewallEventsAdaptiveGroups`, available
+  on every plan). The counts are sampled estimates. Each pull reads from where the last one ended, cut to the plan's
+  limits, and is logged with any warnings. Raw logs (Logpush) are not needed.
+* **What is flagged**, per client address, with a weight for each signal (combined like the intel score):
+  a sensitive path (`.env`, `.git`, backups, debug pages, web shells) that answered **2xx** (a possible exposure),
+  requests for known attack paths (WordPress, phpMyAdmin, exploit targets), many paths with 4xx errors, attack
+  payloads in the query string (SQL injection, traversal, XSS, command injection, SSRF), scanner or scripted user
+  agents, WebDAV / debug methods, high request rates, addresses on the blocklist that still got through the
+  Cloudflare rule, and solved challenges followed by scanning. Addresses Cloudflare already blocked or challenged are
+  skipped. New findings are checked against the intel sources, which can raise their priority.
+* **Recommended actions** on each finding: *Raise incident* (prefilled, with ATT&CK T1595 / T1190), *Block* for 1 to 90
+  days or permanently (added to the Cloudflare rule and taken out again when it expires), a **suggested WAF rule**
+  that blocks the probe paths seen in the last 30 days for every address, blocking an ASN with repeat findings,
+  rate limiting for floods, or *Dismiss* / *Ignore*. A dismissed finding comes back if the address returns with a
+  high enough score; an ignored one never does.
+* **Admin › Settings › Edge monitoring**: path prefixes your sites really serve (never counted as probes, left out of
+  the WAF rule), addresses / networks / ASNs never to flag, the score that opens a finding (default 30), the default
+  block length (7 days) and the flood threshold (120 requests a minute).
 
 ## Tests
 

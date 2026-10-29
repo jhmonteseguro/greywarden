@@ -18,7 +18,11 @@ use app\modules\control\models\FrameworkRequirement;
 use app\modules\decision\models\Decision;
 use app\modules\incident\models\Incident;
 use app\modules\incident\models\IncidentTimeline;
+use app\modules\intel\components\edge\EdgeAnalyzer;
+use app\modules\intel\components\edge\EdgePuller;
 use app\modules\intel\models\BlocklistEntry;
+use app\modules\intel\models\EdgeFinding;
+use app\modules\intel\models\EdgePull;
 use app\modules\intel\models\IntelIndicator;
 use app\modules\intel\models\IntelNote;
 use app\modules\inventory\components\DeviceChecks;
@@ -34,7 +38,7 @@ use yii\helpers\Console;
  * Demo data for designers / evaluation. Separate from migrations and optional.
  *
  *   php yii seed/demo            # refuses if domain data exists
- *   php yii seed/demo --reset=1  # wipes risks/decisions/incidents/devices/controls (and intel notes / blocklist) first
+ *   php yii seed/demo --reset=1  # wipes risks/decisions/incidents/devices/controls (and intel notes / blocklist / edge findings) first
  *
  * Threat intel demo data only uses documentation ranges (192.0.2.0/24, 198.51.100.0/24,
  * 203.0.113.0/24) and a documentation ASN, so investigating it never leaves the network.
@@ -156,6 +160,7 @@ class SeedController extends Controller
             $controls = $this->seedControls($checks, $risks, $decisions, $incidents);
             [$accounts, $assets, $cloudControls] = $this->seedCloud($checks, $risks, $decisions, $incidents);
             $blocks = $this->seedIntel($incidents);
+            $findings = $this->seedEdge();
             $tx->commit();
         } catch (\Throwable $e) {
             $tx->rollBack();
@@ -169,8 +174,8 @@ class SeedController extends Controller
         Actor::override(null);
         Yii::$app->cache->flush();
 
-        $this->stdout(sprintf("Seeded %d risks, %d controls, %d decisions, %d incidents, %d devices, %d cloud accounts, %d cloud assets, %d blocklist entries.\n",
-            count($risks), $controls + $cloudControls, count($decisions), count($incidents), count($devices), $accounts, $assets, $blocks), Console::FG_GREEN);
+        $this->stdout(sprintf("Seeded %d risks, %d controls, %d decisions, %d incidents, %d devices, %d cloud accounts, %d cloud assets, %d blocklist entries, %d edge findings.\n",
+            count($risks), $controls + $cloudControls, count($decisions), count($incidents), count($devices), $accounts, $assets, $blocks, $findings), Console::FG_GREEN);
         $this->stdout(sprintf("Demo users (password from DEMO_PASSWORD): analyst, jpatel (analysts), viewer (read-only).\n"));
         return ExitCode::OK;
     }
@@ -188,11 +193,11 @@ class SeedController extends Controller
             $db->createCommand()->delete($t)->execute();
         }
         $db->createCommand()->update('decision', ['superseded_by_id' => null])->execute();
-        foreach (['intel_blocklist', 'intel_note', 'intel_indicator', 'risk', 'incident', 'decision', 'device', 'cloud_asset', 'cloud_account', 'control'] as $t) {
+        foreach (['edge_finding', 'edge_pull', 'intel_blocklist', 'intel_note', 'intel_indicator', 'risk', 'incident', 'decision', 'device', 'cloud_asset', 'cloud_account', 'control'] as $t) {
             $db->createCommand()->delete($t)->execute();
         }
         $db->createCommand()->update('framework_requirement', ['applicable' => 1, 'justification' => null, 'updated_at' => null, 'updated_by' => null])->execute();
-        $db->createCommand()->delete('audit_log', ['entity_type' => ['risk', 'incident', 'decision', 'device', 'cloud_account', 'cloud_asset', 'blocklist', 'indicator', 'control', 'requirement']])->execute();
+        $db->createCommand()->delete('audit_log', ['entity_type' => ['risk', 'incident', 'decision', 'device', 'cloud_account', 'cloud_asset', 'blocklist', 'indicator', 'control', 'requirement', 'edge-finding']])->execute();
         DeviceChecks::reset();
         CloudChecks::reset();
         $this->stdout("Existing domain data removed.\n");
@@ -203,7 +208,7 @@ class SeedController extends Controller
     {
         $db = Yii::$app->db;
         if ($db->driverName === 'mysql') {
-            foreach (['risk', 'incident', 'decision', 'device', 'cloud_account', 'cloud_asset', 'incident_timeline', 'intel_blocklist', 'intel_note', 'intel_indicator', 'control', 'control_test'] as $t) {
+            foreach (['risk', 'incident', 'decision', 'device', 'cloud_account', 'cloud_asset', 'incident_timeline', 'intel_blocklist', 'intel_note', 'intel_indicator', 'control', 'control_test', 'edge_finding', 'edge_pull'] as $t) {
                 $db->createCommand("ALTER TABLE {{{$t}}} AUTO_INCREMENT = 1")->execute();
             }
         }
@@ -792,6 +797,77 @@ class SeedController extends Controller
             $incidents[$idx + 1] = $inc;
         }
         return $incidents;
+    }
+
+    // ---- Edge findings ----------------------------------------------------------------
+
+    /**
+     * Edge findings from synthetic Cloudflare traffic (documentation ranges and ASNs only),
+     * run through the real analyzer: an exposed .env, a WordPress / sqlmap scanner (blocked),
+     * a content-discovery script, a survey scanner and a dismissed single probe.
+     * Three share AS64501, so it shows as a network with repeat findings.
+     */
+    private function seedEdge(): int
+    {
+        Actor::override(null);
+        $seenAt = date('Y-m-d H:i:00', strtotime('-2 hours'));
+        $chrome = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Safari/537.36';
+        $row = static fn(string $ip, string $path, int $status, int $count = 1, string $query = '') => compact('ip', 'path', 'query', 'status', 'count');
+        $traffic = [
+            'ips' => [
+                ['ip' => '192.0.2.150', 'asn' => 64501, 'country' => 'NL', 'agent' => $chrome, 'method' => 'GET', 'count' => 46],
+                ['ip' => '203.0.113.45', 'asn' => 64501, 'country' => 'US', 'agent' => 'sqlmap/1.8.2#stable (https://sqlmap.org)', 'method' => 'GET', 'count' => 310],
+                ['ip' => '203.0.113.45', 'asn' => 64501, 'country' => 'US', 'agent' => 'WPScan v3.8.25 (https://wpscan.com/wordpress-security-scanner)', 'method' => 'GET', 'count' => 120],
+                ['ip' => '192.0.2.151', 'asn' => 64501, 'country' => 'DE', 'agent' => 'python-requests/2.31.0', 'method' => 'GET', 'count' => 420],
+                ['ip' => '192.0.2.151', 'asn' => 64501, 'country' => 'DE', 'agent' => 'python-requests/2.31.0', 'method' => 'PROPFIND', 'count' => 6],
+                ['ip' => '203.0.113.9', 'asn' => 64502, 'country' => 'US', 'agent' => 'Mozilla/5.0 (compatible; CensysInspect/1.1; +https://about.censys.io/)', 'method' => 'GET', 'count' => 8],
+                ['ip' => '2001:db8::66', 'asn' => 64503, 'country' => 'GB', 'agent' => $chrome, 'method' => 'POST', 'count' => 3],
+            ],
+            'errors' => [
+                $row('192.0.2.150', '/.git/config', 403), $row('192.0.2.150', '/wp-config.php.bak', 404), $row('192.0.2.150', '/.aws/credentials', 404), $row('192.0.2.150', '/server-status', 403),
+                $row('203.0.113.45', '/wp-login.php', 404, 40), $row('203.0.113.45', '/xmlrpc.php', 404, 22), $row('203.0.113.45', '/wp-admin/install.php', 404, 3),
+                $row('203.0.113.45', '/wp-content/plugins/revslider/temp/update_extract/', 404, 2), $row('203.0.113.45', '/products', 500, 31, 'id=1%27%20AND%20SLEEP(5)--%20-'),
+                $row('203.0.113.9', '/.git/HEAD', 404), $row('203.0.113.9', '/favicon.ico', 404),
+                $row('2001:db8::66', '/wp-login.php', 404, 3),
+            ],
+            'exposures' => [$row('192.0.2.150', '/.env', 200, 2), $row('192.0.2.150', '/phpinfo.php', 301)],
+            'payloads' => [$row('203.0.113.45', '/products', 200, 14, 'id=1%27%20UNION%20SELECT%20NULL,NULL,version()--%20-')],
+            'firewall' => [
+                ['ip' => '203.0.113.45', 'action' => 'managedchallengenoninteractivesolved', 'count' => 2],
+                ['ip' => '192.0.2.151', 'action' => 'block', 'count' => 40],
+            ],
+        ];
+        foreach (['admin', 'login', 'administrator', 'backup', 'old', 'test', 'dev', 'staging', 'api/v1', 'api/v2', 'console', 'dashboard', 'private', 'tmp', 'logs',
+                     'uploads', 'files', 'download', 'export', 'import', 'cron', 'install', 'setup', 'portal', 'user', 'users', 'account', 'register', 'cms', 'shop',
+                     'static/old', 'assets/old', 'beta', 'internal', 'debug', 'status', 'health', 'metrics', 'swagger', 'graphql', 'v1', 'v2', 'app', 'web', 'site'] as $i => $word) {
+            $traffic['errors'][] = $row('192.0.2.151', '/' . $word, $i % 7 === 0 ? 403 : 404, 1 + $i % 3);
+        }
+
+        $profiles = EdgeAnalyzer::profiles($traffic, 15);
+        $pull = new EdgePull(['started_at' => $seenAt, 'finished_at' => $seenAt, 'window_start' => date('Y-m-d H:i:s', strtotime($seenAt) - 900), 'window_end' => $seenAt,
+            'status' => EdgePull::STATUS_OK, 'requests' => array_sum(array_column($profiles, 'requests')), 'ips' => count($profiles)]);
+        $puller = new EdgePuller();
+        $puller->enrich = false;
+        $puller->apply($profiles, $pull, $seenAt);
+        $pull->save(false);
+        foreach (EdgeFinding::find()->all() as $finding) {
+            $this->backdate($finding, $seenAt);
+        }
+
+        $scanner = EdgeFinding::findOne(['ip' => '203.0.113.45']);
+        if ($scanner) {
+            $this->as('analyst');
+            $entry = $this->save(new BlocklistEntry(['value' => $scanner->ip, 'severity' => 'high', 'direction' => 'inbound',
+                'reason' => sprintf('Edge finding %s: %s.', $scanner->reference, $scanner->headline), 'expires_at' => self::d(7) . ' 18:00:00']));
+            $scanner->blocklist_id = $entry->id;
+            $scanner->resolve(EdgeFinding::STATUS_BLOCKED);
+        }
+        $single = EdgeFinding::findOne(['ip' => '2001:db8::66']);
+        if ($single) {
+            $this->as('jpatel');
+            $single->resolve(EdgeFinding::STATUS_DISMISSED, 'Single WordPress login probe; we do not run WordPress.');
+        }
+        return (int) EdgeFinding::find()->count();
     }
 
     // ---- Threat intel ---------------------------------------------------------------

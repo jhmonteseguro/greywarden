@@ -10,6 +10,8 @@ use app\modules\incident\models\Incident;
 use app\modules\intel\components\Http;
 use app\modules\intel\components\Network;
 use app\modules\intel\models\BlocklistEntry;
+use app\modules\intel\models\EdgeFinding;
+use app\modules\intel\models\EdgePull;
 use app\modules\inventory\models\Device;
 use app\modules\risk\models\Risk;
 use tests\DbTestCase;
@@ -74,6 +76,15 @@ class ConsoleCommandsTest extends DbTestCase
         foreach (BlocklistEntry::find()->select('value')->column() as $value) {
             $this->assertMatchesRegularExpression('/^(192\.0\.2\.|198\.51\.100\.|203\.0\.113\.|AS645\d\d|AS6449\d|2001:db8)/i', $value);
         }
+        // Edge findings too, run through the real analyzer: open, blocked and dismissed ones
+        $this->assertGreaterThanOrEqual(4, (int) EdgeFinding::find()->count());
+        foreach (EdgeFinding::find()->select('ip')->column() as $ip) {
+            $this->assertMatchesRegularExpression('/^(192\.0\.2\.|198\.51\.100\.|203\.0\.113\.|2001:db8)/i', $ip);
+        }
+        $this->assertSame(1, (int) EdgeFinding::find()->where(['exposure' => 1, 'status' => EdgeFinding::STATUS_NEW])->count());
+        $this->assertNotNull(EdgeFinding::find()->where(['status' => EdgeFinding::STATUS_BLOCKED])->andWhere(['not', ['blocklist_id' => null]])->one());
+        $this->assertTrue(EdgeFinding::find()->where(['status' => EdgeFinding::STATUS_DISMISSED])->exists());
+        $this->assertSame(1, (int) EdgePull::find()->count());
 
         // Each incident's timeline walks the lifecycle in order: sorted by time, every status
         // change starts from the status the previous one ended in, and the last is the incident's status

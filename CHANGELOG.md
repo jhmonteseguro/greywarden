@@ -6,6 +6,25 @@ releases).
 
 ## [Unreleased]
 
+### Added
+
+- Edge findings (Threat Intel › Edge Findings): pulls the zone's Cloudflare traffic analytics (`make edge-pull`, every
+  15 minutes from cron, or *Pull now*) and opens one finding per address that probes for secrets and admin pages,
+  enumerates paths, sends attack payloads, uses scanner tools or floods the site, scored with explained signals and
+  checked against the intel sources. A sensitive path that answered 200 is flagged as a possible exposure. Each
+  finding recommends actions: raise an incident (prefilled), block for a set number of days through the Cloudflare
+  rule, dismiss or ignore. The page also suggests one WAF rule that blocks the probe paths for everyone and lists
+  networks with repeat findings. Migration `m261029_000001`; the Cloudflare token also needs Zone › Analytics › Read.
+- Admin › Settings › Edge monitoring: paths your sites serve, addresses never to flag, the score that opens a
+  finding, the default block length and the flood threshold.
+- `make edge-status` shows the zone's analytics limits and recent pulls; high-priority edge findings appear under
+  Needs attention on the dashboard and in global search.
+
+### Changed
+
+- Expired blocklist entries are now taken out of the Cloudflare rule (`make expire-blocks`, also run by every edge
+  pull) instead of staying in it until unblocked.
+
 ## [0.5.0-alpha] - 2026-10-28
 
 ### Added

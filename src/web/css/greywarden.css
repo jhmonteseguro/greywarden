@@ -24,6 +24,7 @@
     15. MITRE ATT&CK: tags, picker, kill chain, coverage, matrix, dashboard panel  <- app\modules\attack
     16. Threat intel: console, verdict hero, gauge, tiles, signals, sweep, source panels,
         terminal, pivots, block dialog, scan overlay, blocklist, sources  <- app\modules\intel
+    17. Edge findings: recommendations, path table, WAF rule groups, pulls  <- app\modules\intel (edge)
    ========================================================================== */
 
 /* 0. Fonts ------------------------------------------------------------------ */
@@ -2020,3 +2021,35 @@ a.gw-intel-flagchip:hover { color: var(--gw-text-strong); border-color: var(--gw
 .gw-controls-panel__heading { margin: 0 0 .6rem; font-size: var(--gw-fs-xs); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--gw-text-subtle); }
 .gw-controls-panel__heading a { color: inherit; text-decoration: none; }
 .gw-controls-panel__heading a:hover { color: var(--gw-accent-hover); }
+
+/* 17. Edge findings ----------------------------------------------------------------- */
+.gw-edge-rec-list { display: grid; gap: .55rem; list-style: none; margin: 0; padding: 0; }
+.gw-edge-rec {
+    display: grid; grid-template-columns: 1.6rem minmax(0, 1fr); gap: .1rem .6rem; padding: .65rem .8rem;
+    border-radius: 6px; background: var(--gw-inset); border: 1px solid var(--gw-border-subtle); box-shadow: inset 3px 0 0 var(--gw-tone);
+}
+.gw-edge-rec__icon { color: var(--gw-tone-text); font-size: 1.1rem; line-height: 1.4; }
+.gw-edge-rec__title { font-weight: 600; color: var(--gw-text-strong); }
+.gw-edge-rec__detail { margin: .15rem 0 0; color: var(--gw-text-muted); font-size: var(--gw-fs-sm); max-width: 75ch; }
+.gw-edge-rec__actions:not(:empty) { margin-top: .5rem; }
+.gw-edge-inline-form { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; }
+.gw-edge-inline-form .form-select, .gw-edge-inline-form .form-control { width: auto; min-width: 10rem; flex: 0 1 18rem; }
+.gw-edge-more { margin-top: .9rem; font-size: var(--gw-fs-sm); }
+.gw-edge-more > summary { cursor: pointer; color: var(--gw-text-muted); }
+.gw-edge-more > summary:hover { color: var(--gw-accent-hover); }
+.gw-edge-more > p { margin: .4rem 0; }
+.gw-edge-path { word-break: break-all; white-space: normal; }
+.gw-edge-table td { vertical-align: top; }
+.gw-edge-status {
+    display: inline-block; margin: 0 .25rem .15rem 0; padding: 0 .35rem; border-radius: var(--gw-radius-sm);
+    font-family: var(--gw-font-mono); font-size: var(--gw-fs-xs); border: 1px solid var(--gw-border);
+}
+.gw-edge-status--ok { color: var(--gw-danger-text); border-color: color-mix(in srgb, var(--gw-danger) 45%, var(--gw-border)); }
+.gw-edge-status--redirect { color: var(--gw-text-muted); }
+.gw-edge-status--error { color: var(--gw-text); }
+.gw-edge-payloads, .gw-edge-groups, .gw-edge-clusters, .gw-edge-pulls { list-style: none; margin: 0 0 .75rem; padding: 0; display: grid; gap: .5rem; font-size: var(--gw-fs-sm); }
+.gw-edge-payloads li, .gw-edge-clusters li, .gw-edge-pulls li { display: flex; flex-wrap: wrap; align-items: baseline; gap: .25rem .5rem; }
+.gw-edge-paths { margin-top: .2rem; display: flex; flex-wrap: wrap; gap: .25rem .5rem; font-size: var(--gw-fs-xs); }
+.gw-edge-pulls__message { flex-basis: 100%; color: var(--gw-text-muted); font-size: var(--gw-fs-xs); }
+.gw-edge-agents dd { word-break: break-word; }
+
