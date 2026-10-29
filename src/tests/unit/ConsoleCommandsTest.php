@@ -3,6 +3,8 @@
 namespace tests\unit;
 
 use app\components\Rbac;
+use app\models\Attachment;
+use app\models\RecordNote;
 use app\models\RecordReview;
 use app\models\User;
 use app\modules\control\models\Control;
@@ -20,6 +22,8 @@ use tests\support\OutputCapture;
 use Yii;
 use yii\console\ExitCode;
 use yii\db\Query;
+use yii\helpers\FileHelper;
+use yii\web\UploadedFile;
 
 /**
  * Console commands (php yii ...), run in-process with their output captured.
@@ -125,6 +129,16 @@ class ConsoleCommandsTest extends DbTestCase
         $extra = new Risk(['title' => 'Not demo data', 'status' => Risk::STATUS_IDENTIFIED, 'inherent_likelihood' => 1, 'inherent_impact' => 1,
             'category_id' => $this->lookupId('risk_category'), 'owner_id' => $this->userId(), 'date_identified' => '2026-01-01']);
         $extra->save(false);
+        // Notes and files on the old records go too, so they cannot turn up on the reseeded ones
+        $storage = Yii::$app->params['attachments.path'];
+        Yii::$app->params['attachments.path'] = sys_get_temp_dir() . '/gw-seed-' . bin2hex(random_bytes(4));
+        $tmp = tempnam(sys_get_temp_dir(), 'gwseed');
+        file_put_contents($tmp, "Evidence\n");
+        $risk1 = Risk::findOne(['reference' => 'RSK-0001']);
+        $file = Attachment::attach($risk1, new UploadedFile(['name' => 'evidence.txt', 'tempName' => $tmp, 'type' => 'text/plain', 'size' => 9, 'error' => UPLOAD_ERR_OK]));
+        $this->assertInstanceOf(Attachment::class, $file);
+        $this->assertInstanceOf(RecordNote::class, RecordNote::add($risk1, 'Old demo note', $file));
+        $this->assertFileExists($file->getPath());
         $db = Yii::$app->db;
         $driver = $db->driverName;
         $db->driverName = 'phpunit';
@@ -138,6 +152,12 @@ class ConsoleCommandsTest extends DbTestCase
         $this->assertNull(Risk::findOne($extra->id));
         $this->assertSame($risks, (int) Risk::find()->count());
         $this->assertSame(count($reviews), (int) RecordReview::find()->count(), 'the reset clears the old reviews');
+        $this->assertSame(0, (int) RecordNote::find()->count());
+        $this->assertSame(0, (int) Attachment::find()->count());
+        $this->assertFileDoesNotExist($file->getPath());
+        @unlink($tmp);
+        FileHelper::removeDirectory(Yii::$app->params['attachments.path']);
+        Yii::$app->params['attachments.path'] = $storage;
     }
 
     // ---- user/* -----------------------------------------------------------------

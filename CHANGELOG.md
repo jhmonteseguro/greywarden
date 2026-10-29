@@ -6,6 +6,12 @@ releases).
 
 ## [Unreleased]
 
+### Fixed
+
+- Demo reset (`php yii seed/demo --reset=1`): it now also removes the notes and attached files of the wiped records,
+  including the stored files. Before, they were left behind and, once ids restarted at 1, showed up on the new demo
+  records.
+
 ## [0.9.0-alpha] - 2026-10-29
 
 ### Added

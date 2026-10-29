@@ -4,6 +4,7 @@ namespace app\commands;
 
 use app\components\Actor;
 use app\components\Rbac;
+use app\models\Attachment;
 use app\models\Lookup;
 use app\models\RecordReview;
 use app\models\User;
@@ -187,6 +188,11 @@ class SeedController extends Controller
     private function wipe(): void
     {
         $db = Yii::$app->db;
+        // Notes and files belong to the wiped records; left behind, they would turn up on the new records once ids restart at 1
+        $db->createCommand()->delete('record_note')->execute();
+        foreach (Attachment::find()->where(['entity_type' => Attachment::ENTITY_TYPES])->each() as $attachment) {
+            $attachment->delete();
+        }
         foreach (['risk_device', 'risk_incident', 'risk_decision', 'decision_incident', 'incident_device', 'incident_timeline',
                      'risk_cloud_asset', 'incident_cloud_asset', 'decision_cloud_asset', 'cloud_asset_control', 'cloud_account_control',
                      'incident_attack_technique', 'risk_attack_technique', 'decision_attack_mitigation',
@@ -210,7 +216,7 @@ class SeedController extends Controller
     {
         $db = Yii::$app->db;
         if ($db->driverName === 'mysql') {
-            foreach (['risk', 'incident', 'decision', 'device', 'cloud_account', 'cloud_asset', 'incident_timeline', 'intel_blocklist', 'intel_note', 'intel_indicator', 'control', 'control_test', 'record_review', 'edge_finding', 'edge_pull'] as $t) {
+            foreach (['risk', 'incident', 'decision', 'device', 'cloud_account', 'cloud_asset', 'incident_timeline', 'intel_blocklist', 'intel_note', 'intel_indicator', 'control', 'control_test', 'record_review', 'record_note', 'attachment', 'edge_finding', 'edge_pull'] as $t) {
                 $db->createCommand("ALTER TABLE {{{$t}}} AUTO_INCREMENT = 1")->execute();
             }
         }
