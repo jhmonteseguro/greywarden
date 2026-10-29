@@ -6,6 +6,8 @@ releases).
 
 ## [Unreleased]
 
+## [0.11.0-alpha] - 2026-10-29
+
 ### Added
 
 - Supplier Register (*Operations › Supplier Register*): the third parties you rely on, with what they provide, the data
@@ -308,7 +310,8 @@ First public release.
 - Repository safeguards: git hooks with a leak check and signed-push rules, and CI with all test suites, a secret
   scan and a production image build.
 
-[Unreleased]: https://github.com/jhmonteseguro/greywarden/compare/v0.10.1-alpha...HEAD
+[Unreleased]: https://github.com/jhmonteseguro/greywarden/compare/v0.11.0-alpha...HEAD
+[0.11.0-alpha]: https://github.com/jhmonteseguro/greywarden/compare/v0.10.1-alpha...v0.11.0-alpha
 [0.10.1-alpha]: https://github.com/jhmonteseguro/greywarden/compare/v0.10.0-alpha...v0.10.1-alpha
 [0.10.0-alpha]: https://github.com/jhmonteseguro/greywarden/compare/v0.9.0-alpha...v0.10.0-alpha
 [0.9.0-alpha]: https://github.com/jhmonteseguro/greywarden/compare/v0.8.1-alpha...v0.9.0-alpha
