@@ -115,7 +115,7 @@ development `.env`.
 git clone https://github.com/jhmonteseguro/greywarden.git greywarden-prod && cd greywarden-prod
 cp .env.example .env && chmod 600 .env     # new passwords; YII_DEBUG=0, YII_ENV=prod, COOKIE_SECURE=1 behind HTTPS
 echo 'COMPOSE_FILE=docker-compose.yml:docker-compose.prod.yml' >> .env
-scripts/deploy.sh v0.6.1-alpha             # verifies the tag signature, builds, starts and migrates
+scripts/deploy.sh v0.6.2-alpha             # verifies the tag signature, builds, starts and migrates
 ```
 
 **Upgrade**: `scripts/deploy.sh <tag>` (or `make deploy REF=<tag>`). It refuses a tag without a valid PGP signature
