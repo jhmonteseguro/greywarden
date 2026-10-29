@@ -44,7 +44,9 @@ services:
   scheduler:
     <<: *php
     command: ["php", "yii", "schedule/run"]
-    # Passes SIGTERM on, so the container stops at once instead of after the 10 s timeout
+    # The php-fpm base image stops with SIGQUIT, which makes CLI php dump core: stop with SIGTERM,
+    # passed on by init so the container stops at once instead of after the 10 s timeout
+    stop_signal: SIGTERM
     init: true
     depends_on:
       db:

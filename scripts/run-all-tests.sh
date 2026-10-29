@@ -79,6 +79,17 @@ GRANT ALL PRIVILEGES ON \\\`$TEST_DB\\\`.* TO \\\"\$MARIADB_USER\\\"@\\\"%\\\"; 
 run_step "Leak check tests (scripts/leak-check.sh, .githooks)" ./scripts/tests/leak-check-test.sh
 run_step "Leak check of the files in the index" ./scripts/leak-check.sh
 
+# ---------------------------------------------------------------- Compose config (host only)
+scheduler_stop_signal() {
+    # SIGQUIT (the php-fpm image default) makes the scheduler's CLI php dump core on every stop
+    local files signal
+    for files in docker-compose.yml docker-compose.yml:docker-compose.prod.yml; do
+        signal=$(COMPOSE_FILE=$files $DC config | awk '/^  scheduler:/{s=1; next} /^  [a-z]/{s=0} s && /stop_signal:/{print $2}') || return 1
+        [ "$signal" = SIGTERM ] || { echo "scheduler in $files stops with '${signal:-image default}', expected SIGTERM" >&2; return 1; }
+    done
+}
+run_step "Compose config (scheduler stops with SIGTERM)" scheduler_stop_signal
+
 # ---------------------------------------------------------------- PHPUnit
 echo
 echo "== Preparing a fresh test database ($TEST_DB)"

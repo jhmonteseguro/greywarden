@@ -6,6 +6,12 @@ releases).
 
 ## [Unreleased]
 
+### Fixed
+
+- Scheduler container: it inherited the php-fpm image's `SIGQUIT` stop signal, so CLI `php yii schedule/run` dumped
+  core (systemd-coredump reports) every time the stack was stopped, recreated or deployed. It now stops with
+  `SIGTERM`. The test runner checks this for the development and production compose files.
+
 ## [0.8.0-alpha] - 2026-10-29
 
 ### Added
