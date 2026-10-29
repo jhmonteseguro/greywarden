@@ -6,6 +6,8 @@ releases).
 
 ## [Unreleased]
 
+## [0.10.0-alpha] - 2026-10-29
+
 ### Added
 
 - Evidence files on controls: the control's create / edit form can attach files under its Evidence field. They are
@@ -279,7 +281,8 @@ First public release.
 - Repository safeguards: git hooks with a leak check and signed-push rules, and CI with all test suites, a secret
   scan and a production image build.
 
-[Unreleased]: https://github.com/jhmonteseguro/greywarden/compare/v0.9.0-alpha...HEAD
+[Unreleased]: https://github.com/jhmonteseguro/greywarden/compare/v0.10.0-alpha...HEAD
+[0.10.0-alpha]: https://github.com/jhmonteseguro/greywarden/compare/v0.9.0-alpha...v0.10.0-alpha
 [0.9.0-alpha]: https://github.com/jhmonteseguro/greywarden/compare/v0.8.1-alpha...v0.9.0-alpha
 [0.8.1-alpha]: https://github.com/jhmonteseguro/greywarden/compare/v0.8.0-alpha...v0.8.1-alpha
 [0.8.0-alpha]: https://github.com/jhmonteseguro/greywarden/compare/v0.7.0-alpha...v0.8.0-alpha
