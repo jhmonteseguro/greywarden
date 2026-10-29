@@ -26,7 +26,7 @@ class RiskSearch extends Model
     ];
 
     public $q;
-    public $filter = 'open';
+    public $filter = 'all';
     public $reference;
     public $title;
     public $category_id;

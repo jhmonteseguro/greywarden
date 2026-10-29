@@ -10,6 +10,8 @@ releases).
 
 - Incident Log: the grid now opens on **All** incidents (closed ones included) instead of only open ones. The
   **Open** filter is still one click away, and the dashboard's open-incident links keep using it.
+- Risk Register: the grid now opens on **All** risks (closed ones included) instead of only open ones. The **Open**
+  filter is still one click away, and the dashboard's open-risk links and heatmap cells keep using it.
 
 ## [0.10.0-alpha] - 2026-10-29
 

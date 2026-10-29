@@ -5,6 +5,7 @@ namespace tests\unit;
 use app\models\AuditLog;
 use app\models\Lookup;
 use app\modules\risk\models\Risk;
+use app\modules\risk\models\RiskSearch;
 use tests\DbTestCase;
 
 class RiskModelTest extends DbTestCase
@@ -20,6 +21,21 @@ class RiskModelTest extends DbTestCase
             'inherent_likelihood' => 4,
             'inherent_impact' => 4,
         ]);
+    }
+
+    public function testRiskRegisterListsAllRisksByDefault(): void
+    {
+        $open = $this->makeRisk();
+        $this->assertTrue($open->save(), json_encode($open->getErrors()));
+        $closed = $this->makeRisk(['status' => Risk::STATUS_CLOSED]);
+        $this->assertTrue($closed->save(), json_encode($closed->getErrors()));
+
+        $ids = static fn(array $params) => array_map('intval', (new RiskSearch())->search($params)->query->select('risk.id')->column());
+        $this->assertSame('all', (new RiskSearch())->filter);
+        $this->assertContains($open->id, $ids([]));
+        $this->assertContains($closed->id, $ids([]));
+        $this->assertContains($open->id, $ids(['filter' => 'open']));
+        $this->assertNotContains($closed->id, $ids(['filter' => 'open']));
     }
 
     public function testResidualMayNotExceedInherent(): void
