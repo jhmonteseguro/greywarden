@@ -5,6 +5,7 @@ namespace app\commands;
 use app\components\Actor;
 use app\components\Rbac;
 use app\models\Lookup;
+use app\models\RecordReview;
 use app\models\User;
 use app\modules\attack\models\AttackMitigation;
 use app\modules\attack\models\AttackTechnique;
@@ -157,6 +158,7 @@ class SeedController extends Controller
             $incidents = $this->seedIncidents($devices);
             $risks = $this->seedRisks($devices, $incidents, $decisions);
             $this->linkDecisions($decisions, $incidents);
+            $this->seedReviews($risks, $decisions);
             $controls = $this->seedControls($checks, $risks, $decisions, $incidents);
             [$accounts, $assets, $cloudControls] = $this->seedCloud($checks, $risks, $decisions, $incidents);
             $blocks = $this->seedIntel($incidents);
@@ -189,7 +191,7 @@ class SeedController extends Controller
                      'risk_cloud_asset', 'incident_cloud_asset', 'decision_cloud_asset', 'cloud_asset_control', 'cloud_account_control',
                      'incident_attack_technique', 'risk_attack_technique', 'decision_attack_mitigation',
                      'device_control', 'incident_control', 'risk_control', 'decision_control', 'control_attack_mitigation',
-                     'control_framework_requirement', 'control_test'] as $t) {
+                     'control_framework_requirement', 'control_test', 'record_review'] as $t) {
             $db->createCommand()->delete($t)->execute();
         }
         $db->createCommand()->update('decision', ['superseded_by_id' => null])->execute();
@@ -208,7 +210,7 @@ class SeedController extends Controller
     {
         $db = Yii::$app->db;
         if ($db->driverName === 'mysql') {
-            foreach (['risk', 'incident', 'decision', 'device', 'cloud_account', 'cloud_asset', 'incident_timeline', 'intel_blocklist', 'intel_note', 'intel_indicator', 'control', 'control_test', 'edge_finding', 'edge_pull'] as $t) {
+            foreach (['risk', 'incident', 'decision', 'device', 'cloud_account', 'cloud_asset', 'incident_timeline', 'intel_blocklist', 'intel_note', 'intel_indicator', 'control', 'control_test', 'record_review', 'edge_finding', 'edge_pull'] as $t) {
                 $db->createCommand("ALTER TABLE {{{$t}}} AUTO_INCREMENT = 1")->execute();
             }
         }
@@ -1061,6 +1063,42 @@ class SeedController extends Controller
         $risks[1]->target_treatment_date = self::d(30);
         $this->save($risks[1]);
         return $risks;
+    }
+
+    // ---- Reviews -------------------------------------------------------------
+
+    /**
+     * A completed review on a few open risks and live decisions, each keeping the
+     * record's seeded review date as its next review.
+     *
+     * @param Risk[] $risks
+     * @param Decision[] $decisions
+     */
+    private function seedReviews(array $risks, array $decisions): void
+    {
+        $today = date('Y-m-d');
+        $risks = array_values(array_filter($risks, static fn(Risk $r) => $r->isReviewable() && $r->next_review_date > $today));
+        $decisions = array_values(array_filter($decisions, static fn(Decision $d) => $d->isReviewable() && $d->review_date > $today));
+        $plan = [
+            [$risks[0] ?? null, 'analyst', 40, 2, 'Reviewed with the risk owner. Scores unchanged; treatment on track.'],
+            [$risks[1] ?? null, 'jpatel', 75, -6, 'Likelihood reassessed after the latest phishing simulation. No change to the treatment plan.'],
+            [$risks[2] ?? null, 'admin', 20, 0, 'Still valid. Linked controls tested effective this quarter.'],
+            [$decisions[0] ?? null, 'admin', 60, 5, 'Reaffirmed at the security steering group. No change.'],
+            [$decisions[1] ?? null, 'analyst', 30, -10, 'Still in force; implementation confirmed with IT.'],
+        ];
+        foreach ($plan as [$owner, $user, $ago, $early, $outcome]) {
+            if ($owner === null) {
+                continue;
+            }
+            $this->as($user);
+            $attribute = RecordReview::dateAttribute($owner);
+            $review = RecordReview::record($owner, ['reviewed_on' => self::d(-$ago), 'outcome' => $outcome, 'next_review_date' => $owner->$attribute]);
+            if ($review->hasErrors()) {
+                throw new \RuntimeException('RecordReview invalid: ' . json_encode($review->getErrors()));
+            }
+            // The review answered the date due then ($early days later; negative = reviewed late)
+            RecordReview::updateAll(['due_on' => self::d(-$ago + $early), 'created_at' => self::d(-$ago) . ' 11:00:00'], ['id' => $review->id]);
+        }
     }
 
     // ---- Controls ----------------------------------------------------------

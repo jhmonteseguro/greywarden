@@ -8,6 +8,7 @@ use app\helpers\Badge;
 use app\helpers\RiskMatrix;
 use app\models\Attachment;
 use app\models\RecordNote;
+use app\models\RecordReview;
 use app\modules\attack\components\Coverage;
 use app\modules\attack\widgets\TechniqueTags;
 use app\modules\cloud\models\CloudAsset;
@@ -21,6 +22,7 @@ use app\widgets\DetailView;
 use app\widgets\LinkedRecords;
 use app\widgets\Notes;
 use app\widgets\RecordActions;
+use app\widgets\Reviews;
 use yii\bootstrap5\Tabs;
 use yii\db\Query;
 use yii\helpers\Html;
@@ -33,6 +35,9 @@ $this->params['subtitle'] = '<span class="gw-ref gw-ref--lg">' . Html::encode($m
     . ($model->isReviewOverdue() ? ' ' . Badge::flag('overdue', 'Review overdue') : '');
 $this->params['actions'] = RecordActions::widget(['model' => $model, 'pdf' => true]);
 
+$fmt = Yii::$app->formatter;
+$reviews = RecordReview::listFor($model);
+$lastReview = $reviews[0] ?? null;
 $risks = $model->risks;
 $incidents = $model->incidents;
 $supersedes = $model->supersedes;
@@ -83,7 +88,10 @@ ob_start(); ?>
                     ['attribute' => 'category_id', 'value' => $model->category->name ?? null],
                     'decision_makers',
                     'stakeholders:ntext',
-                    ['attribute' => 'review_date', 'format' => 'raw', 'value' => Yii::$app->formatter->asDate($model->review_date) . ($model->isReviewOverdue() ? ' ' . Badge::flag('overdue', 'Overdue') : '')],
+                    ['attribute' => 'review_date', 'format' => 'raw', 'value' => $fmt->asDate($model->review_date) . ($model->isReviewOverdue() ? ' ' . Badge::flag('overdue', 'Overdue') : '')],
+                    ['label' => 'Last reviewed', 'format' => 'raw', 'value' => $lastReview
+                        ? $fmt->asDate($lastReview->reviewed_on) . ' by ' . Html::encode($lastReview->reviewedBy->full_name ?? '—')
+                        : '<span class="gw-null">Never</span>'],
                     ['attribute' => 'superseded_by_id', 'format' => 'raw', 'value' => $model->supersededBy ? Html::a(Html::encode($model->supersededBy->reference), $model->supersededBy->getViewUrl(), ['class' => 'gw-ref']) : null],
                 ],
             ]) ?>
@@ -140,6 +148,7 @@ $notes = RecordNote::listFor($model); ?>
     'tabContentOptions' => ['class' => 'gw-tab-content'],
     'items' => [
         ['label' => 'Details', 'content' => $details, 'options' => ['id' => 'tab-details']],
+        ['label' => 'Reviews (' . count($reviews) . ')', 'content' => Reviews::widget(['model' => $model, 'reviews' => $reviews]), 'options' => ['id' => 'tab-reviews']],
         ['label' => 'Notes (' . count($notes) . ')', 'content' => Notes::widget(['model' => $model, 'notes' => $notes, 'attachments' => $attachments]), 'options' => ['id' => 'tab-notes']],
         ['label' => 'Links (' . (count($controls) + count($risks) + count($incidents) + count($cloudAssets) + count($supersedes)) . ')', 'content' => $links, 'options' => ['id' => 'tab-links']],
         ['label' => 'Files (' . count($attachments) . ')', 'content' => Attachments::widget(['model' => $model, 'attachments' => $attachments]), 'options' => ['id' => 'tab-files']],

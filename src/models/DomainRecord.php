@@ -174,6 +174,12 @@ abstract class DomainRecord extends ActiveRecord
         return $this->hasOne(User::class, ['id' => 'archived_by']);
     }
 
+    /** Whether the record is due periodic reviews (see RecordReview); off unless a record type says so */
+    public function isReviewable(): bool
+    {
+        return false;
+    }
+
     // ---- Soft delete ------------------------------------------------------
 
     public function getIsArchived(): bool
@@ -275,12 +281,15 @@ abstract class DomainRecord extends ActiveRecord
         parent::afterSave($insert, $changedAttributes);
     }
 
-    /** Hard delete: notes and attached files go with the record. */
+    /** Hard delete: notes, reviews and attached files go with the record. */
     public function afterDelete(): void
     {
         parent::afterDelete();
         if (RecordNote::takesNotes(static::entityType())) {
             RecordNote::deleteAllFor(static::entityType(), $this->id);
+        }
+        if (RecordReview::takesReviews(static::entityType())) {
+            RecordReview::deleteAllFor(static::entityType(), $this->id);
         }
         if (in_array(static::entityType(), Attachment::ENTITY_TYPES, true)) {
             Attachment::deleteAllFor(static::entityType(), $this->id);

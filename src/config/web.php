@@ -109,6 +109,8 @@ $config = [
                 'attachments/<action:[\w-]+>' => 'attachment/<action>',
                 'notes/<id:\d+>/<action:[\w-]+>' => 'note/<action>',
                 'notes/<action:[\w-]+>' => 'note/<action>',
+                'reviews/<id:\d+>/<action:[\w-]+>' => 'review/<action>',
+                'reviews/<action:[\w-]+>' => 'review/<action>',
 
                 // MITRE ATT&CK: /attack, /attack/T1566.001, /attack/mitigations, /attack/mitigations/M1017
                 'attack' => 'attack/technique/index',

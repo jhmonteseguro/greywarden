@@ -226,11 +226,16 @@ class Decision extends DomainRecord
         return self::statusOptions()[$this->status] ?? (string) $this->status;
     }
 
+    /** Decisions still in force (or proposed) are reviewed periodically */
+    public function isReviewable(): bool
+    {
+        return !$this->isArchived && in_array($this->status, self::REVIEWABLE_STATUSES, true);
+    }
+
     public function isReviewOverdue(?string $today = null): bool
     {
         $today ??= date('Y-m-d');
-        return !$this->isArchived && in_array($this->status, self::REVIEWABLE_STATUSES, true)
-            && $this->review_date && $this->review_date < $today;
+        return $this->isReviewable() && $this->review_date && $this->review_date < $today;
     }
 
     /** Options for the "superseded by" dropdown (excludes itself). */

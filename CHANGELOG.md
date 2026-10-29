@@ -14,6 +14,13 @@ releases).
 - Notes on risks, decisions, cloud accounts and cloud assets: the same **Notes** tab as controls (dated, signed,
   never edited, optionally linking a file), with *Note added* / *Note removed* in each record's History and a
   **Notes** section in the risk and decision PDFs. Incidents keep using their Timeline.
+- Completed reviews on risks and decisions: a **Reviews** tab with **Record a review** (reviewed on, reviewed by,
+  outcome, next review date). Recording one moves the record's review date on, so it no longer shows as overdue, and
+  writes a single *Review recorded* entry in History. The review history shows the date each review was due and
+  flags late ones, and the details panel shows **Last reviewed** with the date and reviewer. The risk and decision
+  PDFs have a **Review history** section. A closed risk, or a decision no longer in force, can be given a final review
+  with no next date. The reviewer, whoever recorded the review, or an administrator can remove a review: the review
+  date stays as it is and History keeps the text. Migration `m261029_300001`. The demo data includes a few reviews.
 
 ## [0.8.1-alpha] - 2026-10-29
 

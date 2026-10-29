@@ -297,6 +297,16 @@ check viewer "/risks/$RID" 200
 grep -q 'Smoke note: risk owner briefed' "$BODY" && grep -q 'id="tab-notes"' "$BODY" && ok || bad "risk note not shown"
 req viewer GET "/risks/$RID/pdf"
 [[ "$CODE" == "200" ]] && head -c 5 "$BODY" | grep -q '%PDF-' && ok || bad "risk PDF with a note -> $CODE"
+# Completed reviews: who reviewed it and when, moving the review date on; viewers read them, refused ones store nothing
+NEXT_REVIEW=$(date -d '+90 days' +%Y-%m-%d)
+post analyst "/risks/$RID" "/reviews/record?entity=risk&id=$RID" 302 "RecordReview[reviewed_on]=$TODAY" "RecordReview[reviewed_by_id]=$ANALYST_ID" \
+    "RecordReview[outcome]=Smoke review: still valid" "RecordReview[next_review_date]=$NEXT_REVIEW"
+post analyst "/risks/$RID" "/reviews/record?entity=risk&id=$RID" 302 "RecordReview[reviewed_on]=$TODAY" "RecordReview[outcome]=" "RecordReview[next_review_date]=$NEXT_REVIEW"
+[[ "$(sql "SELECT COUNT(*) FROM record_review WHERE entity_type='risk' AND entity_id=$RID")" == "1" ]] && [[ "$(sql "SELECT next_review_date FROM risk WHERE id=$RID")" == "$NEXT_REVIEW" ]] \
+    && ok || bad "review not recorded once / review date not moved on"
+check viewer "/risks/$RID" 200
+grep -q 'Smoke review: still valid' "$BODY" && grep -q 'id="tab-reviews"' "$BODY" && ! grep -q 'id="review-form"' "$BODY" && ok || bad "review not shown to viewers (or form shown)"
+post viewer "/risks/$RID" "/reviews/record?entity=risk&id=$RID" 403 "RecordReview[reviewed_on]=$TODAY" "RecordReview[outcome]=Viewer review"
 
 # Decision create/update (analyst)
 post analyst /decisions/create /decisions/create 302 \
@@ -525,6 +535,7 @@ for ent in risks:$RID decisions:$DID incidents:$IID; do
 done
 
 [[ "$(sql "SELECT COUNT(*) FROM record_note WHERE entity_type='risk' AND entity_id=$RID")" == "0" ]] && ok || bad "notes left behind by a deleted risk"
+[[ "$(sql "SELECT COUNT(*) FROM record_review WHERE entity_type='risk' AND entity_id=$RID")" == "0" ]] && ok || bad "reviews left behind by a deleted risk"
 
 # Threat intel: note, verdict, block from a report (returns to it), duplicate refused, unblock, delete
 post analyst /intel/ip/192.0.2.99 /intel/note 302 indicator=192.0.2.99 "IntelNote[body]=Smoke test note"

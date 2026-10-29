@@ -8,6 +8,7 @@
 use app\helpers\Badge;
 use app\models\Attachment;
 use app\models\RecordNote;
+use app\models\RecordReview;
 use app\modules\control\models\Control;
 use app\modules\decision\models\Decision;
 use app\modules\incident\models\Incident;
@@ -15,6 +16,7 @@ use app\modules\risk\models\Risk;
 use yii\helpers\Html;
 
 $fmt = Yii::$app->formatter;
+$reviews = RecordReview::listFor($model);
 $this->params['pdf.register'] = 'Decision Log';
 $this->params['pdf.badges'] = Badge::status('decision-status', $model->status, Decision::statusOptions())
     . ($model->isReviewOverdue() ? ' ' . Badge::flag('overdue', 'Review overdue') : '');
@@ -26,6 +28,7 @@ $this->params['pdf.badges'] = Badge::status('decision-status', $model->status, D
     'Decision makers' => Html::encode((string) $model->decision_makers),
     'Stakeholders' => nl2br(Html::encode((string) $model->stakeholders)),
     'Review date' => $model->review_date ? $fmt->asDate($model->review_date) . ($model->isReviewOverdue() ? ' ' . Badge::flag('overdue', 'Overdue') : '') : null,
+    'Last reviewed' => ($last = $reviews[0] ?? null) ? $fmt->asDate($last->reviewed_on) . ' by ' . Html::encode($last->reviewedBy->full_name ?? '—') : 'Never',
     'Superseded by' => $model->supersededBy ? '<span class="ref">' . Html::encode($model->supersededBy->reference) . '</span> ' . Html::encode($model->supersededBy->title) : null,
 ]]) ?>
 
@@ -51,6 +54,8 @@ $this->params['pdf.badges'] = Badge::status('decision-status', $model->status, D
     <?= $this->render('@app/views/pdf/_records', ['title' => 'Supersedes', 'models' => $model->supersedes]) ?>
 <?php endif; ?>
 <?= $this->render('@app/views/pdf/_records', ['title' => 'ATT&CK mitigations', 'models' => $model->mitigations, 'emptyText' => 'None recorded.']) ?>
+
+<?= $this->render('@app/views/pdf/_reviews', ['reviews' => $reviews]) ?>
 
 <?= $this->render('@app/views/pdf/_notes', ['notes' => RecordNote::listFor($model, true)]) ?>
 

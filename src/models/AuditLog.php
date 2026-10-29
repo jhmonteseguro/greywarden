@@ -36,6 +36,8 @@ class AuditLog extends ActiveRecord
         'detach' => 'File removed',
         'note' => 'Note added',
         'note_remove' => 'Note removed',
+        'review' => 'Review recorded',
+        'review_remove' => 'Review removed',
         'export' => 'Exported to PDF',
         'login' => 'Signed in',
         'logout' => 'Signed out',

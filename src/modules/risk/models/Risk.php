@@ -376,10 +376,16 @@ class Risk extends DomainRecord
         return $this->status !== self::STATUS_CLOSED;
     }
 
+    /** Open risks are reviewed periodically */
+    public function isReviewable(): bool
+    {
+        return $this->isOpen() && !$this->isArchived;
+    }
+
     public function isReviewOverdue(?string $today = null): bool
     {
         $today ??= date('Y-m-d');
-        return $this->isOpen() && !$this->isArchived && $this->next_review_date && $this->next_review_date < $today;
+        return $this->isReviewable() && $this->next_review_date && $this->next_review_date < $today;
     }
 
     public function isTreatmentOverdue(?string $today = null): bool

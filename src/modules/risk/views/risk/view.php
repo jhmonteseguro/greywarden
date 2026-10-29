@@ -9,6 +9,7 @@ use app\helpers\RiskMatrix;
 use app\components\Rbac;
 use app\models\Attachment;
 use app\models\RecordNote;
+use app\models\RecordReview;
 use app\modules\attack\widgets\TechniqueTags;
 use app\modules\cloud\models\CloudAsset;
 use app\modules\control\models\Control;
@@ -22,6 +23,7 @@ use app\widgets\DetailView;
 use app\widgets\LinkedRecords;
 use app\widgets\Notes;
 use app\widgets\RecordActions;
+use app\widgets\Reviews;
 use yii\bootstrap5\Tabs;
 use yii\helpers\Html;
 
@@ -43,6 +45,8 @@ $this->params['subtitle'] = '<span class="gw-ref gw-ref--lg">' . Html::encode($m
     . Badge::status('risk-status', $model->status, Risk::statusOptions()) . ' ' . implode(' ', $flags);
 $this->params['actions'] = RecordActions::widget(['model' => $model, 'pdf' => true]);
 $fmt = Yii::$app->formatter;
+$reviews = RecordReview::listFor($model);
+$lastReview = $reviews[0] ?? null;
 
 $devices = $model->devices;
 $cloudAssets = $model->cloudAssets;
@@ -110,6 +114,9 @@ ob_start(); ?>
                     ['attribute' => 'treatment', 'format' => 'raw', 'value' => Badge::render('treatment', $model->treatment, $model->getTreatmentLabel())],
                     ['attribute' => 'target_treatment_date', 'format' => 'raw', 'value' => $fmt->asDate($model->target_treatment_date) . ($model->isTreatmentOverdue() ? ' ' . Badge::flag('overdue', 'Overdue') : '')],
                     ['attribute' => 'next_review_date', 'format' => 'raw', 'value' => $fmt->asDate($model->next_review_date) . ($model->isReviewOverdue() ? ' ' . Badge::flag('overdue', 'Overdue') : '')],
+                    ['label' => 'Last reviewed', 'format' => 'raw', 'value' => $lastReview
+                        ? $fmt->asDate($lastReview->reviewed_on) . ' by ' . Html::encode($lastReview->reviewedBy->full_name ?? '—')
+                        : '<span class="gw-null">Never</span>'],
                 ],
             ]) ?>
             <?= $this->render('@app/views/partials/_text-block', ['label' => 'Treatment plan / planned controls', 'text' => $model->treatment_plan]) ?>
@@ -204,6 +211,7 @@ $notes = RecordNote::listFor($model); ?>
             'canEdit' => Rbac::canManage() && !$model->getIsArchived(),
             'editUrl' => ['update', 'id' => $model->id],
         ]), 'options' => ['id' => 'tab-attack']],
+        ['label' => 'Reviews (' . count($reviews) . ')', 'content' => Reviews::widget(['model' => $model, 'reviews' => $reviews]), 'options' => ['id' => 'tab-reviews']],
         ['label' => 'Notes (' . count($notes) . ')', 'content' => Notes::widget(['model' => $model, 'notes' => $notes, 'attachments' => $attachments]), 'options' => ['id' => 'tab-notes']],
         ['label' => 'Links (' . (count($devices) + count($cloudAssets) + count($incidents) + count($decisions)) . ')', 'content' => $links, 'options' => ['id' => 'tab-links']],
         ['label' => 'Files (' . count($attachments) . ')', 'content' => Attachments::widget(['model' => $model, 'attachments' => $attachments]), 'options' => ['id' => 'tab-files']],

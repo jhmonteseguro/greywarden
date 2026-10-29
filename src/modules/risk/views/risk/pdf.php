@@ -9,6 +9,7 @@ use app\helpers\Badge;
 use app\helpers\RiskMatrix;
 use app\models\Attachment;
 use app\models\RecordNote;
+use app\models\RecordReview;
 use app\modules\control\models\Control;
 use app\modules\decision\models\Decision;
 use app\modules\incident\models\Incident;
@@ -16,6 +17,7 @@ use app\modules\risk\models\Risk;
 use yii\helpers\Html;
 
 $fmt = Yii::$app->formatter;
+$reviews = RecordReview::listFor($model);
 $flags = [];
 if ($model->isReviewOverdue()) {
     $flags[] = Badge::flag('overdue', 'Review overdue');
@@ -81,6 +83,7 @@ $controlStatus = static fn(Control $c) => Badge::status('control-status', $c->st
     'Treatment' => Html::encode((string) $model->getTreatmentLabel()),
     'Target date' => $model->target_treatment_date ? $fmt->asDate($model->target_treatment_date) . ($model->isTreatmentOverdue() ? ' ' . Badge::flag('overdue', 'Overdue') : '') : null,
     'Next review' => $model->next_review_date ? $fmt->asDate($model->next_review_date) . ($model->isReviewOverdue() ? ' ' . Badge::flag('overdue', 'Overdue') : '') : null,
+    'Last reviewed' => ($last = $reviews[0] ?? null) ? $fmt->asDate($last->reviewed_on) . ' by ' . Html::encode($last->reviewedBy->full_name ?? '—') : 'Never',
 ]]) ?>
 <?= $this->render('@app/views/pdf/_text', ['label' => 'Treatment plan / planned controls', 'text' => $model->treatment_plan, 'highlight' => true]) ?>
 
@@ -106,6 +109,8 @@ $controlStatus = static fn(Control $c) => Badge::status('control-status', $c->st
 <?php if ($model->cloudAssets): ?>
     <?= $this->render('@app/views/pdf/_records', ['title' => 'Affected cloud assets', 'models' => $model->cloudAssets]) ?>
 <?php endif; ?>
+
+<?= $this->render('@app/views/pdf/_reviews', ['reviews' => $reviews]) ?>
 
 <?= $this->render('@app/views/pdf/_notes', ['notes' => RecordNote::listFor($model, true)]) ?>
 

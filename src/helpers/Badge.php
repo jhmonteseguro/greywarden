@@ -84,6 +84,7 @@ final class Badge
         'audit-action' => [
             'create' => 'success', 'update' => 'info', 'archive' => 'warning', 'restore' => 'info', 'delete' => 'danger',
             'attach' => 'info', 'detach' => 'warning', 'export' => 'neutral',
+            'review' => 'success', 'review_remove' => 'warning',
             'login' => 'neutral', 'logout' => 'neutral', 'login_failed' => 'danger', 'login_blocked' => 'critical',
             'password_change' => 'info', 'password_reset' => 'warning', 'unlock' => 'info',
         ],
