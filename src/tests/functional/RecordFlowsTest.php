@@ -79,6 +79,21 @@ class RecordFlowsTest extends FunctionalTestCase
         $this->assertSee($risk->reference);
         $this->assertSee('DEV-0001');
 
+        // Treatment done: the residual risk is accepted and the risk stays open
+        $this->post("/risks/{$risk->id}/update", $this->riskForm(['status' => Risk::STATUS_TREATED, 'treatment' => Risk::TREATMENT_ACCEPT]));
+        $this->assertOk();
+        $this->assertSee('Use Accepted for a risk taken on without treatment');
+        $this->post("/risks/{$risk->id}/update", $this->riskForm(['status' => Risk::STATUS_TREATED, 'treatment' => Risk::TREATMENT_MITIGATE,
+            'acceptance_justification' => 'Residual within appetite after MFA rollout', 'deviceIds' => [$device]]));
+        $this->assertRedirect("/risks/{$risk->id}");
+        $risk->refresh();
+        $this->assertSame([Risk::STATUS_TREATED, Risk::TREATMENT_MITIGATE], [$risk->status, $risk->treatment]);
+        $this->get("/risks/{$risk->id}");
+        $this->assertSee('data-value="treated"');
+        $this->assertSee('Residual within appetite after MFA rollout');
+        $this->get('/risks?filter=open');
+        $this->assertSee($risk->reference);
+
         $this->post("/risks/{$risk->id}/update", $this->riskForm(['title' => 'Functional risk (accepted)', 'status' => Risk::STATUS_ACCEPTED,
             'treatment' => Risk::TREATMENT_ACCEPT, 'acceptance_justification' => 'Within appetite', 'residual_likelihood' => 1]));
         $this->assertRedirect("/risks/{$risk->id}");
@@ -116,7 +131,7 @@ class RecordFlowsTest extends FunctionalTestCase
         $this->assertRedirect('filter=archived');
         $this->assertNull(Risk::findOne($risk->id));
         $actions = AuditLog::find()->select('action')->where(['entity_type' => 'risk', 'entity_id' => $risk->id])->orderBy('id')->column();
-        $this->assertSame(['create', 'update', 'archive', 'restore', 'archive', 'delete'], $actions);
+        $this->assertSame(['create', 'update', 'update', 'archive', 'restore', 'archive', 'delete'], $actions);
     }
 
     public function testDecisionCreateUpdateAndSupersede(): void

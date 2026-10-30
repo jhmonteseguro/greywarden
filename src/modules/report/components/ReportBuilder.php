@@ -217,6 +217,7 @@ final class ReportBuilder
         $after = History::asAt('risk', 'risk', $this->endAt);
 
         $added = $closed = $rose = $fell = $accepted = [];
+        $accepts = static fn(array $r) => in_array($r['status'], Risk::ACCEPTANCE_STATUSES, true);
         foreach ($after as $id => $r) {
             $was = $before[$id] ?? null;
             if ($was === null && self::riskOpen($r)) {
@@ -233,7 +234,7 @@ final class ReportBuilder
                     $to > $from ? $rose[] = $row : $fell[] = $row;
                 }
             }
-            if (!self::isArchived($r) && $r['status'] === Risk::STATUS_ACCEPTED && ($was === null || $was['status'] !== Risk::STATUS_ACCEPTED || $this->inPeriod($r['accepted_at']))) {
+            if (!self::isArchived($r) && $accepts($r) && ($was === null || !$accepts($was) || $this->inPeriod($r['accepted_at']))) {
                 $accepted[] = $this->riskRow($r) + ['accepted_by' => $this->name($r['accepted_by_id']), 'accepted_at' => $r['accepted_at'],
                     'justification' => self::trim($r['acceptance_justification'])];
             }

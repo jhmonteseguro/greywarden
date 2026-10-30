@@ -87,7 +87,7 @@ $controlStatus = static fn(Control $c) => Badge::status('control-status', $c->st
 ]]) ?>
 <?= $this->render('@app/views/pdf/_text', ['label' => 'Treatment plan / planned controls', 'text' => $model->treatment_plan, 'highlight' => true]) ?>
 
-<?php if ($model->status === Risk::STATUS_ACCEPTED || $model->acceptance_justification): ?>
+<?php if ($model->isAcceptance() || $model->acceptance_justification): ?>
     <h2>Risk acceptance</h2>
     <?= $this->render('@app/views/pdf/_facts', ['facts' => [
         'Accepted by' => Html::encode($model->acceptedBy->full_name ?? ''),

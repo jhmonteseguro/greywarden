@@ -124,7 +124,7 @@ ob_start(); ?>
             <?= $this->render('@app/views/partials/_text-block', ['label' => 'Treatment plan / planned controls', 'text' => $model->treatment_plan]) ?>
         </section>
 
-        <?php if ($model->status === Risk::STATUS_ACCEPTED || $model->acceptance_justification): ?>
+        <?php if ($model->isAcceptance() || $model->acceptance_justification): ?>
         <section class="gw-panel gw-panel--acceptance">
             <h2 class="gw-panel__title">Risk acceptance</h2>
             <?= DetailView::widget([

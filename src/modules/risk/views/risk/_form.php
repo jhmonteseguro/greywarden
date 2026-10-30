@@ -102,7 +102,7 @@ $bands = Json::encode(RiskMatrix::bands());
     </div>
 </fieldset>
 
-<fieldset class="gw-fieldset" data-gw-depends="#risk-status" data-gw-value="accepted">
+<fieldset class="gw-fieldset" data-gw-depends="#risk-status" data-gw-value="accepted,treated">
     <legend class="gw-fieldset__title">Risk acceptance</legend>
     <div class="row">
         <div class="col-12"><?= $form->field($model, 'acceptance_justification')->textarea(['rows' => 3]) ?></div>

@@ -28,7 +28,7 @@ final class Badge
         'criticality' => ['low' => 'low', 'medium' => 'medium', 'high' => 'high', 'critical' => 'critical'],
         'risk-status' => [
             'identified' => 'info', 'assessed' => 'info', 'in_treatment' => 'warning',
-            'accepted' => 'neutral', 'closed' => 'success',
+            'treated' => 'success', 'accepted' => 'neutral', 'closed' => 'success',
         ],
         'treatment' => ['mitigate' => 'info', 'accept' => 'neutral', 'transfer' => 'info', 'avoid' => 'info'],
         'decision-status' => [

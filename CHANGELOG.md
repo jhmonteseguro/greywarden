@@ -6,6 +6,16 @@ releases).
 
 ## [Unreleased]
 
+### Added
+
+- Risks have a new **Treated** status for when a treatment is finished. The risk stays open and keeps being reviewed,
+  and someone accepts the residual risk left after treatment. A treated risk needs a mitigate, transfer or avoid
+  treatment, a residual rating and an acceptance justification. Who accepted it and when are recorded the same way as
+  for Accepted risks. Accepted is now for risks taken on without treatment. Treated risks are not counted as overdue
+  for treatment.
+- The management report's *Risk acceptances* section now lists treated risks as well as accepted ones, and shows each
+  risk's status and treatment. The demo data includes a treated risk.
+
 ## [0.14.1-alpha] - 2026-10-30
 
 ### Fixed

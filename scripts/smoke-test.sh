@@ -297,6 +297,14 @@ post analyst "/risks/$RID/update" "/risks/$RID/update" 200 \
     "Risk[title]=Smoke test risk" "Risk[status]=assessed" "Risk[category_id]=$RISK_CAT" "Risk[owner_id]=$ANALYST_ID" "Risk[date_identified]=$TODAY" \
     "Risk[inherent_likelihood]=2" "Risk[inherent_impact]=2" "Risk[residual_likelihood]=5" "Risk[residual_impact]=5"
 grep -q 'cannot exceed the inherent score' "$BODY" && ok || bad "residual>inherent not rejected"
+# Treated: the treatment is done and the residual risk accepted; the risk stays open
+post analyst "/risks/$RID/update" "/risks/$RID/update" 302 \
+    "Risk[title]=Smoke test risk" "Risk[status]=treated" "Risk[category_id]=$RISK_CAT" "Risk[owner_id]=$ANALYST_ID" "Risk[date_identified]=$TODAY" \
+    "Risk[inherent_likelihood]=4" "Risk[inherent_impact]=4" "Risk[residual_likelihood]=2" "Risk[residual_impact]=3" "Risk[treatment]=mitigate" \
+    "Risk[acceptance_justification]=Smoke residual acceptance" "Risk[deviceIds]="
+check analyst "/risks/$RID" 200
+grep -q 'data-value="treated"' "$BODY" && grep -q 'Smoke residual acceptance' "$BODY" && ok || bad "treated risk not shown"
+[[ "$(sql "SELECT status FROM risk WHERE id=$RID")" == "treated" ]] && ok || bad "risk not saved as treated"
 # Valid update -> accepted
 post analyst "/risks/$RID/update" "/risks/$RID/update" 302 \
     "Risk[title]=Smoke test risk (updated)" "Risk[status]=accepted" "Risk[category_id]=$RISK_CAT" "Risk[owner_id]=$ANALYST_ID" "Risk[date_identified]=$TODAY" \

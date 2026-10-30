@@ -61,6 +61,7 @@ class Risk extends DomainRecord
     public const STATUS_IDENTIFIED = 'identified';
     public const STATUS_ASSESSED = 'assessed';
     public const STATUS_IN_TREATMENT = 'in_treatment';
+    public const STATUS_TREATED = 'treated';
     public const STATUS_ACCEPTED = 'accepted';
     public const STATUS_CLOSED = 'closed';
 
@@ -71,6 +72,9 @@ class Risk extends DomainRecord
 
     /** Statuses for which a passed target treatment date is "overdue" */
     public const TREATMENT_PENDING_STATUSES = [self::STATUS_IDENTIFIED, self::STATUS_ASSESSED, self::STATUS_IN_TREATMENT];
+
+    /** Statuses whose (residual) risk has been formally accepted by someone */
+    public const ACCEPTANCE_STATUSES = [self::STATUS_TREATED, self::STATUS_ACCEPTED];
 
     // Many-to-many link properties (null = untouched)
     /** @var int[]|string|null link ids (null = not submitted) */
@@ -124,6 +128,7 @@ class Risk extends DomainRecord
             self::STATUS_IDENTIFIED => 'Identified',
             self::STATUS_ASSESSED => 'Assessed',
             self::STATUS_IN_TREATMENT => 'In Treatment',
+            self::STATUS_TREATED => 'Treated',
             self::STATUS_ACCEPTED => 'Accepted',
             self::STATUS_CLOSED => 'Closed',
         ];
@@ -194,13 +199,15 @@ class Risk extends DomainRecord
             ['target_impact', 'validateTarget'],
             ['status', 'in', 'range' => array_keys(self::statusOptions())],
             ['treatment', 'in', 'range' => array_keys(self::treatmentOptions())],
-            ['treatment', 'required', 'when' => fn() => in_array($this->status, [self::STATUS_IN_TREATMENT, self::STATUS_ACCEPTED], true), 'whenClient' => 'function(){return false;}', 'message' => 'Choose a treatment for risks that are in treatment or accepted.'],
+            ['treatment', 'required', 'when' => fn() => in_array($this->status, [self::STATUS_IN_TREATMENT, self::STATUS_TREATED, self::STATUS_ACCEPTED], true), 'whenClient' => 'function(){return false;}', 'message' => 'Choose a treatment for risks that are in treatment, treated or accepted.'],
+            ['treatment', 'compare', 'compareValue' => self::TREATMENT_ACCEPT, 'operator' => '!=', 'type' => 'string', 'when' => fn() => $this->status === self::STATUS_TREATED, 'whenClient' => 'function(){return false;}', 'message' => 'A treated risk was mitigated, transferred or avoided. Use Accepted for a risk taken on without treatment.'],
+            [['residual_likelihood', 'residual_impact'], 'required', 'when' => fn() => $this->status === self::STATUS_TREATED, 'whenClient' => 'function(){return false;}', 'message' => 'Record the residual rating left after treatment.'],
             [['date_identified', 'target_treatment_date', 'next_review_date', 'accepted_at'], 'date', 'format' => 'php:Y-m-d'],
             ['category_id', 'exist', 'targetClass' => Lookup::class, 'targetAttribute' => 'id', 'filter' => ['type' => Lookup::TYPE_RISK_CATEGORY]],
             [['owner_id', 'accepted_by_id'], 'exist', 'targetClass' => User::class, 'targetAttribute' => 'id'],
             // Acceptance
-            ['acceptance_justification', 'required', 'when' => fn() => $this->status === self::STATUS_ACCEPTED, 'whenClient' => "function(){return $('#risk-status').val()==='accepted';}", 'message' => 'A justification is required when the risk is accepted.'],
-            [['accepted_by_id', 'accepted_at'], 'required', 'when' => fn() => $this->status === self::STATUS_ACCEPTED, 'whenClient' => 'function(){return false;}'],
+            ['acceptance_justification', 'required', 'when' => fn() => $this->isAcceptance(), 'whenClient' => "function(){return ['accepted','treated'].indexOf($('#risk-status').val())>=0;}", 'message' => 'A justification is required when the risk or its residual risk is accepted.'],
+            [['accepted_by_id', 'accepted_at'], 'required', 'when' => fn() => $this->isAcceptance(), 'whenClient' => 'function(){return false;}'],
             // Links
             ['deviceIds', 'each', 'rule' => ['exist', 'targetClass' => Device::class, 'targetAttribute' => 'id']],
             ['cloudAssetIds', 'each', 'rule' => ['exist', 'targetClass' => CloudAsset::class, 'targetAttribute' => 'id']],
@@ -273,9 +280,11 @@ class Risk extends DomainRecord
                 $this->$a = null;
             }
         }
-        if ($this->status === self::STATUS_ACCEPTED) {
+        if ($this->isAcceptance()) {
             $this->accepted_by_id = $this->accepted_by_id ?: Actor::id();
             $this->accepted_at = $this->accepted_at ?: Actor::today();
+        }
+        if ($this->status === self::STATUS_ACCEPTED) {
             $this->treatment = $this->treatment ?: self::TREATMENT_ACCEPT;
         }
         return parent::beforeValidate();
@@ -385,6 +394,12 @@ class Risk extends DomainRecord
     public function isOpen(): bool
     {
         return $this->status !== self::STATUS_CLOSED;
+    }
+
+    /** Accepted without treatment, or treated with the residual risk accepted */
+    public function isAcceptance(): bool
+    {
+        return in_array($this->status, self::ACCEPTANCE_STATUSES, true);
     }
 
     /** Open risks are reviewed periodically */

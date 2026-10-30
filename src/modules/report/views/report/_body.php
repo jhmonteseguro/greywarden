@@ -402,13 +402,13 @@ $entityLabels = AuditLog::entityLabels() + ['edge-finding' => 'Edge finding', 'r
 <h2 id="report-decisions">4. Decisions</h2>
 <h3>Risk acceptances (<?= count($r['accepted']) ?>)</h3>
 <?php if (!$r['accepted']): ?><?= $none('No risks were accepted in the period.') ?><?php else: ?>
-<p class="muted">Risks the organisation chose to live with during the period. Management should be aware of, and agree with, each of these.</p>
+<p class="muted">Risks the organisation chose to live with during the period, either without treatment (Accepted) or as the residual risk left after treatment (Treated). Management should be aware of, and agree with, each of these.</p>
 <table class="list">
     <thead><tr><th>Risk</th><th>Score</th><th>Accepted by</th><th>Why</th></tr></thead>
     <tbody>
     <?php foreach ($r['accepted'] as $row): ?>
         <tr>
-            <td><?= $ref($row['ref']) ?> <?= $e($row['title']) ?></td>
+            <td><?= $ref($row['ref']) ?> <?= $e($row['title']) ?><div class="small muted"><?= $e($row['status']) ?><?= $row['treatment'] ? ' · ' . $e($row['treatment']) : '' ?></div></td>
             <td><?= $ratingCell($row['score']) ?></td>
             <td><?= $e($row['accepted_by'] ?? '—') ?><?= $row['accepted_at'] ? '<div class="small muted">' . $fmt->asDate($row['accepted_at']) . '</div>' : '' ?></td>
             <td class="small"><?= $row['justification'] ? $e($row['justification']) : '<span class="null">No justification recorded.</span>' ?></td>

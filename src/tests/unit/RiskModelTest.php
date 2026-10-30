@@ -2,6 +2,7 @@
 
 namespace tests\unit;
 
+use app\components\Actor;
 use app\models\AuditLog;
 use app\models\Lookup;
 use app\modules\risk\models\Risk;
@@ -124,6 +125,32 @@ class RiskModelTest extends DbTestCase
         $this->assertSame(Risk::TREATMENT_ACCEPT, $risk->treatment);
     }
 
+    public function testTreatedRiskNeedsARealTreatmentResidualAndAcceptance(): void
+    {
+        Actor::override($this->userId(), 'tester');
+        $risk = $this->makeRisk(['status' => Risk::STATUS_TREATED]);
+        $this->assertFalse($risk->validate());
+        $this->assertArrayHasKey('treatment', $risk->getErrors());
+        $this->assertArrayHasKey('residual_likelihood', $risk->getErrors());
+        $this->assertArrayHasKey('residual_impact', $risk->getErrors());
+        $this->assertArrayHasKey('acceptance_justification', $risk->getErrors());
+
+        $risk->treatment = Risk::TREATMENT_ACCEPT;
+        $risk->validate(['treatment']);
+        $this->assertStringContainsString('Use Accepted', $risk->getFirstError('treatment'));
+
+        $risk->setAttributes(['treatment' => Risk::TREATMENT_MITIGATE, 'residual_likelihood' => 1, 'residual_impact' => 3,
+            'acceptance_justification' => 'Controls in place; within appetite'], false);
+        $this->assertTrue($risk->validate(), json_encode($risk->getErrors()));
+        $this->assertSame(Risk::TREATMENT_MITIGATE, $risk->treatment, 'the treatment is kept');
+        $this->assertSame([$this->userId(), date('Y-m-d')], [$risk->accepted_by_id, $risk->accepted_at], 'acceptance is stamped');
+        $this->assertTrue($risk->isAcceptance());
+        $this->assertTrue($risk->save(), json_encode($risk->getErrors()));
+        $this->assertSame('Treated', $risk->getStatusLabel());
+        $this->assertSame([$risk->id], array_map('intval', Risk::find()->open()->select('id')->column()), 'treated risks are open');
+        Actor::override(null);
+    }
+
     public function testReferenceIsGeneratedOnInsert(): void
     {
         $risk = $this->makeRisk();
@@ -147,6 +174,9 @@ class RiskModelTest extends DbTestCase
 
         $risk->status = Risk::STATUS_ACCEPTED;
         $this->assertFalse($risk->isTreatmentOverdue('2026-02-01'), 'accepted risks have no pending treatment');
+        $risk->status = Risk::STATUS_TREATED;
+        $this->assertFalse($risk->isTreatmentOverdue('2026-02-01'), 'treated risks have no pending treatment');
+        $this->assertTrue($risk->isReviewOverdue('2026-02-01'), 'treated risks are still reviewed');
         $risk->status = Risk::STATUS_CLOSED;
         $this->assertFalse($risk->isReviewOverdue('2026-02-01'), 'closed risks are not reviewed');
     }

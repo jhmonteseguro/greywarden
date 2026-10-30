@@ -261,6 +261,29 @@ class ReportTest extends DbTestCase
         $this->assertSame([16, 0], [$d['appetite'], $d['risks']['end']['above_appetite']]);
     }
 
+    public function testTreatedRisksAreResidualAcceptances(): void
+    {
+        $risk = $this->risk('2026-07-01 09:00:00', ['title' => 'Flat network', 'inherent_likelihood' => 4, 'inherent_impact' => 4,
+            'residual_likelihood' => 3, 'residual_impact' => 4, 'status' => Risk::STATUS_IN_TREATMENT, 'treatment' => Risk::TREATMENT_MITIGATE,
+            'target_treatment_date' => '2026-09-30']);
+        $this->change($risk, '2026-09-18 10:00:00', ['status' => Risk::STATUS_TREATED, 'residual_likelihood' => 1,
+            'acceptance_justification' => 'Segmented; within appetite', 'accepted_by_id' => $this->userId(), 'accepted_at' => '2026-09-18']);
+        $this->risk('2026-07-01 09:00:00', ['title' => 'Treated before', 'inherent_likelihood' => 3, 'inherent_impact' => 3,
+            'residual_likelihood' => 1, 'residual_impact' => 3, 'status' => Risk::STATUS_TREATED, 'treatment' => Risk::TREATMENT_AVOID,
+            'acceptance_justification' => 'Old', 'accepted_by_id' => $this->userId(), 'accepted_at' => '2026-07-01']);
+
+        $r = (new ReportBuilder(ReportPeriod::MONTH, '2026-09-01', '2026-09-30'))->build()['risks'];
+        $this->assertSame([['Flat network', 'Treated', 'Mitigate', 'Segmented; within appetite']],
+            array_map(static fn($x) => [$x['title'], $x['status'], $x['treatment'], $x['justification']], $r['accepted']),
+            'only acceptances made in the period are listed');
+        $this->assertSame(2, $r['end']['open'], 'treated risks stay open');
+        $this->assertSame([], $r['treatment_overdue'], 'treated risks have no pending treatment');
+
+        $report = $this->report();
+        $html = RecordPdf::html(new View(), Yii::getAlias('@app/modules/report/views/report/pdf.php'), $report, '1 Oct 2026 09:00', 'Test User');
+        $this->assertStringContainsString('Treated · Mitigate', $html);
+    }
+
     public function testOverallStatusSuggestions(): void
     {
         Yii::$app->db->createCommand()->delete('control')->execute();
