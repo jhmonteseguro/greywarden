@@ -613,6 +613,19 @@ make sync-cloudflare AS=jdoe                                      # Cloudflare z
 
 Producing the exports (the AWS and Google CLIs page through the results themselves; quote the queries as shown):
 
+* **AWS, inventory script** (simplest: needs only the AWS CLI v2 and a profile with the `ReadOnlyAccess` managed
+  policy, no Resource Explorer or Config). `scripts/aws-inventory.sh` runs read-only `describe` / `list` calls for every
+  resource type the import keeps, in every Region enabled for the account, and writes a CSV (ARN, type, Region, account
+  ID, Name tag, public IP). Calls that are denied are listed at the end and the rest is still written. Service-linked
+  IAM roles and AWS managed KMS keys are left out.
+
+  ```bash
+  scripts/aws-inventory.sh                                   # default profile (or $AWS_PROFILE) => aws-default-<account>-<date>.csv
+  scripts/aws-inventory.sh --profile prod --output aws.csv   # another profile from ~/.aws
+  scripts/aws-inventory.sh --pick                            # choose the profile from a menu (--list-profiles lists them)
+  scripts/aws-inventory.sh --regions eu-west-2,us-east-1     # only these Regions (global services are always included)
+  ```
+
 * **AWS, Resource Explorer** (preferred: every Region, last-reported times, Name tags). Needs Resource Explorer set up
   with an aggregator index for all Regions, and `resource-explorer-2:Search` (the `AWSResourceExplorerReadOnlyAccess`
   policy). Run it in the aggregator index's Region:

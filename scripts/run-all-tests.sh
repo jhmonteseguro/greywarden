@@ -2,7 +2,7 @@
 # ---------------------------------------------------------------------------
 # Run every Greywarden test suite against the TEST database only.
 #
-#   scripts/run-all-tests.sh              leak check, PHPUnit (unit + functional) and the HTTP smoke test
+#   scripts/run-all-tests.sh              leak check, script tests, PHPUnit (unit + functional) and the HTTP smoke test
 #   scripts/run-all-tests.sh --no-smoke   PHPUnit only
 #   scripts/run-all-tests.sh --coverage   also write coverage (src/runtime/coverage/: html/, clover.xml, coverage.txt)
 #
@@ -78,6 +78,7 @@ GRANT ALL PRIVILEGES ON \\\`$TEST_DB\\\`.* TO \\\"\$MARIADB_USER\\\"@\\\"%\\\"; 
 # ---------------------------------------------------------------- Leak check (host only, no containers)
 run_step "Leak check tests (scripts/leak-check.sh, .githooks)" ./scripts/tests/leak-check-test.sh
 run_step "Leak check of the files in the index" ./scripts/leak-check.sh
+run_step "AWS inventory script tests (scripts/aws-inventory.sh, fake AWS CLI)" ./scripts/tests/aws-inventory-test.sh
 
 # ---------------------------------------------------------------- Compose config (host only)
 scheduler_stop_signal() {

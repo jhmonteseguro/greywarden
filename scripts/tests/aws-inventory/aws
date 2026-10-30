@@ -1,0 +1,68 @@
+#!/usr/bin/env python3
+"""A stand-in for the AWS CLI v2 for scripts/tests/aws-inventory-test.sh.
+
+Answers from the JSON in $FAKE_AWS_RESPONSES, keyed "<region>/<service>.<operation>[.<scope>]"
+or "<service>.<operation>"; {"__error__": "..."} fails the call like the CLI does. --query is
+applied with jmespath and printed the way --output text prints it. Every call is logged to
+$FAKE_AWS_LOG.
+"""
+import json
+import os
+import sys
+
+import jmespath
+
+args = sys.argv[1:]
+with open(os.environ["FAKE_AWS_LOG"], "a") as log:
+    log.write(" ".join(args) + "\n")
+if args == ["--version"]:
+    print(os.environ.get("FAKE_AWS_VERSION", "aws-cli/2.37.9 Python/3.14.8 Linux/fake"))
+    sys.exit(0)
+
+options, positional, i = {}, [], 0
+while i < len(args):
+    if args[i].startswith("--"):
+        value = args[i + 1] if i + 1 < len(args) and not args[i + 1].startswith("--") else ""
+        options[args[i][2:]] = value
+        i += 2 if value else 1
+    else:
+        positional.append(args[i])
+        i += 1
+
+with open(os.environ["FAKE_AWS_RESPONSES"]) as f:
+    responses = json.load(f)
+profiles = responses["__profiles__"]
+if positional == ["configure", "list-profiles"]:
+    print("\n".join(profiles))
+    sys.exit(0)
+profile = options.get("profile", "default")
+if profile not in profiles:
+    print(f"\nThe config profile ({profile}) could not be found", file=sys.stderr)
+    sys.exit(255)
+if positional == ["configure", "get", "region"]:
+    region = responses["__regions__"].get(profile)
+    if region:
+        print(region)
+    sys.exit(0 if region else 1)
+
+service, operation = positional
+name = f"{service}.{operation}" + (f".{options['scope']}" if "scope" in options else "")
+response = responses.get(f"{options.get('region')}/{name}", responses.get(name, {}))
+if "__error__" in response:
+    print(f"\n{response['__error__']}", file=sys.stderr)
+    sys.exit(254)
+result = jmespath.search(options["query"], response) if "query" in options else response
+
+
+def text(value):
+    return "None" if value is None else str(value)
+
+
+if isinstance(result, list):
+    if any(isinstance(row, list) for row in result):
+        for row in result:
+            print("\t".join(text(v) for v in (row if isinstance(row, list) else [row])))
+    elif result:
+        print("\t".join(text(v) for v in result))
+elif result is not None:
+    print(text(result))

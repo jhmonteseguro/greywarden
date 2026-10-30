@@ -6,6 +6,14 @@ releases).
 
 ## [Unreleased]
 
+### Added
+
+- `scripts/aws-inventory.sh` writes an AWS account's inventory as a CSV for `make import-cloud PROVIDER=aws`, using the
+  local AWS CLI v2 and the default profile or any other in `~/.aws` (`--profile`, `--pick`, `--list-profiles`). It
+  needs only read-only access (the `ReadOnlyAccess` policy), not Resource Explorer or AWS Config, and covers every
+  resource type the import keeps (EC2, S3, load balancers, Lambda, RDS, IAM, KMS, CloudFront, Route 53, WAF and more)
+  in every enabled Region, with Name tags and public IPs. Denied calls are listed and skipped.
+
 ## [0.12.0-alpha] - 2026-10-30
 
 ### Added

@@ -334,6 +334,39 @@ class CloudImportTest extends DbTestCase
 
     // ---- Importer ---------------------------------------------------------------
 
+    /** The CSV written by scripts/aws-inventory.sh (scripts/tests/aws-inventory-test.sh keeps the fixture in step with the script) */
+    public function testAwsInventoryScriptCsv(): void
+    {
+        $records = self::parse('aws', 'aws-inventory.csv');
+        $this->assertCount(52, $records);
+        foreach ($records as $record) {
+            $this->assertNull($record['error'], $record['provider_type']);
+            $this->assertNotNull(CloudTypeMap::type('aws', $record['provider_type']), $record['provider_type'] . ' is imported');
+            $this->assertSame('111122223333', $record['account']);
+            $this->assertStringStartsWith('arn:aws:', $record['attributes']['source_id']);
+        }
+        // The script collects every Resource Explorer type the import keeps ("wafv2:webacl" is only a spelling of the two scoped ones)
+        $explorerTypes = array_filter(array_keys(CloudTypeMap::forProvider('aws')), fn($t) => !str_starts_with($t, 'aws::') && $t !== 'wafv2:webacl');
+        $this->assertSame([], array_values(array_diff($explorerTypes, array_column($records, 'provider_type'))));
+
+        $byArn = array_column(array_map(fn($r) => $r['attributes'] + ['type' => $r['provider_type']], $records), null, 'resource_id');
+        $instance = $byArn['arn:aws:ec2:eu-west-2:111122223333:instance/i-0a1b2c3d4e5f60001'];
+        $this->assertSame(['portal-web-01', 'eu-west-2', '203.0.113.10', null], [$instance['name'], $instance['region'], $instance['public_ips'], $instance['last_seen_at']]);
+        $this->assertSame('i-0a1b2c3d4e5f60002', $byArn['arn:aws:ec2:eu-west-2:111122223333:instance/i-0a1b2c3d4e5f60002']['name'], 'untagged: from the ARN');
+        $this->assertSame('billing-events', $byArn['arn:aws:sqs:eu-west-2:111122223333:billing-events']['name']);
+        $this->assertSame('portal "static" assets', $byArn['arn:aws:cloudfront::111122223333:distribution/E1ABCDEF']['name']);
+        $this->assertSame('office, london', $byArn['arn:aws:ec2:eu-west-2:111122223333:vpn-connection/vpn-0123456789abcdef0']['name']);
+        $this->assertSame('global', $byArn['arn:aws:iam::111122223333:role/ci/deploy']['region']);
+        $this->assertSame('eu-west-2', $byArn['arn:aws:s3:::example-portal-uploads']['region'], 'bucket Region from list-buckets');
+        $this->assertSame('elasticloadbalancing:loadbalancer/net', $byArn['arn:aws:elasticloadbalancing:eu-west-2:111122223333:loadbalancer/net/sftp/0123456789abcdef']['type']);
+        $this->assertSame('arn:aws:apigateway:eu-west-2::/restapis/a1b2c3d4e5', $byArn['arn:aws:apigateway:eu-west-2::/restapis/a1b2c3d4e5']['source_id'], 'no account in the ARN: from the Account ID column');
+
+        [$results, $importer] = $this->import($records);
+        $this->assertSame(array_fill(0, 52, 'created'), array_column($results, 'action'));
+        $this->assertSame([], $importer->skippedTypes);
+        $this->assertCount(1, $importer->createdAccounts);
+    }
+
     public function testImportCreatesAccountsAndAssetsAndSkipsUnmappedTypes(): void
     {
         [$results, $importer] = $this->import(self::parse('aws', 'aws-resource-explorer.json'));
