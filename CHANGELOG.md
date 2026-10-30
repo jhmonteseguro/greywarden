@@ -6,6 +6,8 @@ releases).
 
 ## [Unreleased]
 
+## [0.15.0-alpha] - 2026-10-30
+
 ### Added
 
 - Risks have a new **Treated** status for when a treatment is finished. The risk stays open and keeps being reviewed,
@@ -384,7 +386,8 @@ First public release.
 - Repository safeguards: git hooks with a leak check and signed-push rules, and CI with all test suites, a secret
   scan and a production image build.
 
-[Unreleased]: https://github.com/jhmonteseguro/greywarden/compare/v0.14.1-alpha...HEAD
+[Unreleased]: https://github.com/jhmonteseguro/greywarden/compare/v0.15.0-alpha...HEAD
+[0.15.0-alpha]: https://github.com/jhmonteseguro/greywarden/compare/v0.14.1-alpha...v0.15.0-alpha
 [0.14.1-alpha]: https://github.com/jhmonteseguro/greywarden/compare/v0.14.0-alpha...v0.14.1-alpha
 [0.14.0-alpha]: https://github.com/jhmonteseguro/greywarden/compare/v0.13.0-alpha...v0.14.0-alpha
 [0.13.0-alpha]: https://github.com/jhmonteseguro/greywarden/compare/v0.12.0-alpha...v0.13.0-alpha
