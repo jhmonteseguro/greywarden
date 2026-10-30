@@ -133,12 +133,16 @@ class CloudController extends Controller
             if ($r['action'] === CloudImporter::SKIPPED) {
                 continue;
             }
-            $a = $r['asset'];
+            // A row without an asset holds the account's own settings
+            $a = $r['asset'] ?? $r['account'];
             $detail = match ($r['action']) {
                 CloudImporter::FAILED => implode('; ', $r['errors']),
                 CloudImporter::UPDATED => 'changed: ' . implode(', ', $r['changed']),
-                default => trim(implode(' · ', array_filter([$a->getTypeLabel(), $a->region, $a->account->name ?? null]))),
+                default => $r['asset'] ? trim(implode(' · ', array_filter([$a->getKindLabel(), $a->region, $a->account->name ?? null]))) : 'account settings',
             };
+            if (($a?->finding_count ?? 0) > 0) {
+                $detail .= sprintf(' [%d finding(s), worst %s]', $a->finding_count, $a->finding_severity);
+            }
             if ($r['state'] !== null) {
                 $detail .= " (state: {$r['state']})";
             }

@@ -15,14 +15,19 @@ use app\modules\cloud\models\CloudAsset;
  * source ID, archived ones included, so importing a newer export refreshes the
  * same records; an asset entered by hand with the same account and resource ID
  * is adopted. An update only touches what the source owns: the region, the
- * resource ID and the seen times are refreshed (last seen only moves forward,
- * first seen only back), and the OS, public IPs and endpoints fill fields that
- * are still empty. The name, type, environment, owner, status, criticality,
- * classification, exposure, encryption, checks and notes are the analyst's and
- * are never overwritten, and an empty source value never clears a field.
+ * resource ID, the provider type, the configuration and the seen times are
+ * refreshed (last seen only moves forward, first seen only back), and the OS,
+ * public IPs and endpoints fill fields that are still empty. Encryption at
+ * rest and internet exposure are refreshed when the configuration answers them
+ * (the provider's settings are the truth there); otherwise they stay the
+ * analyst's. The name, type, environment, owner, status, criticality,
+ * classification, checks and notes are the analyst's and are never
+ * overwritten, and an empty source value never clears a field.
  *
  * Accounts are matched on provider + account identifier. Missing ones are
  * created (listed in $createdAccounts, to review) unless an account is forced.
+ * A record with account_properties holds the account's own settings: they
+ * replace the account's configuration.
  */
 final class CloudImporter
 {
@@ -36,7 +41,7 @@ final class CloudImporter
     public const NEW_ACCOUNT = ['environment' => 'production', 'criticality' => 'medium', 'data_classification' => 'internal'];
 
     /** Refreshed from the source on every import (when the source has a value) */
-    private const SYNCED = ['region', 'resource_id'];
+    private const SYNCED = ['region', 'resource_id', 'provider_type', 'properties', 'encryption_at_rest', 'internet_facing'];
 
     /** Taken from the source only while still empty */
     private const FILL = ['os', 'os_version', 'public_ips', 'public_endpoints'];
@@ -77,7 +82,7 @@ final class CloudImporter
     /**
      * @param list<array> $records
      * @param string $importNote first line of the notes on created assets and accounts
-     * @return list<array{line: int, action: string, type: string, asset: CloudAsset|null, changed: string[], errors: string[], state: string|null}>
+     * @return list<array{line: int, action: string, type: string, asset: CloudAsset|null, account: CloudAccount|null, changed: string[], errors: string[], state: string|null}>
      */
     public function import(array $records, string $importNote): array
     {
@@ -94,9 +99,12 @@ final class CloudImporter
         return isset(self::IDENTIFIERS[$provider]) && preg_match(self::IDENTIFIERS[$provider][0], $identifier) === 1;
     }
 
-    /** @return array{action: string, asset: CloudAsset|null, changed: string[], errors: string[]} */
+    /** @return array{action: string, asset: CloudAsset|null, account: CloudAccount|null, changed: string[], errors: string[]} */
     private function importOne(array $record, string $importNote): array
     {
+        if (($record['account_properties'] ?? null) !== null && !($record['error'] ?? null)) {
+            return $this->importAccountSettings($record, $importNote);
+        }
         $type = CloudTypeMap::type($record['provider'], (string) $record['provider_type']);
         if ($type === null) {
             $key = (string) $record['provider_type'] !== '' ? (string) $record['provider_type'] : '(no type)';
@@ -166,6 +174,30 @@ final class CloudImporter
         return self::result(self::UPDATED, $asset, $changed);
     }
 
+    /** The account's own settings replace its configuration */
+    private function importAccountSettings(array $record, string $importNote): array
+    {
+        $account = $this->account ?? $this->account($record, $importNote, $error);
+        if ($account === null) {
+            return self::result(self::FAILED, null, [], [$error]);
+        }
+        $properties = $record['account_properties'];
+        $account->properties = $properties ? json_encode($properties, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) : null;
+        if (!$account->properties_at || $this->now > $account->properties_at) {
+            $account->properties_at = $this->now;
+        }
+        if (!$account->validate()) {
+            return self::result(self::FAILED, null, [], $account->getErrorSummary(true), $account);
+        }
+        $changed = array_keys(array_filter($account->getDirtyAttributes(),
+            static fn($value, $attr) => !AuditBehavior::same($account->getOldAttribute($attr), $value), ARRAY_FILTER_USE_BOTH));
+        if (!$changed) {
+            return self::result(self::UNCHANGED, null, [], [], $account);
+        }
+        $account->save(false);
+        return self::result(self::UPDATED, null, $changed, [], $account);
+    }
+
     /** The record's account: found by its identifier (or an alias), else created */
     private function account(array $record, string $importNote, ?string &$error): ?CloudAccount
     {
@@ -214,8 +246,8 @@ final class CloudImporter
         return $ips ? implode(', ', $ips) : null;
     }
 
-    private static function result(string $action, ?CloudAsset $asset = null, array $changed = [], array $errors = []): array
+    private static function result(string $action, ?CloudAsset $asset = null, array $changed = [], array $errors = [], ?CloudAccount $account = null): array
     {
-        return ['action' => $action, 'asset' => $asset, 'changed' => $changed, 'errors' => $errors];
+        return ['action' => $action, 'asset' => $asset, 'account' => $account ?? $asset?->account, 'changed' => $changed, 'errors' => $errors];
     }
 }

@@ -82,6 +82,14 @@ $assetCounts = $ids ? (new Query())->select(['n' => 'COUNT(*)', 'account_id'])->
             'filter' => Device::criticalityOptions(),
         ],
         [
+            'label' => 'Settings',
+            'format' => 'raw',
+            'value' => static fn(CloudAccount $m) => $m->finding_count
+                ? Badge::render('severity', $m->finding_severity, $m->finding_count . ' finding' . ($m->finding_count === 1 ? '' : 's'),
+                    ['title' => implode('; ', array_column($m->getFindings(), 'title'))])
+                : ($m->hasConfiguration() ? '<span class="gw-muted">No findings</span>' : null),
+        ],
+        [
             'label' => 'Posture',
             'format' => 'raw',
             'value' => static function (CloudAccount $m) {

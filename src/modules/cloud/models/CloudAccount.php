@@ -7,6 +7,7 @@ use app\models\RecordsChecks;
 use app\models\User;
 use app\modules\cloud\components\CloudCatalogue;
 use app\modules\cloud\components\CloudChecks;
+use app\modules\cloud\components\CloudConfig;
 use app\modules\cloud\components\CloudPosture;
 use app\modules\control\models\Control;
 use app\modules\inventory\models\Device;
@@ -30,6 +31,7 @@ use app\modules\supplier\models\Supplier;
  * @property string $criticality
  * @property string $data_classification
  * @property string|null $notes
+ * @property string|null $properties_at when the account's own settings were last imported (see HasConfiguration)
  *
  * @property-read User|null $owner
  * @property-read Supplier|null $supplier
@@ -39,6 +41,7 @@ use app\modules\supplier\models\Supplier;
 class CloudAccount extends DomainRecord
 {
     use RecordsChecks;
+    use HasConfiguration;
 
     public const STATUS_ACTIVE = 'active';
     /** Statuses in which the account still exists and is checked */
@@ -151,13 +154,38 @@ class CloudAccount extends DomainRecord
                 $this->$a = null;
             }
         }
+        $this->refreshFindings();
         return parent::beforeValidate();
+    }
+
+    public function behaviors(): array
+    {
+        $behaviors = parent::behaviors();
+        $behaviors['audit']['ignored'] = $this->configAuditIgnored();
+        return $behaviors;
+    }
+
+    protected function configProvider(): ?string
+    {
+        return $this->provider;
+    }
+
+    protected function configType(): ?string
+    {
+        return CloudConfig::ACCOUNT_TYPE;
+    }
+
+    protected function configAccount(): string
+    {
+        return (string) $this->account_identifier;
     }
 
     public function attributeLabels(): array
     {
         return parent::attributeLabels() + [
             'reference' => 'Reference',
+            'properties_at' => 'Settings imported',
+            'finding_count' => 'Findings',
             'name' => 'Account name',
             'provider' => 'Provider',
             'supplier_id' => 'Supplier',

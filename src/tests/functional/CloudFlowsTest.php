@@ -48,6 +48,87 @@ class CloudFlowsTest extends FunctionalTestCase
         return (int) (new Query())->from($table)->max('id');
     }
 
+    public function testConfigurationAndFindings(): void
+    {
+        $this->loginAs('viewer');
+        // The list: provider types, findings column, category facets and the findings filters
+        $this->get('/cloud/assets');
+        $this->assertOk();
+        $this->assertSee('aria-label="Categories"');
+        $this->assertSee('S3 bucket');
+        $this->assertSee('Application Load Balancer');
+        $this->assertSee('4 · Critical');
+        $this->assertSee('Public through the bucket policy');
+        $this->get('/cloud/assets?filter=findings');
+        $this->assertSee('legacy-reports');
+        $this->assertSee('portal-web-02');
+        $this->assertNotSee('erp-db');
+        $this->assertNotSee('dev-artifacts');
+        $this->get('/cloud/assets?finding_severity=critical');
+        $this->assertSee('legacy-reports');
+        $this->assertNotSee('portal-web-02');
+        $this->get('/cloud/assets?finding_severity=nope');
+        $this->assertSee('No records match the current filters.');
+        $this->get('/cloud/assets?filter=all&sort=-finding_severity');
+        $this->assertOk();
+        $this->assertLessThan(strpos($this->body, 'portal-web-02'), strpos($this->body, 'legacy-reports'), 'worst first');
+        $this->get('/cloud/assets?filter=all&sort=finding_severity');
+        $this->assertOk();
+        $this->get('/cloud/assets?environment=development');
+        $this->assertSee('dev-sandbox-01');
+        $this->assertNotSee('erp-db');
+        $this->assertSee('aria-label="Environment"');
+        $this->get('/cloud/assets?filter=all&q=ec2:instance');
+        $this->assertSee('portal-web-01');
+        $this->assertNotSee('legacy-reports');
+
+        // An asset: what it is, its findings and settings
+        $legacy = $this->asset('legacy-reports');
+        $this->get("/cloud/assets/{$legacy->id}");
+        $this->assertSee('id="configuration"');
+        $this->assertSee('4 findings');
+        $this->assertSee('S3 bucket');
+        $this->assertSee('<code class="gw-code text-nowrap">s3:bucket</code>');
+        $this->assertSee('Public through the bucket policy');
+        $this->assertSee('Block Public Access settings off');
+        $this->assertSee('BlockPublicAcls, IgnorePublicAcls');
+        $erp = $this->asset('erp-db');
+        $this->get("/cloud/assets/{$erp->id}");
+        $this->assertSee('RDS database instance');
+        $this->assertSee('Nothing found in the imported settings.');
+        $this->assertSee('Automated backups kept');
+        $this->assertSee('14 days');
+        $manual = $this->asset('dev-artifacts');
+        $this->get("/cloud/assets/{$manual->id}");
+        $this->assertNotSee('id="configuration"');
+        $this->assertSee('Object storage bucket');
+
+        // Accounts: their own settings and findings
+        $dev = CloudAccount::findOne(['reference' => 'ACC-0002']);
+        $this->get('/cloud/accounts');
+        $this->assertSee('7 findings');
+        $this->assertSee('>1 finding<');
+        $this->get("/cloud/accounts/{$dev->id}");
+        $this->assertSee('Account settings');
+        $this->assertSee('Root user has no MFA');
+        $this->assertSee('GuardDuty off in 6 Regions: eu-west-1, eu-west-2, us-east-1, us-east-2 and 2 more');
+        $this->assertSee('with findings');
+        $workspace = CloudAccount::findOne(['reference' => 'ACC-0004']);
+        $this->get("/cloud/accounts/{$workspace->id}");
+        $this->assertNotSee('Account settings');
+
+        // Editing an asset keeps its imported configuration and findings
+        $this->loginAs('analyst');
+        $this->get("/cloud/assets/{$legacy->id}/update");
+        $this->assertOk();
+        $this->post("/cloud/assets/{$legacy->id}/update", ['CloudAsset' => ['name' => 'legacy-reports', 'account_id' => $legacy->account_id,
+            'resource_type' => 'bucket', 'environment' => $legacy->environment, 'status' => 'active', 'criticality' => 'high',
+            'data_classification' => 'confidential', 'encryption_at_rest' => 'no', 'properties' => '{}', 'provider_type' => 'hacked']]);
+        $this->assertRedirect();
+        $legacy = CloudAsset::findOne($legacy->id);
+        $this->assertSame(['s3:bucket', 4, 'critical', 'high'], [$legacy->provider_type, (int) $legacy->finding_count, $legacy->finding_severity, $legacy->criticality]);
+    }
+
     public function testDemoDataPages(): void
     {
         $this->loginAs('viewer');
@@ -70,7 +151,7 @@ class CloudFlowsTest extends FunctionalTestCase
         $this->get('/cloud/assets?filter=internet-facing&category=storage');
         $this->assertSee('legacy-reports');
         $this->assertNotSee('customer-portal-alb');
-        $this->assertSee('Category: <strong>Storage</strong>');
+        $this->assertMatchesRegularExpression('#class="gw-quickfilter is-active"[^>]*aria-current="page">Storage <span#', $this->body, 'category facet');
         $this->get('/cloud/assets?filter=all&q=111122223333&sort=-criticality');
         $this->assertSee('erp-db');
         $this->get('/cloud/assets?category=nope');

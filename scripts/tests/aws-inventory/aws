@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """A stand-in for the AWS CLI v2 for scripts/tests/aws-inventory-test.sh.
 
-Answers from the JSON in $FAKE_AWS_RESPONSES, keyed "<region>/<service>.<operation>[.<scope>]"
-or "<service>.<operation>"; {"__error__": "..."} fails the call like the CLI does. --query is
-applied with jmespath and printed the way --output text prints it. Every call is logged to
-$FAKE_AWS_LOG.
+Answers from the JSON in $FAKE_AWS_RESPONSES, keyed "<region>/<service>.<operation>[.<scope>][#<id>]"
+or "<service>.<operation>[#<id>]", where <id> is the value of the call's other options (the bucket,
+queue URL, key ID...; several joined with "|"); {"__error__": "..."} fails the call like the CLI does.
+--query is applied with jmespath; the result is printed the way --output json or text prints it.
+Every call is logged to $FAKE_AWS_LOG.
 """
 import json
 import os
@@ -19,12 +20,17 @@ if args == ["--version"]:
     print(os.environ.get("FAKE_AWS_VERSION", "aws-cli/2.37.9 Python/3.14.8 Linux/fake"))
     sys.exit(0)
 
+# Options take one value, list options every value up to the next option ("--filter Role User Group")
+LISTS = {"filter"}
 options, positional, i = {}, [], 0
 while i < len(args):
     if args[i].startswith("--"):
-        value = args[i + 1] if i + 1 < len(args) and not args[i + 1].startswith("--") else ""
-        options[args[i][2:]] = value
-        i += 2 if value else 1
+        key, values = args[i][2:], []
+        while i + 1 < len(args) and not args[i + 1].startswith("--") and (not values or key in LISTS):
+            values.append(args[i + 1])
+            i += 1
+        options[key] = " ".join(values)
+        i += 1
     else:
         positional.append(args[i])
         i += 1
@@ -47,11 +53,19 @@ if positional == ["configure", "get", "region"]:
 
 service, operation = positional
 name = f"{service}.{operation}" + (f".{options['scope']}" if "scope" in options else "")
-response = responses.get(f"{options.get('region')}/{name}", responses.get(name, {}))
+CONTEXT = {"profile", "region", "output", "query", "scope", "filter", "attribute-names"}
+ident = "|".join(v for k, v in options.items() if k not in CONTEXT)
+keys = ([f"{options.get('region')}/{name}#{ident}", f"{name}#{ident}"] if ident else []) + [f"{options.get('region')}/{name}", name]
+response = next((responses[k] for k in keys if k in responses), {})
 if "__error__" in response:
     print(f"\n{response['__error__']}", file=sys.stderr)
     sys.exit(254)
 result = jmespath.search(options["query"], response) if "query" in options else response
+
+
+if options.get("output") == "json":
+    print(json.dumps(result, indent=4))
+    sys.exit(0)
 
 
 def text(value):

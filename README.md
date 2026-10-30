@@ -36,7 +36,10 @@ For real data, see [Production](#production); for the full setup, see [Developme
 * **Cloud Inventory**: cloud accounts (AWS, Azure, Google Cloud, Cloudflare, Google Workspace, Microsoft 365, GitHub...)
   and the assets in them (instances, VPCs, security groups, buckets, databases, IAM roles, DNS zones, repositories...)
   with exposure, encryption, OS support and posture against **cloud checks** from the Control Register, linked to
-  risks, incidents and decisions; imported from AWS, Azure and Google Cloud inventory exports and synced from Cloudflare
+  risks, incidents and decisions; imported from AWS, Azure and Google Cloud inventory exports and synced from Cloudflare.
+  AWS accounts imported with `scripts/aws-inventory.sh` also bring each resource's **configuration** (public access,
+  encryption, open ports, MFA, key age, TLS...) and the account's own settings (root MFA, CloudTrail, GuardDuty...),
+  with **findings** graded critical to low
 * **Supplier Register**: the third parties you rely on, what they provide, the data and access they have, a **tier**
   worked out from those, the security terms of the contract (DPA, breach notification, right to audit, notice period),
   the assurance they have given (ISO 27001, SOC 2, Cyber Essentials… with expiry dates), periodic reviews and posture
@@ -613,17 +616,36 @@ make sync-cloudflare AS=jdoe                                      # Cloudflare z
 
 Producing the exports (the AWS and Google CLIs page through the results themselves; quote the queries as shown):
 
-* **AWS, inventory script** (simplest: needs only the AWS CLI v2 and a profile with the `ReadOnlyAccess` managed
-  policy, no Resource Explorer or Config). `scripts/aws-inventory.sh` runs read-only `describe` / `list` calls for every
-  resource type the import keeps, in every Region enabled for the account, and writes a CSV (ARN, type, Region, account
-  ID, Name tag, public IP). Calls that are denied are listed at the end and the rest is still written. Service-linked
-  IAM roles and AWS managed KMS keys are left out.
+* **AWS, inventory script** (simplest and the most detailed: needs only the AWS CLI v2, `jq` and a profile with the
+  `ReadOnlyAccess` managed policy, no Resource Explorer or Config). `scripts/aws-inventory.sh` runs read-only
+  `describe` / `list` / `get` calls for every resource type the import keeps, in every Region enabled for the account,
+  and writes a CSV: ARN, type, Region, account ID, Name tag, public IP and a **Details** column with the resource's
+  security settings as JSON, plus one row with the account's own settings. Calls that are denied are listed at the end
+  and the rest is still written. What it reads:
+
+  | Resource | Settings |
+  |---|---|
+  | S3 buckets | Block Public Access (bucket and account), public bucket policy, public ACL grants, default encryption, versioning |
+  | EC2 instances, EBS volumes | state, IMDSv2, OS and version from Systems Manager, security groups, public DNS; volume encryption and attachment |
+  | Security groups, VPCs | ports open to `0.0.0.0/0` / `::/0`, in use or not, default group rules; flow logs |
+  | Load balancers, CloudFront, API Gateway | internet-facing or internal, listeners and HTTP redirects, TLS policies, viewer protocol, WAF, endpoints |
+  | RDS, Redshift, OpenSearch, ElastiCache, DynamoDB, MSK | public access, encryption at rest and in transit, backups, deletion protection, point-in-time recovery |
+  | Lambda, EKS, ECR | runtime (deprecated or not), function URL authentication; public API endpoint, secrets encryption, audit logs; scan on push |
+  | IAM users and roles | console password, MFA, access key age and last use (credential report), administrator access, who can assume a role and on what condition, last use |
+  | KMS, Secrets Manager, ACM, SQS, SNS, Kinesis, EFS, Backup | rotation, deletion, expiry and renewal, encryption |
+  | The account | root MFA and access keys, multi-Region CloudTrail, GuardDuty and EBS default encryption per Region, S3 Block Public Access, password policy |
+
+  AWS's own plumbing is left out unless you add `--all`: default VPCs nothing uses (with their default security group,
+  network ACL and internet gateway; the account lists them instead), default network ACLs, default security groups
+  without rules, ElastiCache nodes of a replication group, and the roles AWS services and IAM Identity Center create
+  (`/aws-service-role/`, `/aws-reserved/`). AWS managed KMS keys are always left out.
 
   ```bash
   scripts/aws-inventory.sh                                   # default profile (or $AWS_PROFILE) => aws-default-<account>-<date>.csv
   scripts/aws-inventory.sh --profile prod --output aws.csv   # another profile from ~/.aws
   scripts/aws-inventory.sh --pick                            # choose the profile from a menu (--list-profiles lists them)
   scripts/aws-inventory.sh --regions eu-west-2,us-east-1     # only these Regions (global services are always included)
+  scripts/aws-inventory.sh --all                             # keep default VPCs, default ACLs and service roles too
   ```
 
 * **AWS, Resource Explorer** (preferred: every Region, last-reported times, Name tags). Needs Resource Explorer set up
@@ -678,10 +700,21 @@ How the import works:
   `ACCOUNT=ACC-0003` puts every row in that existing account instead.
 * **Assets** are matched on the provider's resource ID (ARN, Azure resource ID, Google full resource name), archived
   ones included, so importing a newer export **updates** the same records; an asset entered by hand with the same
-  resource ID in the same account is adopted. An update only refreshes the region, resource ID and seen times and
-  fills the OS, public IPs and endpoints while empty. Name, type, environment, owner, status, criticality,
-  classification, *internet-facing*, encryption, cloud-check results and notes edited in Greywarden are never
-  overwritten, and an empty value in the export never clears a field.
+  resource ID in the same account is adopted. An update refreshes the region, resource ID, provider type,
+  configuration and seen times and fills the OS, public IPs and endpoints while empty. *Encrypted at rest* and
+  *internet-facing* follow the configuration when the export has it (the provider's settings are the truth there),
+  so a cloud check on encryption passes or fails by itself; without it they stay as entered. Name, type,
+  environment, owner, status, criticality, classification, cloud-check results and notes edited in Greywarden are
+  never overwritten, and an empty value in the export never clears a field.
+* **Configuration and findings** (AWS, from the script): each asset shows what it is in AWS's terms (*S3 bucket*,
+  *EBS volume*, *Application Load Balancer*), a **Configuration** panel with its settings, and the **findings** they
+  raise, each critical, high, medium or low: a public bucket, a database open to the internet, SSH open to the world,
+  a console user without MFA, an access key older than 90 days, a function URL without authentication, a deprecated
+  Lambda runtime, IMDSv1, an expired certificate, an unencrypted volume… The account row adds the account's settings
+  and findings (no root MFA, no multi-Region CloudTrail, GuardDuty off in some Regions…) to the account page. The
+  asset list has a *Findings* column (sort it to see the worst first, or filter by severity), a *With findings*
+  filter and counts per category. Findings are informational: compliance still comes from cloud checks. The rules
+  are in `AwsConfig`.
 * **Last seen** is Resource Explorer's *last reported* time, or the import time for the other exports (their
   timestamps record configuration changes, not that a resource still exists). Resources missing from later exports keep
   their old last-seen time, so they show as *Not seen* after `cloud.staleDays`. **First seen** is the creation time

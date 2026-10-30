@@ -7,6 +7,7 @@ use app\models\RecordsChecks;
 use app\models\User;
 use app\modules\cloud\components\CloudCatalogue;
 use app\modules\cloud\components\CloudChecks;
+use app\modules\cloud\components\CloudConfig;
 use app\modules\cloud\components\CloudPosture;
 use app\modules\control\models\Control;
 use app\modules\decision\models\Decision;
@@ -28,6 +29,7 @@ use yii\validators\IpValidator;
  * @property string $name
  * @property int $account_id
  * @property string $resource_type
+ * @property string|null $provider_type the provider's own type ("s3:bucket"), set by imports
  * @property string|null $resource_id
  * @property string|null $region
  * @property string $environment
@@ -57,6 +59,7 @@ use yii\validators\IpValidator;
 class CloudAsset extends DomainRecord
 {
     use RecordsChecks;
+    use HasConfiguration;
 
     public const STATUS_ACTIVE = 'active';
     /** Statuses in which the resource still exists and is checked (a stopped instance keeps its disks) */
@@ -248,7 +251,30 @@ class CloudAsset extends DomainRecord
         if ($this->resource_type && !CloudCatalogue::hasOs($this->resource_type)) {
             $this->os = $this->os_version = null;
         }
+        $this->refreshFindings();
         return parent::beforeValidate();
+    }
+
+    public function behaviors(): array
+    {
+        $behaviors = parent::behaviors();
+        $behaviors['audit']['ignored'] = $this->configAuditIgnored();
+        return $behaviors;
+    }
+
+    protected function configProvider(): ?string
+    {
+        return $this->account?->provider;
+    }
+
+    protected function configType(): ?string
+    {
+        return $this->provider_type;
+    }
+
+    protected function configAccount(): string
+    {
+        return (string) $this->account?->account_identifier;
     }
 
     public function attributeLabels(): array
@@ -258,6 +284,7 @@ class CloudAsset extends DomainRecord
             'name' => 'Asset name',
             'account_id' => 'Cloud account',
             'resource_type' => 'Resource type',
+            'provider_type' => 'Provider type',
             'resource_id' => 'Resource ID',
             'region' => 'Region',
             'environment' => 'Environment',
@@ -277,6 +304,8 @@ class CloudAsset extends DomainRecord
             'last_seen_at' => 'Last seen',
             'notes' => 'Notes',
             'checks' => 'Cloud checks',
+            'finding_count' => 'Findings',
+            'finding_severity' => 'Worst finding',
         ];
     }
 
@@ -394,6 +423,18 @@ class CloudAsset extends DomainRecord
     public function getTypeLabel(): string
     {
         return CloudCatalogue::typeLabel($this->resource_type);
+    }
+
+    /** The provider's name for the resource type ("S3 bucket", "EBS volume"), or null when not imported */
+    public function getProviderTypeLabel(): ?string
+    {
+        return CloudConfig::typeLabel($this->getProvider(), $this->provider_type);
+    }
+
+    /** What the resource is, most specific first: "S3 bucket", else "Object storage bucket" */
+    public function getKindLabel(): string
+    {
+        return $this->getProviderTypeLabel() ?? $this->getTypeLabel();
     }
 
     public function getCategoryLabel(): string

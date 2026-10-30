@@ -176,6 +176,7 @@ READ_PAGES=(
     /cloud/assets "/cloud/assets?filter=active" "/cloud/assets?filter=mine" "/cloud/assets?filter=non-compliant" "/cloud/assets?filter=not-assessed"
     "/cloud/assets?filter=internet-facing" "/cloud/assets?filter=stale" "/cloud/assets?filter=unsupported-os" "/cloud/assets?filter=archived"
     "/cloud/assets?filter=all&sort=-last_seen_at&provider=aws&category=storage" "/cloud/assets?account_id=$ACC1" /cloud/assets/$CLD1 /cloud/assets/$CLD10
+    "/cloud/assets?filter=findings" "/cloud/assets?finding_severity=high&sort=-finding_severity"
     /cloud/accounts "/cloud/accounts?filter=non-compliant" "/cloud/accounts?filter=not-assessed" "/cloud/accounts?filter=archived" /cloud/accounts/$ACC1 /cloud/accounts/$ACC2
     "/controls?filter=cloud-checks" "/search?q=arn:aws" /intel/ip/203.0.113.10
     # Supplier Register
@@ -243,6 +244,10 @@ check analyst /search?q=ACC-0001 302
 check viewer /cloud/assets/999999 404
 check viewer / 200
 grep -q 'gw-dashboard-panel--cloud-posture' "$BODY" && grep -q 'gw-attention__group--cloud-exposed' "$BODY" && ok || bad "cloud posture / exposed cloud assets missing from the dashboard"
+check viewer "/cloud/assets/$CLD10" 200
+grep -q 'id="configuration"' "$BODY" && grep -q 'Public through the bucket policy' "$BODY" && ok || bad "imported configuration / findings missing on a cloud asset"
+check viewer "/cloud/accounts/$ACC2" 200
+grep -q 'Root user has no MFA' "$BODY" && ok || bad "account settings findings missing on a cloud account"
 check viewer "/cloud/assets?filter=stale" 200
 grep -q 'legacy-reports' "$BODY" && ok || bad "stale cloud asset missing from the Not seen recently filter"
 check viewer /intel/ip/203.0.113.10 200

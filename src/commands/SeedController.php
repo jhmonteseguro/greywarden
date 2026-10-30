@@ -1379,6 +1379,21 @@ class SeedController extends Controller
             $accounts[$key] = $account;
         }
 
+        // The AWS accounts' own settings, as scripts/aws-inventory.sh imports them
+        foreach ([
+            'aws-prod' => ['alias' => 'example-prod', 'root_mfa' => true, 'root_access_keys' => false, 'iam_users' => 1, 'password_policy' => true,
+                'password_min_length' => 14, 'cloudtrail_trails' => ['org-trail'], 'cloudtrail_multi_region' => true, 's3_block_public_access' => 'all',
+                'guardduty_off' => [], 'ebs_encryption_off' => ['us-east-1'], 'unused_default_vpcs' => [], 'regions' => 17],
+            'aws-dev' => ['alias' => 'example-dev', 'root_mfa' => false, 'root_access_keys' => false, 'iam_users' => 4, 'password_policy' => false,
+                'cloudtrail_trails' => [], 'cloudtrail_multi_region' => false, 's3_block_public_access' => 'partial',
+                'guardduty_off' => ['eu-west-1', 'eu-west-2', 'us-east-1', 'us-east-2', 'us-west-2', 'ap-southeast-2'], 'ebs_encryption_off' => ['eu-west-2'],
+                'unused_default_vpcs' => ['ap-southeast-2', 'us-east-2', 'us-west-2'], 'regions' => 17],
+        ] as $key => $settings) {
+            $accounts[$key]->properties = json_encode($settings);
+            $accounts[$key]->properties_at = self::d(-1) . ' 06:00:00';
+            $this->save($accounts[$key]);
+        }
+
         // [account, name, type, region, resource id, internet-facing, public IPs, endpoints, encryption, os, version, criticality,
         //  classification, status, bucket public-access result, days since last sync (null = not synced)]
         $rows = [
@@ -1413,6 +1428,31 @@ class SeedController extends Controller
             ['github', 'infrastructure', 'repository', 'global', 'example-org/infrastructure',
                 false, null, null, 'unknown', null, null, 'high', 'confidential', 'active', '', null],
         ];
+        // Imported configuration (scripts/aws-inventory.sh): name => [provider type, settings]
+        $config = [
+            'customer-portal-alb' => ['elasticloadbalancing:loadbalancer/app', ['lb_type' => 'application', 'scheme' => 'internet-facing',
+                'dns_name' => 'customer-portal-1234567890.eu-west-2.elb.amazonaws.com', 'state' => 'active', 'listeners' => ['HTTPS:443', 'HTTP:80 redirect'],
+                'ssl_policies' => ['ELBSecurityPolicy-TLS13-1-2-2021-06']]],
+            'portal-web-01' => ['ec2:instance', ['state' => 'running', 'instance_type' => 'm6i.large', 'platform' => 'Linux/UNIX', 'os' => 'Amazon Linux',
+                'os_version' => '2023', 'ssm_managed' => true, 'imds' => 'required', 'security_groups' => ['sg-0123456789abcdef0'], 'private_ip' => '10.20.1.11']],
+            'portal-web-02' => ['ec2:instance', ['state' => 'running', 'instance_type' => 'm5.large', 'platform' => 'Linux/UNIX', 'os' => 'Ubuntu',
+                'os_version' => '18.04', 'ssm_managed' => true, 'imds' => 'optional', 'security_groups' => ['sg-0123456789abcdef0'], 'private_ip' => '10.20.1.12']],
+            'customer-exports' => ['s3:bucket', ['block_public_access' => 'all', 'policy_public' => false, 'acl_public' => false, 'encryption' => 'aws:kms',
+                'encrypted' => true, 'versioning' => 'Enabled', 'mfa_delete' => false]],
+            'erp-db' => ['rds:db', ['engine' => 'postgres', 'engine_version' => '15.7', 'instance_class' => 'db.r6g.large', 'status' => 'available',
+                'publicly_accessible' => false, 'encrypted' => true, 'multi_az' => true, 'backup_retention_days' => 14, 'deletion_protection' => true]],
+            'prod-vpc' => ['ec2:vpc', ['default' => false, 'cidr' => '10.20.0.0/16', 'in_use' => true, 'flow_logs' => false]],
+            'portal-alb-sg' => ['ec2:security-group', ['vpc' => 'vpc-0f1e2d3c4b5a69788', 'default' => false, 'in_use' => true, 'rules' => 3,
+                'open_ingress' => ['tcp/443', 'tcp/80']]],
+            'backup-vault' => ['backup:backup-vault', ['encrypted' => true, 'recovery_points' => 126, 'locked' => true]],
+            'ci-deploy-role' => ['iam:role', ['created' => self::d(-400), 'last_used' => self::d(-2),
+                'trusted' => ['arn:aws:iam::111122223333:oidc-provider/token.actions.githubusercontent.com'], 'trusted_unconditional' => [], 'admin' => true]],
+            'legacy-reports' => ['s3:bucket', ['block_public_access' => 'none', 'block_public_access_off' => ['BlockPublicAcls', 'IgnorePublicAcls',
+                'BlockPublicPolicy', 'RestrictPublicBuckets'], 'policy_public' => true, 'acl_public' => false, 'encryption' => 'none', 'encrypted' => false,
+                'versioning' => 'Off', 'mfa_delete' => false]],
+            'dev-sandbox-01' => ['ec2:instance', ['state' => 'stopped', 'instance_type' => 't3.large', 'platform' => 'Windows', 'imds' => 'optional',
+                'ssm_managed' => false]],
+        ];
         $this->as('jpatel');
         $assets = [];
         foreach ($rows as [$acc, $name, $type, $region, $resourceId, $exposed, $ips, $endpoints, $encryption, $os, $version, $criticality, $classification, $status, $public, $seen]) {
@@ -1425,6 +1465,8 @@ class SeedController extends Controller
                 'first_seen_at' => $seen === null ? null : self::d(-200) . ' 06:00:00',
                 'last_seen_at' => $seen === null ? null : self::d(-$seen) . ' 06:00:00',
                 'checks' => $type === 'bucket' ? [$guardrails->id => $public] : [],
+                'provider_type' => $config[$name][0] ?? null,
+                'properties' => isset($config[$name]) ? json_encode($config[$name][1]) : null,
             ]));
             $this->backdate($asset, self::d(-200) . ' 09:00:00');
             $assets[$name] = $asset;

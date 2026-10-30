@@ -5,6 +5,7 @@ namespace app\modules\cloud\models;
 use app\models\DomainQuery;
 use app\modules\cloud\components\CloudCheck;
 use app\modules\cloud\components\CloudChecks;
+use app\modules\cloud\components\CloudConfig;
 use app\modules\cloud\components\CloudPosture;
 use app\modules\inventory\components\DevicePosture;
 use app\modules\inventory\components\OsLifecycle;
@@ -21,6 +22,13 @@ class CloudAssetQuery extends DomainQuery
     public function internetFacing(): static
     {
         return $this->andWhere(['cloud_asset.internet_facing' => 1]);
+    }
+
+    /** Assets whose imported configuration raised findings, optionally only those at least as severe as $severity */
+    public function withFindings(?string $severity = null): static
+    {
+        $this->andWhere(['>', 'cloud_asset.finding_count', 0]);
+        return $severity ? $this->andWhere(['cloud_asset.finding_severity' => CloudConfig::atLeast($severity) ?: '']) : $this;
     }
 
     // ---- Posture: SQL mirror of CloudPosture::evaluateAsset() ------------------------

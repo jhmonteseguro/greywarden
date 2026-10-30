@@ -4,6 +4,7 @@ namespace tests\unit;
 
 use app\commands\CloudController;
 use app\models\User;
+use app\modules\cloud\components\AwsConfig;
 use app\modules\cloud\components\AwsExport;
 use app\modules\cloud\components\AzureExport;
 use app\modules\cloud\components\CloudCatalogue;
@@ -92,7 +93,7 @@ class CloudImportTest extends DbTestCase
     {
         return $extra + [
             'line' => 2, 'provider' => 'aws', 'provider_type' => 'ec2:instance', 'account' => '111122223333', 'account_aliases' => [],
-            'account_name' => null, 'create' => [], 'state' => null, 'error' => null,
+            'account_name' => null, 'account_properties' => null, 'create' => [], 'state' => null, 'error' => null,
             'attributes' => $attributes + ['name' => 'portal-web-01', 'resource_id' => 'arn:aws:ec2:eu-west-2:111122223333:instance/i-01',
                 'source' => 'aws', 'source_id' => 'arn:aws:ec2:eu-west-2:111122223333:instance/i-01', 'region' => 'eu-west-2'],
         ];
@@ -338,33 +339,154 @@ class CloudImportTest extends DbTestCase
     public function testAwsInventoryScriptCsv(): void
     {
         $records = self::parse('aws', 'aws-inventory.csv');
-        $this->assertCount(52, $records);
-        foreach ($records as $record) {
+        $this->assertCount(57, $records);
+        [$settings] = array_values(array_filter($records, fn($r) => $r['provider_type'] === 'account'));
+        $resources = array_values(array_filter($records, fn($r) => $r['provider_type'] !== 'account'));
+        $this->assertCount(56, $resources);
+        foreach ($resources as $record) {
             $this->assertNull($record['error'], $record['provider_type']);
             $this->assertNotNull(CloudTypeMap::type('aws', $record['provider_type']), $record['provider_type'] . ' is imported');
             $this->assertSame('111122223333', $record['account']);
+            $this->assertSame('example-prod', $record['account_name'], 'named after the account alias');
             $this->assertStringStartsWith('arn:aws:', $record['attributes']['source_id']);
+            $this->assertSame($record['provider_type'], $record['attributes']['provider_type']);
         }
         // The script collects every Resource Explorer type the import keeps ("wafv2:webacl" is only a spelling of the two scoped ones)
         $explorerTypes = array_filter(array_keys(CloudTypeMap::forProvider('aws')), fn($t) => !str_starts_with($t, 'aws::') && $t !== 'wafv2:webacl');
         $this->assertSame([], array_values(array_diff($explorerTypes, array_column($records, 'provider_type'))));
 
-        $byArn = array_column(array_map(fn($r) => $r['attributes'] + ['type' => $r['provider_type']], $records), null, 'resource_id');
+        $this->assertSame(['111122223333', 'example-prod', []], [$settings['account'], $settings['account_name'], $settings['attributes']]);
+        $this->assertSame(['root_mfa' => true, 'cloudtrail_multi_region' => true, 's3_block_public_access' => 'none', 'guardduty_off' => ['us-east-1']],
+            array_intersect_key($settings['account_properties'], array_flip(['root_mfa', 'cloudtrail_multi_region', 's3_block_public_access', 'guardduty_off'])));
+
+        $byArn = array_column(array_map(fn($r) => $r['attributes'] + ['type' => $r['provider_type']], $resources), null, 'resource_id');
         $instance = $byArn['arn:aws:ec2:eu-west-2:111122223333:instance/i-0a1b2c3d4e5f60001'];
-        $this->assertSame(['portal-web-01', 'eu-west-2', '203.0.113.10', null], [$instance['name'], $instance['region'], $instance['public_ips'], $instance['last_seen_at']]);
+        $this->assertSame(['portal-web-01', 'eu-west-2', '203.0.113.10', null, true, 'Ubuntu', '22.04', 'ec2-203-0-113-10.eu-west-2.compute.amazonaws.com'],
+            [$instance['name'], $instance['region'], $instance['public_ips'], $instance['last_seen_at'], $instance['internet_facing'], $instance['os'],
+                $instance['os_version'], $instance['public_endpoints']]);
+        $this->assertSame('optional', json_decode($instance['properties'], true)['imds']);
         $this->assertSame('i-0a1b2c3d4e5f60002', $byArn['arn:aws:ec2:eu-west-2:111122223333:instance/i-0a1b2c3d4e5f60002']['name'], 'untagged: from the ARN');
         $this->assertSame('billing-events', $byArn['arn:aws:sqs:eu-west-2:111122223333:billing-events']['name']);
         $this->assertSame('portal "static" assets', $byArn['arn:aws:cloudfront::111122223333:distribution/E1ABCDEF']['name']);
+        $this->assertSame('d1.cloudfront.net, static.example.com', $byArn['arn:aws:cloudfront::111122223333:distribution/E1ABCDEF']['public_endpoints']);
         $this->assertSame('office, london', $byArn['arn:aws:ec2:eu-west-2:111122223333:vpn-connection/vpn-0123456789abcdef0']['name']);
         $this->assertSame('global', $byArn['arn:aws:iam::111122223333:role/ci/deploy']['region']);
         $this->assertSame('eu-west-2', $byArn['arn:aws:s3:::example-portal-uploads']['region'], 'bucket Region from list-buckets');
+        $this->assertSame([true, 'yes'], [$byArn['arn:aws:s3:::example-old-logs']['internet_facing'], $byArn['arn:aws:s3:::example-old-logs']['encryption_at_rest']]);
+        $this->assertSame([false, 'yes'], [$byArn['arn:aws:s3:::example-portal-uploads']['internet_facing'], $byArn['arn:aws:s3:::example-portal-uploads']['encryption_at_rest']]);
+        $this->assertSame('no', $byArn['arn:aws:rds:eu-west-2:111122223333:db:portal-db']['encryption_at_rest']);
+        $this->assertArrayNotHasKey('properties', array_filter($byArn['arn:aws:ecs:eu-west-2:111122223333:cluster/jobs']), 'nothing collected: no configuration');
         $this->assertSame('elasticloadbalancing:loadbalancer/net', $byArn['arn:aws:elasticloadbalancing:eu-west-2:111122223333:loadbalancer/net/sftp/0123456789abcdef']['type']);
         $this->assertSame('arn:aws:apigateway:eu-west-2::/restapis/a1b2c3d4e5', $byArn['arn:aws:apigateway:eu-west-2::/restapis/a1b2c3d4e5']['source_id'], 'no account in the ARN: from the Account ID column');
 
         [$results, $importer] = $this->import($records);
-        $this->assertSame(array_fill(0, 52, 'created'), array_column($results, 'action'));
+        $this->assertSame(array_merge(['updated'], array_fill(0, 56, 'created')), array_column($results, 'action'), 'the account settings come first');
         $this->assertSame([], $importer->skippedTypes);
         $this->assertCount(1, $importer->createdAccounts);
+        $account = CloudAccount::findOne($importer->createdAccounts[0]->id);
+        $this->assertSame(['example-prod', self::NOW], [$account->name, $account->properties_at]);
+        $this->assertSame($account->id, $results[0]['account']->id);
+        $this->assertNull($results[0]['asset']);
+        $this->assertSame(['medium', 'low'], array_values(array_unique(array_column($account->getFindings(), 'severity'))));
+        $this->assertContains('GuardDuty off in 1 Region: us-east-1', array_column($account->getFindings(), 'title'));
+
+        $asset = fn(string $arn) => CloudAsset::findOne(['source' => 'aws', 'source_id' => $arn]);
+        $bucket = $asset('arn:aws:s3:::example-old-logs');
+        $this->assertSame([4, 'critical', 'S3 bucket', 's3:bucket', 1], [(int) $bucket->finding_count, $bucket->finding_severity, $bucket->getKindLabel(),
+            $bucket->provider_type, (int) $bucket->internet_facing]);
+        $this->assertSame([0, null, 'yes'], [(int) $asset('arn:aws:s3:::example-portal-uploads')->finding_count,
+            $asset('arn:aws:s3:::example-portal-uploads')->finding_severity, $asset('arn:aws:s3:::example-portal-uploads')->encryption_at_rest]);
+        $this->assertContains('Console password without MFA', array_column($asset('arn:aws:iam::111122223333:user/break-glass')->getFindings(), 'title'));
+        $this->assertContains('Can be assumed from AWS account 999988887777 without a condition such as an external ID',
+            array_column($asset('arn:aws:iam::111122223333:role/partner-audit')->getFindings(), 'title'));
+        $this->assertSame('high', $asset('arn:aws:ec2:eu-west-2:111122223333:security-group/sg-0123456789abcdef1')->finding_severity, 'open SSH');
+        $this->assertSame('high', $asset('arn:aws:rds:eu-west-2:111122223333:db:portal-db')->finding_severity);
+        $this->assertSame(['Ubuntu', '22.04'], [$asset('arn:aws:ec2:eu-west-2:111122223333:instance/i-0a1b2c3d4e5f60001')->os,
+            $asset('arn:aws:ec2:eu-west-2:111122223333:instance/i-0a1b2c3d4e5f60001')->os_version]);
+
+        // Importing the same file again changes nothing but the seen times
+        [$again] = $this->import($records);
+        $this->assertSame(array_fill(0, 57, 'unchanged'), array_column($again, 'action'));
+    }
+
+    /** The configuration and what it answers are the source's: refreshed on every import, while the analyst keeps the rest */
+    public function testImportSyncsConfiguration(): void
+    {
+        $account = $this->makeAccount();
+        $config = fn(array $properties) => ['provider_type' => 's3:bucket', 'properties' => json_encode($properties)]
+            + array_filter(AwsConfig::derive('s3:bucket', $properties), fn($v) => $v !== null);
+        $bucket = fn(array $attributes) => self::record($attributes + ['name' => 'exports', 'resource_id' => 'arn:aws:s3:::exports',
+            'source_id' => 'arn:aws:s3:::exports', 'region' => 'eu-west-2'], ['provider_type' => 's3:bucket']);
+        $public = ['block_public_access' => 'none', 'block_public_access_off' => ['RestrictPublicBuckets'], 'policy_public' => true, 'encrypted' => false];
+
+        [[$r]] = $this->import([$bucket($config($public))]);
+        $this->assertSame('created', $r['action']);
+        $asset = CloudAsset::findOne($r['asset']->id);
+        $this->assertSame([1, 'no', 'critical', 3], [(int) $asset->internet_facing, $asset->encryption_at_rest, $asset->finding_severity, (int) $asset->finding_count]);
+        $this->assertSame('S3 bucket', $asset->getProviderTypeLabel());
+
+        // The analyst's answers are replaced when the configuration answers them; their own fields stay
+        $asset->setAttributes(['internet_facing' => false, 'encryption_at_rest' => 'unknown', 'criticality' => 'critical']);
+        $this->assertTrue($asset->save());
+        $this->assertSame('critical', $asset->finding_severity, 'findings come from the configuration, not the form');
+        $fixed = ['block_public_access' => 'all', 'policy_public' => false, 'acl_public' => false, 'encrypted' => true, 'versioning' => 'Enabled'];
+        [[$r]] = $this->import([$bucket($config($fixed))]);
+        $this->assertSame('updated', $r['action']);
+        $this->assertEqualsCanonicalizing(['encryption_at_rest', 'properties', 'findings', 'finding_count', 'finding_severity'], $r['changed']);
+        $asset = CloudAsset::findOne($asset->id);
+        $this->assertSame([0, 'yes', null, 0, null, 'critical'], [(int) $asset->internet_facing, $asset->encryption_at_rest, $asset->finding_severity,
+            (int) $asset->finding_count, $asset->findings, $asset->criticality]);
+        $this->assertSame($fixed, $asset->getProperties());
+
+        // An export without configuration (Resource Explorer) keeps the last one
+        [[$r]] = $this->import([$bucket(['provider_type' => 's3:bucket'])]);
+        $this->assertSame('unchanged', $r['action']);
+        $this->assertSame($fixed, CloudAsset::findOne($asset->id)->getProperties());
+
+        // The audit trail records the finding count and severity, not the JSON
+        $changes = array_merge(...array_map(fn($row) => array_keys(json_decode($row, true) ?: []),
+            (new \yii\db\Query())->select('changes')->from('audit_log')->where(['entity_type' => 'cloud_asset', 'entity_id' => $asset->id])->column()));
+        $this->assertContains('finding_count', $changes);
+        $this->assertNotContains('properties', $changes);
+        $this->assertNotContains('findings', $changes);
+        $this->assertSame($account->id, (int) $asset->account_id);
+    }
+
+    public function testImportAccountSettings(): void
+    {
+        $account = $this->makeAccount(['account_identifier' => '444455556666']);
+        $settings = fn(array $properties, string $id = '444455556666', array $extra = []) => self::record([], $extra + [
+            'provider_type' => 'account', 'account' => $id, 'account_properties' => $properties]);
+
+        // Forced into an account; a second import with the same settings changes nothing
+        [[$r]] = $this->import([$settings(['root_mfa' => false, 'cloudtrail_multi_region' => true], '999999999999')], $account);
+        $this->assertSame(['updated', null], [$r['action'], $r['asset']]);
+        $this->assertContains('properties', $r['changed']);
+        $account = CloudAccount::findOne($account->id);
+        $this->assertSame([1, 'critical', ['Root user has no MFA'], self::NOW], [(int) $account->finding_count, $account->finding_severity,
+            array_column($account->getFindings(), 'title'), $account->properties_at]);
+        $this->assertSame(['Root user MFA', 'No'], $account->getConfigFacts()[0]);
+        [[$r]] = $this->import([$settings(['root_mfa' => false, 'cloudtrail_multi_region' => true])]);
+        $this->assertSame('unchanged', $r['action']);
+
+        // Empty settings clear the configuration; an older import does not move the time back
+        $importer = new CloudImporter('2026-01-01 00:00:00');
+        [$r] = $importer->import([$settings([])], 'Imported in a test.');
+        $this->assertSame('updated', $r['action']);
+        $account = CloudAccount::findOne($account->id);
+        $this->assertSame([null, 0, null, self::NOW], [$account->properties, (int) $account->finding_count, $account->finding_severity, $account->properties_at]);
+        $this->assertFalse($account->hasConfiguration());
+        $this->assertSame([], $account->getConfigFacts());
+
+        // Settings of an account that cannot be found or created
+        [[$r]] = $this->import([$settings(['root_mfa' => true], 'not-an-id')]);
+        $this->assertSame('failed', $r['action']);
+        $this->assertStringContainsString('is not a 12-digit AWS account ID', $r['errors'][0]);
+        // A broken Details column fails the row
+        $broken = (new AwsExport())->parse("ARN,Resource type,Region,Account ID,Name,Public IP,Details\n"
+            . "arn:aws:s3:::b,s3:bucket,eu-west-2,111122223333,b,,not json\narn:aws:iam::111122223333:root,account,global,111122223333,,,\n");
+        $this->assertSame('The Details column is not a JSON object.', $broken[0]['error']);
+        $this->assertSame([], $broken[1]['account_properties'], 'an account row without details');
     }
 
     public function testImportCreatesAccountsAndAssetsAndSkipsUnmappedTypes(): void

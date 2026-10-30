@@ -6,6 +6,32 @@ releases).
 
 ## [Unreleased]
 
+### Added
+
+- Cloud configuration and findings. `scripts/aws-inventory.sh` now reads each resource's security settings (S3 Block
+  Public Access, bucket policy and ACL exposure, encryption, versioning; IMDSv2 and the OS from Systems Manager on EC2;
+  open security-group ports; load balancer listeners and TLS policies; public databases, backups and deletion
+  protection; Lambda runtimes and function URL authentication; EKS endpoint access; IAM MFA, access key age and use,
+  administrator access and role trust; KMS, secret and certificate rotation and expiry...) into a new Details column,
+  plus one row with the account's own settings (root MFA and access keys, multi-Region CloudTrail, GuardDuty and EBS
+  default encryption per Region, S3 Block Public Access, password policy). It needs `jq`.
+- The import keeps the provider's resource type and the configuration, and works out findings graded critical, high,
+  medium or low (`AwsConfig`). Asset pages say what the resource is (*S3 bucket*, *EBS volume*) and show a
+  Configuration panel with its findings and settings; account pages show the account settings and their findings.
+- The cloud asset list has a Findings column (sortable, filterable by severity), a *With findings* filter, category
+  tabs with counts and the provider's type in the Type column; search matches provider types such as `s3:bucket`.
+  The account list shows each account's findings.
+- Demo data includes imported configuration for the AWS assets and accounts.
+
+### Changed
+
+- `scripts/aws-inventory.sh` leaves out AWS plumbing unless `--all` is given: unused default VPCs (with their
+  security group, network ACL and internet gateway; listed on the account instead), default network ACLs, default
+  security groups without rules, ElastiCache nodes of replication groups and IAM Identity Center roles.
+- Importing a configuration sets *Encrypted at rest* and *Internet-facing* from it, so encryption cloud checks follow
+  the real settings; assets imported without configuration keep the values entered by hand.
+- The cloud asset list shows the environment under the account instead of in its own column.
+
 ## [0.13.0-alpha] - 2026-10-30
 
 ### Added

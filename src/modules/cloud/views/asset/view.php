@@ -35,6 +35,8 @@ $posture = $model->getPosture();
 $osSupport = $model->getOsSupport();
 $hasOs = CloudCatalogue::hasOs($model->resource_type);
 $flags = array_filter([
+    $model->finding_count ? Html::a(Badge::render('severity', $model->finding_severity, sprintf('%d finding%s', $model->finding_count, $model->finding_count === 1 ? '' : 's'),
+        ['icon' => 'exclamation-diamond']), '#configuration', ['title' => 'Worst: ' . $model->finding_severity]) : '',
     $model->isInternetFacing() ? Badge::render('exposure', 'internet', 'Internet-facing', ['icon' => 'globe2']) : '',
     $hasOs ? Badge::osSupport($osSupport) : '',
     Badge::lastSeen($model),
@@ -75,7 +77,9 @@ ob_start(); ?>
                         'attributes' => [
                             ['attribute' => 'reference', 'contentOptions' => ['class' => 'gw-mono']],
                             'name',
-                            ['attribute' => 'resource_type', 'value' => $model->getTypeLabel() . ' (' . $model->getCategoryLabel() . ')'],
+                            ['attribute' => 'resource_type', 'format' => 'raw', 'value' => Html::encode($model->getKindLabel())
+                                . '<div class="gw-muted gw-small">' . Html::encode(($model->getProviderTypeLabel() ? $model->getTypeLabel() . ' · ' : '') . $model->getCategoryLabel())
+                                . ($model->provider_type ? ' · <code class="gw-code text-nowrap">' . Html::encode($model->provider_type) . '</code>' : '') . '</div>'],
                             ['attribute' => 'account_id', 'format' => 'raw', 'value' => $account
                                 ? Html::a(Html::encode($account->reference), $account->getViewUrl(), ['class' => 'gw-ref']) . ' ' . Html::encode($account->name)
                                     . '<div class="gw-muted gw-small">' . Html::encode($account->getProviderSummary()) . '</div>'
@@ -111,6 +115,9 @@ ob_start(); ?>
             </div>
             <?= $this->render('@app/views/partials/_text-block', ['label' => 'Notes', 'text' => $model->notes]) ?>
         </section>
+        <?php if ($model->hasConfiguration()): ?>
+            <?= $this->render('../_configuration', ['model' => $model, 'title' => 'Configuration', 'seenAt' => $model->last_seen_at]) ?>
+        <?php endif; ?>
         <section class="gw-panel gw-cloud-exposure">
             <h2 class="gw-panel__title"><i class="bi bi-globe2" aria-hidden="true"></i> Exposure</h2>
             <?= DetailView::widget([

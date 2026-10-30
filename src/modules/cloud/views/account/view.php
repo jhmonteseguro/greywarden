@@ -30,7 +30,9 @@ $posture = $model->getPosture();
 $this->params['subtitle'] = '<span class="gw-ref gw-ref--lg">' . Html::encode($model->reference) . '</span> '
     . Badge::status('cloud-status', $model->status, CloudAccount::statusOptions()) . ' '
     . Badge::render('environment', $model->environment, $model->getEnvironmentLabel()) . ' '
-    . Badge::posture($posture['state']);
+    . Badge::posture($posture['state'])
+    . ($model->finding_count ? ' ' . Html::a(Badge::render('severity', $model->finding_severity,
+        sprintf('%d finding%s', $model->finding_count, $model->finding_count === 1 ? '' : 's'), ['icon' => 'exclamation-diamond']), '#configuration') : '');
 $this->params['actions'] = RecordActions::widget([
     'model' => $model,
     'before' => Rbac::canManage() && !$model->getIsArchived()
@@ -42,6 +44,7 @@ $assets = $model->getAssets()->orderBy(['archived_at' => SORT_ASC, 'reference' =
 $live = array_filter($assets, static fn(CloudAsset $a) => !$a->getIsArchived());
 $exposed = array_filter($live, static fn(CloudAsset $a) => $a->isInternetFacing());
 $failing = array_filter($live, static fn(CloudAsset $a) => $a->isInService() && $a->getPosture()['failures']);
+$withFindings = array_filter($live, static fn(CloudAsset $a) => $a->isInService() && $a->finding_count > 0);
 $platforms = CloudAttack::accountPlatforms($model);
 $resultIcons = [DevicePosture::RESULT_PASS => ['is-ok', 'check-circle-fill'], DevicePosture::RESULT_FAIL => ['is-fail', 'x-circle-fill'], DevicePosture::RESULT_UNKNOWN => ['is-unknown', 'question-circle']];
 
@@ -73,13 +76,17 @@ ob_start(); ?>
                             ['attribute' => 'criticality', 'format' => 'raw', 'value' => Badge::criticality($model->criticality)],
                             ['attribute' => 'data_classification', 'format' => 'raw', 'value' => Badge::render('classification', $model->data_classification, Device::classificationOptions()[$model->data_classification] ?? null)],
                             ['label' => 'Assets', 'format' => 'raw', 'value' => Html::a(count($live) . ' in inventory', ['/cloud/asset/index', 'filter' => 'all', 'account_id' => $model->id])
-                                . ($exposed ? ' · ' . count($exposed) . ' internet-facing' : '') . ($failing ? ' · <span class="gw-text-danger">' . count($failing) . ' failing checks</span>' : '')],
+                                . ($exposed ? ' · ' . count($exposed) . ' internet-facing' : '') . ($failing ? ' · <span class="gw-text-danger">' . count($failing) . ' failing checks</span>' : '')
+                                . ($withFindings ? ' · ' . Html::a(count($withFindings) . ' with findings', ['/cloud/asset/index', 'filter' => 'findings', 'account_id' => $model->id]) : '')],
                         ],
                     ]) ?>
                 </div>
             </div>
             <?= $this->render('@app/views/partials/_text-block', ['label' => 'Notes', 'text' => $model->notes]) ?>
         </section>
+        <?php if ($model->hasConfiguration()): ?>
+            <?= $this->render('../_configuration', ['model' => $model, 'title' => 'Account settings', 'seenAt' => $model->properties_at]) ?>
+        <?php endif; ?>
     </div>
     <div class="col-xl-4">
         <section class="gw-panel gw-posture gw-posture--<?= Html::encode($posture['state']) ?>">
@@ -116,7 +123,8 @@ ob_start(); ?>
 <?php $details = ob_get_clean();
 
 $assetList = LinkedRecords::widget(['title' => 'Assets in this account', 'icon' => 'cloud', 'models' => $assets, 'emptyText' => 'No assets recorded yet.',
-    'extra' => static fn(CloudAsset $a) => '<span class="gw-muted">' . Html::encode($a->getTypeLabel()) . '</span> '
+    'extra' => static fn(CloudAsset $a) => '<span class="gw-muted">' . Html::encode($a->getKindLabel()) . '</span> '
+        . ($a->finding_count ? Badge::render('severity', $a->finding_severity, (string) $a->finding_count, ['title' => $a->finding_count . ' finding(s)']) . ' ' : '')
         . ($a->isInternetFacing() ? Badge::render('exposure', 'internet', 'Internet-facing', ['icon' => 'globe2']) . ' ' : '')
         . Badge::posture($a->getPosture()['state'])]);
 $attachments = Attachment::listFor($model);

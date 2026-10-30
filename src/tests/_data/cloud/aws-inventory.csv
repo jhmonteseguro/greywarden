@@ -1,53 +1,58 @@
-ARN,Resource type,Region,Account ID,Name,Public IP
-arn:aws:acm:eu-west-2:111122223333:certificate/0123-4567,acm:certificate,eu-west-2,111122223333,portal.example.com,
-arn:aws:apigateway:eu-west-2::/apis/f6g7h8i9j0,apigateway:apis,eu-west-2,111122223333,webhooks,
-arn:aws:apigateway:eu-west-2::/restapis/a1b2c3d4e5,apigateway:restapis,eu-west-2,111122223333,partner-api,
-arn:aws:backup:eu-west-2:111122223333:backup-vault:Default,backup:backup-vault,eu-west-2,111122223333,Default,
-arn:aws:cloudfront::111122223333:distribution/E1ABCDEF,cloudfront:distribution,global,111122223333,"portal ""static"" assets",
-arn:aws:cloudfront::111122223333:distribution/E2ABCDEF,cloudfront:distribution,global,111122223333,d2.cloudfront.net,
-arn:aws:codecommit:eu-west-2:111122223333:infra,codecommit:repository,eu-west-2,111122223333,infra,
-arn:aws:dynamodb:eu-west-2:111122223333:table/sessions,dynamodb:table,eu-west-2,111122223333,sessions,
-arn:aws:ec2:eu-west-2:111122223333:elastic-ip/eipalloc-0123456789abcdef0,ec2:elastic-ip,eu-west-2,111122223333,,203.0.113.30
-arn:aws:ec2:eu-west-2:111122223333:instance/i-0a1b2c3d4e5f60001,ec2:instance,eu-west-2,111122223333,portal-web-01,203.0.113.10
-arn:aws:ec2:eu-west-2:111122223333:instance/i-0a1b2c3d4e5f60002,ec2:instance,eu-west-2,111122223333,,
-arn:aws:ec2:eu-west-2:111122223333:internet-gateway/igw-0123456789abcdef0,ec2:internet-gateway,eu-west-2,111122223333,,
-arn:aws:ec2:eu-west-2:111122223333:natgateway/nat-0123456789abcdef0,ec2:natgateway,eu-west-2,111122223333,,203.0.113.20
-arn:aws:ec2:eu-west-2:111122223333:network-acl/acl-0123456789abcdef0,ec2:network-acl,eu-west-2,111122223333,,
-arn:aws:ec2:eu-west-2:111122223333:security-group/sg-0123456789abcdef0,ec2:security-group,eu-west-2,111122223333,web,
-arn:aws:ec2:eu-west-2:111122223333:security-group/sg-0123456789abcdef1,ec2:security-group,eu-west-2,111122223333,bastion,
-arn:aws:ec2:eu-west-2:111122223333:transit-gateway/tgw-0123456789abcdef0,ec2:transit-gateway,eu-west-2,111122223333,,
-arn:aws:ec2:eu-west-2:111122223333:volume/vol-0123456789abcdef0,ec2:volume,eu-west-2,111122223333,portal-web-01 root,
-arn:aws:ec2:eu-west-2:111122223333:vpc/vpc-0123456789abcdef0,ec2:vpc,eu-west-2,111122223333,main,
-arn:aws:ec2:eu-west-2:111122223333:vpn-connection/vpn-0123456789abcdef0,ec2:vpn-connection,eu-west-2,111122223333,"office, london",
-arn:aws:ec2:eu-west-2:111122223333:vpn-gateway/vgw-0123456789abcdef1,ec2:vpn-gateway,eu-west-2,111122223333,,
-arn:aws:ecr:eu-west-2:111122223333:repository/portal,ecr:repository,eu-west-2,111122223333,portal,
-arn:aws:ecs:eu-west-2:111122223333:cluster/jobs,ecs:cluster,eu-west-2,111122223333,,
-arn:aws:eks:eu-west-2:111122223333:cluster/apps,eks:cluster,eu-west-2,111122223333,apps,
-arn:aws:elasticache:eu-west-2:111122223333:cluster:cache-001,elasticache:cluster,eu-west-2,111122223333,cache-001,
-arn:aws:elasticache:eu-west-2:111122223333:replicationgroup:cache,elasticache:replicationgroup,eu-west-2,111122223333,cache,
-arn:aws:elasticfilesystem:eu-west-2:111122223333:file-system/fs-0123456789abcdef0,elasticfilesystem:file-system,eu-west-2,111122223333,shared,
-arn:aws:elasticloadbalancing:eu-west-2:111122223333:loadbalancer/legacy,elasticloadbalancing:loadbalancer,eu-west-2,111122223333,legacy,
-arn:aws:elasticloadbalancing:eu-west-2:111122223333:loadbalancer/app/portal/0123456789abcdef,elasticloadbalancing:loadbalancer/app,eu-west-2,111122223333,portal,
-arn:aws:elasticloadbalancing:eu-west-2:111122223333:loadbalancer/gwy/inspection/0123456789abcdef,elasticloadbalancing:loadbalancer/gwy,eu-west-2,111122223333,inspection,
-arn:aws:elasticloadbalancing:eu-west-2:111122223333:loadbalancer/net/sftp/0123456789abcdef,elasticloadbalancing:loadbalancer/net,eu-west-2,111122223333,sftp,
-arn:aws:es:eu-west-2:111122223333:domain/logs,es:domain,eu-west-2,111122223333,logs,
-arn:aws:fsx:eu-west-2:111122223333:file-system/fs-0fedcba9876543210,fsx:file-system,eu-west-2,111122223333,,
-arn:aws:iam::111122223333:role/ci/deploy,iam:role,global,111122223333,deploy,
-arn:aws:iam::111122223333:user/break-glass,iam:user,global,111122223333,break-glass,
-arn:aws:kafka:eu-west-2:111122223333:cluster/events/0123-4567,kafka:cluster,eu-west-2,111122223333,events,
-arn:aws:kinesis:eu-west-2:111122223333:stream/clicks,kinesis:stream,eu-west-2,111122223333,clicks,
-arn:aws:kms:eu-west-2:111122223333:key/bbbb2222-0000-0000-0000-000000000000,kms:key,eu-west-2,111122223333,portal-data,
-arn:aws:kms:eu-west-2:111122223333:key/cccc3333-0000-0000-0000-000000000000,kms:key,eu-west-2,111122223333,,
-arn:aws:lambda:eu-west-2:111122223333:function:export-reports,lambda:function,eu-west-2,111122223333,export-reports,
-arn:aws:lambda:us-east-1:111122223333:function:edge-auth,lambda:function,us-east-1,111122223333,edge-auth,
-arn:aws:rds:eu-west-2:111122223333:cluster:reports,rds:cluster,eu-west-2,111122223333,reports,
-arn:aws:rds:eu-west-2:111122223333:db:portal-db,rds:db,eu-west-2,111122223333,portal-db,
-arn:aws:redshift:eu-west-2:111122223333:cluster:analytics,redshift:cluster,eu-west-2,111122223333,analytics,
-arn:aws:route53:::hostedzone/Z0123456789ABC,route53:hostedzone,global,111122223333,example.com,
-arn:aws:s3:::example-portal-uploads,s3:bucket,eu-west-2,111122223333,example-portal-uploads,
-arn:aws:s3:::example-old-logs,s3:bucket,global,111122223333,example-old-logs,
-arn:aws:secretsmanager:eu-west-2:111122223333:secret:portal/db-AbCdEf,secretsmanager:secret,eu-west-2,111122223333,portal/db,
-arn:aws:sns:eu-west-2:111122223333:alerts,sns:topic,eu-west-2,111122223333,,
-arn:aws:sqs:eu-west-2:111122223333:billing-events,sqs:queue,eu-west-2,111122223333,,
-arn:aws:wafv2:us-east-1:111122223333:global/webacl/cdn/0123-4567,wafv2:global/webacl,global,111122223333,cdn,
-arn:aws:wafv2:eu-west-2:111122223333:regional/webacl/portal/0123-4567,wafv2:regional/webacl,eu-west-2,111122223333,portal,
+ARN,Resource type,Region,Account ID,Name,Public IP,Details
+arn:aws:iam::111122223333:root,account,global,111122223333,example-prod,,"{""alias"":""example-prod"",""root_mfa"":true,""root_access_keys"":false,""iam_users"":2,""password_policy"":false,""cloudtrail_trails"":[""org-trail""],""cloudtrail_multi_region"":true,""s3_block_public_access"":""none"",""guardduty_off"":[""us-east-1""],""ebs_encryption_off"":[""us-east-1""],""unused_default_vpcs"":[""eu-west-2"",""us-east-1""],""regions"":2}"
+arn:aws:acm:eu-west-2:111122223333:certificate/0123-4567,acm:certificate,eu-west-2,111122223333,portal.example.com,,"{""status"":""ISSUED"",""cert_type"":""AMAZON_ISSUED"",""expires"":""2099-01-01"",""in_use"":true,""renewal"":""ELIGIBLE""}"
+arn:aws:acm:eu-west-2:111122223333:certificate/89ab-cdef,acm:certificate,eu-west-2,111122223333,old.example.com,,"{""status"":""EXPIRED"",""cert_type"":""IMPORTED"",""expires"":""2025-01-01"",""in_use"":false,""renewal"":""INELIGIBLE""}"
+arn:aws:apigateway:eu-west-2::/apis/f6g7h8i9j0,apigateway:apis,eu-west-2,111122223333,webhooks,,"{""protocol"":""HTTP"",""endpoint"":""https://f6g7h8i9j0.execute-api.eu-west-2.amazonaws.com"",""default_endpoint"":true}"
+arn:aws:apigateway:eu-west-2::/restapis/a1b2c3d4e5,apigateway:restapis,eu-west-2,111122223333,partner-api,,"{""endpoint_type"":""REGIONAL"",""api_key_source"":""HEADER""}"
+arn:aws:backup:eu-west-2:111122223333:backup-vault:Default,backup:backup-vault,eu-west-2,111122223333,Default,,"{""encrypted"":true,""kms_key"":""arn:aws:kms:eu-west-2:111122223333:key/aaaa1111-0000-0000-0000-000000000000"",""recovery_points"":42,""locked"":false}"
+arn:aws:cloudfront::111122223333:distribution/E1ABCDEF,cloudfront:distribution,global,111122223333,"portal ""static"" assets",,"{""enabled"":true,""domain"":""d1.cloudfront.net"",""aliases"":[""static.example.com""],""viewer_protocol"":""allow-all"",""min_tls"":""TLSv1_2016"",""waf"":false}"
+arn:aws:cloudfront::111122223333:distribution/E2ABCDEF,cloudfront:distribution,global,111122223333,d2.cloudfront.net,,"{""enabled"":true,""domain"":""d2.cloudfront.net"",""aliases"":[],""viewer_protocol"":""redirect-to-https"",""waf"":true}"
+arn:aws:codecommit:eu-west-2:111122223333:infra,codecommit:repository,eu-west-2,111122223333,infra,,{}
+arn:aws:dynamodb:eu-west-2:111122223333:table/sessions,dynamodb:table,eu-west-2,111122223333,sessions,,"{""encrypted"":true,""pitr"":false}"
+arn:aws:ec2:eu-west-2:111122223333:elastic-ip/eipalloc-0123456789abcdef0,ec2:elastic-ip,eu-west-2,111122223333,,203.0.113.30,"{""associated"":false}"
+arn:aws:ec2:eu-west-2:111122223333:instance/i-0a1b2c3d4e5f60001,ec2:instance,eu-west-2,111122223333,portal-web-01,203.0.113.10,"{""state"":""running"",""instance_type"":""t3.medium"",""platform"":""Linux/UNIX"",""os"":""Ubuntu"",""os_version"":""22.04"",""ssm_managed"":true,""imds"":""optional"",""iam_profile"":""portal-web"",""security_groups"":[""sg-0123456789abcdef0""],""vpc"":""vpc-0123456789abcdef0"",""private_ip"":""10.0.1.10"",""public_dns"":""ec2-203-0-113-10.eu-west-2.compute.amazonaws.com"",""launched"":""2025-02-03""}"
+arn:aws:ec2:eu-west-2:111122223333:instance/i-0a1b2c3d4e5f60002,ec2:instance,eu-west-2,111122223333,,,"{""state"":""stopped"",""instance_type"":""t3.small"",""platform"":""Windows"",""ssm_managed"":false,""imds"":""required"",""security_groups"":[],""vpc"":""vpc-0123456789abcdef0"",""launched"":""2024-06-01""}"
+arn:aws:ec2:eu-west-2:111122223333:internet-gateway/igw-0123456789abcdef0,ec2:internet-gateway,eu-west-2,111122223333,,,"{""vpc"":""vpc-0123456789abcdef0""}"
+arn:aws:ec2:eu-west-2:111122223333:natgateway/nat-0123456789abcdef0,ec2:natgateway,eu-west-2,111122223333,,203.0.113.20,"{""vpc"":""vpc-0123456789abcdef0"",""state"":""available""}"
+arn:aws:ec2:eu-west-2:111122223333:network-acl/acl-0123456789abcdef0,ec2:network-acl,eu-west-2,111122223333,,,"{""vpc"":""vpc-0123456789abcdef0"",""default"":false}"
+arn:aws:ec2:eu-west-2:111122223333:security-group/sg-0123456789abcdef0,ec2:security-group,eu-west-2,111122223333,web,,"{""vpc"":""vpc-0123456789abcdef0"",""default"":false,""description"":""portal web servers"",""in_use"":true,""rules"":4,""open_ingress"":[""tcp/443"",""tcp/80""]}"
+arn:aws:ec2:eu-west-2:111122223333:security-group/sg-0123456789abcdef1,ec2:security-group,eu-west-2,111122223333,bastion,,"{""vpc"":""vpc-0123456789abcdef0"",""default"":false,""description"":""launch-wizard-1 created 2024-05-01"",""in_use"":true,""rules"":1,""open_ingress"":[""tcp/22""]}"
+arn:aws:ec2:eu-west-2:111122223333:transit-gateway/tgw-0123456789abcdef0,ec2:transit-gateway,eu-west-2,111122223333,,,"{""state"":""available""}"
+arn:aws:ec2:eu-west-2:111122223333:volume/vol-0123456789abcdef0,ec2:volume,eu-west-2,111122223333,portal-web-01 root,,"{""state"":""in-use"",""size_gb"":30,""volume_type"":""gp3"",""encrypted"":true,""kms_key"":""arn:aws:kms:eu-west-2:111122223333:key/bbbb2222-0000-0000-0000-000000000000"",""attached_to"":[""i-0a1b2c3d4e5f60001""]}"
+arn:aws:ec2:eu-west-2:111122223333:volume/vol-0123456789abcdef1,ec2:volume,eu-west-2,111122223333,,,"{""state"":""available"",""size_gb"":500,""volume_type"":""gp2"",""encrypted"":false,""attached_to"":[]}"
+arn:aws:ec2:eu-west-2:111122223333:vpc/vpc-0123456789abcdef0,ec2:vpc,eu-west-2,111122223333,main,,"{""default"":false,""cidr"":""10.0.0.0/16"",""in_use"":true,""flow_logs"":true}"
+arn:aws:ec2:eu-west-2:111122223333:vpn-connection/vpn-0123456789abcdef0,ec2:vpn-connection,eu-west-2,111122223333,"office, london",,"{""state"":""available"",""tunnels_up"":""1 of 2""}"
+arn:aws:ec2:eu-west-2:111122223333:vpn-gateway/vgw-0123456789abcdef1,ec2:vpn-gateway,eu-west-2,111122223333,,,"{""state"":""available"",""vpc"":""vpc-0123456789abcdef0""}"
+arn:aws:ecr:eu-west-2:111122223333:repository/portal,ecr:repository,eu-west-2,111122223333,portal,,"{""scan_on_push"":false,""tag_mutability"":""MUTABLE"",""encryption"":""AES256""}"
+arn:aws:ecs:eu-west-2:111122223333:cluster/jobs,ecs:cluster,eu-west-2,111122223333,,,{}
+arn:aws:eks:eu-west-2:111122223333:cluster/apps,eks:cluster,eu-west-2,111122223333,apps,,"{""version"":""1.31"",""status"":""ACTIVE"",""endpoint_public"":true,""endpoint_private"":true,""public_access_cidrs"":[""0.0.0.0/0""],""secrets_encrypted"":false,""logging"":[""api""]}"
+arn:aws:elasticache:eu-west-2:111122223333:cluster:cache-001,elasticache:cluster,eu-west-2,111122223333,cache-001,,"{""engine"":""redis"",""engine_version"":""7.1"",""node_type"":""cache.t4g.small"",""status"":""available"",""encrypted"":false,""in_transit_encryption"":false,""auth_token"":false}"
+arn:aws:elasticache:eu-west-2:111122223333:replicationgroup:cache,elasticache:replicationgroup,eu-west-2,111122223333,cache,,"{""engine"":""redis"",""node_type"":""cache.r7g.large"",""status"":""available"",""multi_az"":true,""encrypted"":true,""in_transit_encryption"":true,""auth_token"":true}"
+arn:aws:elasticfilesystem:eu-west-2:111122223333:file-system/fs-0123456789abcdef0,elasticfilesystem:file-system,eu-west-2,111122223333,shared,,"{""state"":""available"",""encrypted"":false,""size_gb"":5}"
+arn:aws:elasticloadbalancing:eu-west-2:111122223333:loadbalancer/legacy,elasticloadbalancing:loadbalancer,eu-west-2,111122223333,legacy,,"{""lb_type"":""classic"",""scheme"":""internet-facing"",""dns_name"":""legacy-789.eu-west-2.elb.amazonaws.com"",""listeners"":[""HTTP:80""]}"
+arn:aws:elasticloadbalancing:eu-west-2:111122223333:loadbalancer/app/portal/0123456789abcdef,elasticloadbalancing:loadbalancer/app,eu-west-2,111122223333,portal,,"{""lb_type"":""application"",""scheme"":""internet-facing"",""dns_name"":""portal-123.eu-west-2.elb.amazonaws.com"",""state"":""active"",""vpc"":""vpc-0123456789abcdef0"",""listeners"":[""HTTPS:443"",""HTTP:80 redirect""],""ssl_policies"":[""ELBSecurityPolicy-TLS13-1-2-2021-06""]}"
+arn:aws:elasticloadbalancing:eu-west-2:111122223333:loadbalancer/gwy/inspection/0123456789abcdef,elasticloadbalancing:loadbalancer/gwy,eu-west-2,111122223333,inspection,,"{""lb_type"":""gateway"",""state"":""active"",""listeners"":[],""ssl_policies"":[]}"
+arn:aws:elasticloadbalancing:eu-west-2:111122223333:loadbalancer/net/sftp/0123456789abcdef,elasticloadbalancing:loadbalancer/net,eu-west-2,111122223333,sftp,,"{""lb_type"":""network"",""scheme"":""internal"",""dns_name"":""sftp-456.elb.eu-west-2.amazonaws.com"",""state"":""active"",""listeners"":[""TCP:22""],""ssl_policies"":[]}"
+arn:aws:es:eu-west-2:111122223333:domain/logs,es:domain,eu-west-2,111122223333,logs,,"{""engine_version"":""OpenSearch_2.13"",""in_vpc"":false,""encrypted"":true,""node_to_node_encryption"":true,""enforce_https"":false,""tls_policy"":""Policy-Min-TLS-1-0-2019-07"",""fine_grained_access"":false,""endpoint"":""search-logs-abc.eu-west-2.es.amazonaws.com""}"
+arn:aws:fsx:eu-west-2:111122223333:file-system/fs-0fedcba9876543210,fsx:file-system,eu-west-2,111122223333,,,"{""fs_type"":""WINDOWS"",""state"":""AVAILABLE"",""encrypted"":true,""kms_key"":""arn:aws:kms:eu-west-2:111122223333:key/aaaa1111-0000-0000-0000-000000000000"",""size_gb"":300}"
+arn:aws:iam::111122223333:role/ci/deploy,iam:role,global,111122223333,deploy,,"{""path"":""/ci/"",""created"":""2025-01-10"",""last_used"":""2026-10-28"",""trusted"":[""arn:aws:iam::111122223333:oidc-provider/token.actions.githubusercontent.com""],""trusted_unconditional"":[],""admin"":false,""max_session_hours"":1}"
+arn:aws:iam::111122223333:role/partner-audit,iam:role,global,111122223333,partner-audit,,"{""created"":""2023-04-01"",""trusted"":[""arn:aws:iam::999988887777:root""],""trusted_unconditional"":[""arn:aws:iam::999988887777:root""],""admin"":true,""max_session_hours"":12}"
+arn:aws:iam::111122223333:user/break-glass,iam:user,global,111122223333,break-glass,,"{""created"":""2021-03-01"",""groups"":[""Admins""],""admin"":true,""console"":true,""password_last_used"":""2024-02-01"",""mfa"":false,""access_keys"":[{""last_rotated"":""2024-01-01"",""last_used"":null}]}"
+arn:aws:iam::111122223333:user/ci-bot,iam:user,global,111122223333,ci-bot,,"{""created"":""2026-09-01"",""admin"":false,""console"":false,""mfa"":false,""access_keys"":[{""last_rotated"":""2026-09-01"",""last_used"":""2026-10-29""}]}"
+arn:aws:kafka:eu-west-2:111122223333:cluster/events/0123-4567,kafka:cluster,eu-west-2,111122223333,events,,"{""cluster_type"":""PROVISIONED"",""state"":""ACTIVE"",""kafka_version"":""3.6.0"",""encrypted"":true,""in_transit_encryption"":""TLS"",""public_access"":false}"
+arn:aws:kinesis:eu-west-2:111122223333:stream/clicks,kinesis:stream,eu-west-2,111122223333,clicks,,"{""status"":""ACTIVE"",""encrypted"":false,""retention_hours"":24}"
+arn:aws:kms:eu-west-2:111122223333:key/bbbb2222-0000-0000-0000-000000000000,kms:key,eu-west-2,111122223333,portal-data,,"{""key_state"":""Enabled"",""key_spec"":""SYMMETRIC_DEFAULT"",""rotation"":false,""aliases"":[""portal-data"",""portal-data-old""]}"
+arn:aws:kms:eu-west-2:111122223333:key/cccc3333-0000-0000-0000-000000000000,kms:key,eu-west-2,111122223333,,,"{""key_state"":""PendingDeletion"",""key_spec"":""SYMMETRIC_DEFAULT"",""deletion_date"":""2026-11-20""}"
+arn:aws:lambda:eu-west-2:111122223333:function:export-reports,lambda:function,eu-west-2,111122223333,export-reports,,"{""runtime"":""python3.8"",""last_modified"":""2024-03-01"",""role"":""export-reports"",""url"":""https://abc123.lambda-url.eu-west-2.on.aws/"",""url_auth"":""NONE""}"
+arn:aws:lambda:us-east-1:111122223333:function:edge-auth,lambda:function,us-east-1,111122223333,edge-auth,,"{""runtime"":""nodejs20.x"",""last_modified"":""2026-06-01"",""role"":""edge-auth""}"
+arn:aws:rds:eu-west-2:111122223333:cluster:reports,rds:cluster,eu-west-2,111122223333,reports,,"{""engine"":""aurora-mysql"",""engine_version"":""8.0.mysql_aurora.3.08.0"",""status"":""available"",""encrypted"":true,""multi_az"":true,""backup_retention_days"":7,""deletion_protection"":true,""iam_auth"":true,""endpoint"":""reports.cluster-abc.eu-west-2.rds.amazonaws.com""}"
+arn:aws:rds:eu-west-2:111122223333:db:portal-db,rds:db,eu-west-2,111122223333,portal-db,,"{""engine"":""postgres"",""engine_version"":""16.4"",""instance_class"":""db.t3.medium"",""status"":""available"",""publicly_accessible"":true,""encrypted"":false,""multi_az"":false,""backup_retention_days"":0,""deletion_protection"":false,""iam_auth"":false,""auto_minor_upgrade"":true,""endpoint"":""portal-db.abc.eu-west-2.rds.amazonaws.com""}"
+arn:aws:redshift:eu-west-2:111122223333:cluster:analytics,redshift:cluster,eu-west-2,111122223333,analytics,,"{""node_type"":""ra3.xlplus"",""version"":""1.0"",""status"":""available"",""publicly_accessible"":false,""encrypted"":true,""endpoint"":""analytics.abc.eu-west-2.redshift.amazonaws.com""}"
+arn:aws:route53:::hostedzone/Z0123456789ABC,route53:hostedzone,global,111122223333,example.com,,"{""private"":false,""records"":14}"
+arn:aws:s3:::example-old-logs,s3:bucket,global,111122223333,example-old-logs,,"{""block_public_access"":""none"",""block_public_access_off"":[""BlockPublicAcls"",""IgnorePublicAcls"",""BlockPublicPolicy"",""RestrictPublicBuckets""],""policy_public"":true,""acl_public"":true,""encryption"":""AES256"",""encrypted"":true,""versioning"":""Off"",""mfa_delete"":false}"
+arn:aws:s3:::example-portal-uploads,s3:bucket,eu-west-2,111122223333,example-portal-uploads,,"{""block_public_access"":""all"",""policy_public"":false,""acl_public"":false,""encryption"":""aws:kms"",""encrypted"":true,""kms_key"":""arn:aws:kms:eu-west-2:111122223333:key/bbbb2222-0000-0000-0000-000000000000"",""versioning"":""Enabled"",""mfa_delete"":false}"
+arn:aws:secretsmanager:eu-west-2:111122223333:secret:portal/db-AbCdEf,secretsmanager:secret,eu-west-2,111122223333,portal/db,,"{""rotation"":false,""last_accessed"":""2026-10-29"",""last_changed"":""2024-05-01""}"
+arn:aws:sns:eu-west-2:111122223333:alerts,sns:topic,eu-west-2,111122223333,,,"{""encrypted"":false,""subscriptions"":3}"
+arn:aws:sqs:eu-west-2:111122223333:billing-events,sqs:queue,eu-west-2,111122223333,billing-events,,"{""encrypted"":true}"
+arn:aws:wafv2:us-east-1:111122223333:global/webacl/cdn/0123-4567,wafv2:global/webacl,global,111122223333,cdn,,"{""scope"":""CloudFront""}"
+arn:aws:wafv2:eu-west-2:111122223333:regional/webacl/portal/0123-4567,wafv2:regional/webacl,eu-west-2,111122223333,portal,,"{""scope"":""regional""}"

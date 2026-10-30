@@ -19,8 +19,10 @@ use InvalidArgumentException;
  *   account          account identifier (AWS account ID, subscription ID, project ID)
  *   account_aliases  other identifiers of the same account (a Google Cloud project number)
  *   account_name     the account's name, when the export has it
- *   attributes       CloudAsset attributes the source owns (name, resource_id, source_id, region, seen times, OS, public IPs)
+ *   attributes       CloudAsset attributes the source owns (name, resource_id, source_id, region, seen times, OS, public IPs,
+ *                    the provider type and the configuration with what it answers: encryption, exposure, endpoints)
  *   create           attributes set only when the asset is created
+ *   account_properties  for a row holding the account's own settings (no asset): those settings
  *   state            the provider's state for the resource, if any (shown in the summary)
  *   error            why the row cannot be imported (the rest is then empty)
  */
@@ -83,7 +85,8 @@ abstract class CloudExport
         }
         $items = $this->prepare($items);
         return array_map(fn(array $item) => ['line' => $item['line']] + $this->record($item) + [
-            'provider' => static::provider(), 'account_aliases' => [], 'account_name' => null, 'create' => [], 'state' => null, 'error' => null,
+            'provider' => static::provider(), 'account_aliases' => [], 'account_name' => null, 'account_properties' => null, 'create' => [],
+            'state' => null, 'error' => null,
         ], $items);
     }
 

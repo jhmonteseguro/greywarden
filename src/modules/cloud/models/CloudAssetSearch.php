@@ -5,6 +5,7 @@ namespace app\modules\cloud\models;
 use app\components\Actor;
 use app\modules\cloud\components\CloudCatalogue;
 use app\modules\cloud\components\CloudChecks;
+use app\modules\cloud\components\CloudConfig;
 use app\modules\cloud\components\CloudPosture;
 use app\modules\inventory\components\DevicePosture;
 use app\modules\inventory\components\OsLifecycle;
@@ -22,6 +23,7 @@ class CloudAssetSearch extends Model
         'non-compliant' => 'Non-compliant',
         'not-assessed' => 'Not assessed',
         'internet-facing' => 'Internet-facing',
+        'findings' => 'With findings',
         'stale' => 'Not seen recently',
         'unsupported-os' => 'OS end of support',
         'archived' => 'Archived',
@@ -38,6 +40,8 @@ class CloudAssetSearch extends Model
     public $environment;
     public $status;
     public $criticality;
+    /** worst finding at least this severe */
+    public $finding_severity;
     /** cloud-check control id (from the dashboard chart / control page) */
     public $control;
     /** result for the $control filter: pass | fail | unknown */
@@ -47,6 +51,7 @@ class CloudAssetSearch extends Model
     {
         return [
             [['q', 'reference', 'name', 'provider', 'resource_type', 'category', 'environment', 'status', 'criticality'], 'string', 'max' => 100],
+            ['finding_severity', 'in', 'range' => array_keys(CloudConfig::SEVERITIES)],
             [['account_id', 'control'], 'integer'],
             ['result', 'in', 'range' => array_keys(DevicePosture::resultLabels())],
             ['filter', 'in', 'range' => array_keys(self::FILTERS)],
@@ -55,7 +60,7 @@ class CloudAssetSearch extends Model
 
     public function attributeLabels(): array
     {
-        return (new CloudAsset())->attributeLabels() + ['provider' => 'Provider', 'category' => 'Category'];
+        return ['finding_severity' => 'Findings'] + (new CloudAsset())->attributeLabels() + ['provider' => 'Provider', 'category' => 'Category'];
     }
 
     public function formName(): string
@@ -83,6 +88,11 @@ class CloudAssetSearch extends Model
                         'desc' => [new Expression("FIELD(cloud_asset.criticality, 'critical','high','medium','low')")],
                     ],
                     'last_seen_at' => ['asc' => ['cloud_asset.last_seen_at' => SORT_ASC], 'desc' => ['cloud_asset.last_seen_at' => SORT_DESC]],
+                    'finding_severity' => [
+                        'asc' => [new Expression("FIELD(cloud_asset.finding_severity, 'low','medium','high','critical')"), 'cloud_asset.finding_count' => SORT_ASC],
+                        'desc' => [new Expression("FIELD(cloud_asset.finding_severity, 'critical','high','medium','low') = 0"),
+                            new Expression("FIELD(cloud_asset.finding_severity, 'critical','high','medium','low')"), 'cloud_asset.finding_count' => SORT_DESC],
+                    ],
                     'updated_at' => ['asc' => ['cloud_asset.updated_at' => SORT_ASC], 'desc' => ['cloud_asset.updated_at' => SORT_DESC]],
                 ],
             ],
@@ -113,6 +123,9 @@ class CloudAssetSearch extends Model
             case 'internet-facing':
                 $query->active()->inService()->internetFacing();
                 break;
+            case 'findings':
+                $query->active()->inService()->withFindings();
+                break;
             case 'stale':
                 $query->active()->inService()->stale();
                 break;
@@ -132,6 +145,7 @@ class CloudAssetSearch extends Model
                 ['like', 'cloud_asset.public_ips', $this->q],
                 ['like', 'cloud_asset.public_endpoints', $this->q],
                 ['like', 'cloud_asset.source_id', $this->q],
+                ['like', 'cloud_asset.provider_type', $this->q],
                 ['like', 'a.name', $this->q],
                 ['like', 'a.account_identifier', $this->q],
             ]);
@@ -144,6 +158,10 @@ class CloudAssetSearch extends Model
             } else {
                 $query->andWhere('0=1');
             }
+        }
+
+        if ($this->finding_severity) {
+            $query->withFindings($this->finding_severity);
         }
 
         if ($this->category) {

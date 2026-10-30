@@ -18,6 +18,10 @@ use InvalidArgumentException;
  *   resourceType, arn, awsRegion, accountId, tags, configuration.publicIpAddress)
  *   or the query editor's CSV export.
  *
+ * - scripts/aws-inventory.sh: CSV with ARN, resource type, Region, account ID,
+ *   name, public IP and a Details column holding each resource's settings as
+ *   JSON (see AwsConfig), plus one "account" row with the account's settings.
+ *
  * Resource Explorer's LastReportedAt is when AWS last indexed the resource, so
  * it becomes the asset's last-seen time. Config's capture time is when the
  * configuration last changed, which says nothing about the resource still
@@ -58,6 +62,7 @@ final class AwsExport extends CloudExport
                 'name' => self::tag(self::resourceExplorerTags($r) ?: (array) ($r['tags'] ?? []), 'Name') ?? self::pick($r, 'resourceName'),
                 'last_reported' => self::pick($r, 'LastReportedAt'),
                 'public_ip' => self::pick((array) ($r['configuration'] ?? []), 'publicIpAddress', 'publicIp'),
+                'details' => null,
             ];
         }
         return $items;
@@ -80,23 +85,55 @@ final class AwsExport extends CloudExport
             'name' => self::untagged(self::pick($row, 'tagname', 'name', 'resourcename')),
             'last_reported' => self::pick($row, 'lastreportedat', 'lastreported'),
             'public_ip' => self::pick($row, 'configurationpublicipaddress', 'configurationpublicip', 'publicipaddress', 'publicip'),
+            'details' => self::pick($row, 'details'),
         ];
+    }
+
+    /** The account rows of scripts/aws-inventory.sh name their account (its alias), for accounts the import creates */
+    protected function prepare(array $items): array
+    {
+        $names = [];
+        foreach ($items as $item) {
+            if (strtolower((string) $item['type']) === CloudConfig::ACCOUNT_TYPE && ($item['name'] ?? '') !== '' && $item['account'] !== null) {
+                $names[$item['account']] = $item['name'];
+            }
+        }
+        foreach ($items as &$item) {
+            $item['account_name'] = $names[$item['account'] ?? ($item['arn'] !== null ? (explode(':', $item['arn'])[4] ?? '') : '')] ?? null;
+        }
+        return $items;
     }
 
     protected function record(array $item): array
     {
         $type = (string) $item['type'];
         $arn = $item['arn'];
+        $details = null;
+        if ($item['details'] !== null) {
+            $details = json_decode($item['details'], true);
+            if (!is_array($details)) {
+                return self::failed($type, 'The Details column is not a JSON object.');
+            }
+        }
+        $account = $item['account'] ?? ($arn !== null ? (explode(':', $arn)[4] ?? '') : '');
+        if (strtolower($type) === CloudConfig::ACCOUNT_TYPE) {
+            return ['provider_type' => $type, 'account' => $account !== '' ? $account : null, 'account_name' => $item['account_name'],
+                'account_properties' => $details ?? [], 'attributes' => []];
+        }
         if ($arn === null && $item['resource_id'] === null) {
             return self::failed($type, 'No ARN or resource ID.');
         }
-        $account = $item['account'] ?? ($arn !== null ? (explode(':', $arn)[4] ?? '') : '');
         $region = ($item['region'] ?? ($arn !== null ? (explode(':', $arn)[3] ?? '') : '')) ?: 'global';
         $resourceId = $arn ?? $item['resource_id'];
+        // What the settings say about encryption, exposure, endpoints and the OS (null: nothing)
+        $derived = $details ? array_filter(CloudConfig::derive('aws', $type, $details, $item['public_ip']), static fn($v) => $v !== null) : [];
         return [
             'provider_type' => $type,
             'account' => $account !== '' ? $account : null,
-            'attributes' => [
+            'account_name' => $item['account_name'] ?? null,
+            'attributes' => $derived + [
+                'provider_type' => $type,
+                'properties' => $details ? json_encode($details, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) : null,
                 'name' => self::name($item['name'] ?? ($arn !== null ? self::arnName($arn) : $item['resource_id'])),
                 'resource_id' => $resourceId,
                 'source' => self::provider(),

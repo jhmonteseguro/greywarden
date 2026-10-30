@@ -1,77 +1,1324 @@
 {
-  "__profiles__": ["default", "prod", "broken"],
-  "__regions__": {"default": "eu-west-2", "prod": "eu-west-1"},
-  "sts.get-caller-identity": {"UserId": "AROAEXAMPLE:jdoe", "Account": "111122223333", "Arn": "arn:aws:sts::111122223333:assumed-role/ReadOnlyAccess/jdoe"},
-  "ec2.describe-regions": {"Regions": [{"RegionName": "us-east-1"}, {"RegionName": "eu-west-2"}]},
-
-  "eu-west-2/ec2.describe-instances": {"Reservations": [
-    {"Instances": [{"InstanceId": "i-0a1b2c3d4e5f60001", "PublicIpAddress": "203.0.113.10", "Tags": [{"Key": "Env", "Value": "prod"}, {"Key": "Name", "Value": "portal-web-01"}]}]},
-    {"Instances": [{"InstanceId": "i-0a1b2c3d4e5f60002"}]}]},
-  "eu-west-2/ec2.describe-volumes": {"Volumes": [{"VolumeId": "vol-0123456789abcdef0", "Tags": [{"Key": "Name", "Value": "portal-web-01 root"}]}]},
-  "eu-west-2/ec2.describe-vpcs": {"Vpcs": [{"VpcId": "vpc-0123456789abcdef0", "Tags": [{"Key": "Name", "Value": "main"}]}]},
-  "eu-west-2/ec2.describe-security-groups": {"SecurityGroups": [
-    {"GroupId": "sg-0123456789abcdef0", "GroupName": "web"},
-    {"GroupId": "sg-0123456789abcdef1", "GroupName": "launch-wizard-1", "Tags": [{"Key": "Name", "Value": "bastion"}]}]},
-  "eu-west-2/ec2.describe-network-acls": {"NetworkAcls": [{"NetworkAclId": "acl-0123456789abcdef0"}]},
-  "eu-west-2/ec2.describe-internet-gateways": {"InternetGateways": [{"InternetGatewayId": "igw-0123456789abcdef0"}]},
-  "eu-west-2/ec2.describe-nat-gateways": {"NatGateways": [
-    {"NatGatewayId": "nat-0123456789abcdef0", "State": "available", "NatGatewayAddresses": [{"PublicIp": "203.0.113.20"}]},
-    {"NatGatewayId": "nat-0123456789abcdef1", "State": "deleted"}]},
-  "eu-west-2/ec2.describe-transit-gateways": {"TransitGateways": [{"TransitGatewayArn": "arn:aws:ec2:eu-west-2:111122223333:transit-gateway/tgw-0123456789abcdef0", "State": "available"}]},
-  "eu-west-2/ec2.describe-vpn-connections": {"VpnConnections": [{"VpnConnectionId": "vpn-0123456789abcdef0", "State": "available", "Tags": [{"Key": "Name", "Value": "office, london"}]}]},
-  "eu-west-2/ec2.describe-vpn-gateways": {"VpnGateways": [{"VpnGatewayId": "vgw-0123456789abcdef1", "State": "available"}, {"VpnGatewayId": "vgw-0123456789abcdef0", "State": "deleted"}]},
-  "eu-west-2/ec2.describe-addresses": {"Addresses": [{"AllocationId": "eipalloc-0123456789abcdef0", "PublicIp": "203.0.113.30"}]},
-  "eu-west-2/elbv2.describe-load-balancers": {"LoadBalancers": [
-    {"LoadBalancerArn": "arn:aws:elasticloadbalancing:eu-west-2:111122223333:loadbalancer/app/portal/0123456789abcdef", "LoadBalancerName": "portal"},
-    {"LoadBalancerArn": "arn:aws:elasticloadbalancing:eu-west-2:111122223333:loadbalancer/net/sftp/0123456789abcdef", "LoadBalancerName": "sftp"},
-    {"LoadBalancerArn": "arn:aws:elasticloadbalancing:eu-west-2:111122223333:loadbalancer/gwy/inspection/0123456789abcdef", "LoadBalancerName": "inspection"}]},
-  "eu-west-2/elb.describe-load-balancers": {"LoadBalancerDescriptions": [{"LoadBalancerName": "legacy"}]},
-  "eu-west-2/eks.list-clusters": {"clusters": ["apps"]},
-  "eu-west-2/ecs.list-clusters": {"clusterArns": ["arn:aws:ecs:eu-west-2:111122223333:cluster/jobs"]},
-  "eu-west-2/lambda.list-functions": {"Functions": [{"FunctionArn": "arn:aws:lambda:eu-west-2:111122223333:function:export-reports", "FunctionName": "export-reports"}]},
-  "eu-west-2/ecr.describe-repositories": {"repositories": [{"repositoryArn": "arn:aws:ecr:eu-west-2:111122223333:repository/portal", "repositoryName": "portal"}]},
-  "eu-west-2/apigateway.get-rest-apis": {"items": [{"id": "a1b2c3d4e5", "name": "partner-api"}]},
-  "eu-west-2/apigatewayv2.get-apis": {"Items": [{"ApiId": "f6g7h8i9j0", "Name": "webhooks"}]},
-  "eu-west-2/efs.describe-file-systems": {"FileSystems": [{"FileSystemArn": "arn:aws:elasticfilesystem:eu-west-2:111122223333:file-system/fs-0123456789abcdef0", "Name": "shared"}]},
-  "eu-west-2/fsx.describe-file-systems": {"FileSystems": [{"ResourceARN": "arn:aws:fsx:eu-west-2:111122223333:file-system/fs-0fedcba9876543210"}]},
-  "eu-west-2/backup.list-backup-vaults": {"BackupVaultList": [{"BackupVaultArn": "arn:aws:backup:eu-west-2:111122223333:backup-vault:Default", "BackupVaultName": "Default"}]},
-  "eu-west-2/rds.describe-db-instances": {"DBInstances": [{"DBInstanceArn": "arn:aws:rds:eu-west-2:111122223333:db:portal-db", "DBInstanceIdentifier": "portal-db"}]},
-  "eu-west-2/rds.describe-db-clusters": {"DBClusters": [{"DBClusterArn": "arn:aws:rds:eu-west-2:111122223333:cluster:reports", "DBClusterIdentifier": "reports"}]},
-  "eu-west-2/dynamodb.list-tables": {"TableNames": ["sessions"]},
-  "eu-west-2/opensearch.list-domain-names": {"DomainNames": [{"DomainName": "logs"}]},
-  "eu-west-2/redshift.describe-clusters": {"Clusters": [{"ClusterIdentifier": "analytics"}]},
-  "eu-west-2/elasticache.describe-cache-clusters": {"CacheClusters": [{"ARN": "arn:aws:elasticache:eu-west-2:111122223333:cluster:cache-001", "CacheClusterId": "cache-001"}]},
-  "eu-west-2/elasticache.describe-replication-groups": {"ReplicationGroups": [{"ARN": "arn:aws:elasticache:eu-west-2:111122223333:replicationgroup:cache", "ReplicationGroupId": "cache"}]},
-  "eu-west-2/sqs.list-queues": {"QueueUrls": ["https://sqs.eu-west-2.amazonaws.com/111122223333/billing-events"]},
-  "eu-west-2/sns.list-topics": {"Topics": [{"TopicArn": "arn:aws:sns:eu-west-2:111122223333:alerts"}]},
-  "eu-west-2/kinesis.list-streams": {"StreamSummaries": [{"StreamARN": "arn:aws:kinesis:eu-west-2:111122223333:stream/clicks", "StreamName": "clicks"}]},
-  "eu-west-2/kafka.list-clusters-v2": {"ClusterInfoList": [{"ClusterArn": "arn:aws:kafka:eu-west-2:111122223333:cluster/events/0123-4567", "ClusterName": "events"}]},
-  "eu-west-2/kms.list-aliases": {"Aliases": [
-    {"AliasName": "alias/aws/s3", "TargetKeyId": "aaaa1111-0000-0000-0000-000000000000"},
-    {"AliasName": "alias/portal-data", "TargetKeyId": "bbbb2222-0000-0000-0000-000000000000"},
-    {"AliasName": "alias/portal-data-old", "TargetKeyId": "bbbb2222-0000-0000-0000-000000000000"},
-    {"AliasName": "alias/unused"}]},
-  "eu-west-2/kms.list-keys": {"Keys": [
-    {"KeyId": "aaaa1111-0000-0000-0000-000000000000", "KeyArn": "arn:aws:kms:eu-west-2:111122223333:key/aaaa1111-0000-0000-0000-000000000000"},
-    {"KeyId": "bbbb2222-0000-0000-0000-000000000000", "KeyArn": "arn:aws:kms:eu-west-2:111122223333:key/bbbb2222-0000-0000-0000-000000000000"},
-    {"KeyId": "cccc3333-0000-0000-0000-000000000000", "KeyArn": "arn:aws:kms:eu-west-2:111122223333:key/cccc3333-0000-0000-0000-000000000000"}]},
-  "eu-west-2/secretsmanager.list-secrets": {"SecretList": [{"ARN": "arn:aws:secretsmanager:eu-west-2:111122223333:secret:portal/db-AbCdEf", "Name": "portal/db"}]},
-  "us-east-1/secretsmanager.list-secrets": {"__error__": "An error occurred (AccessDeniedException) when calling the ListSecrets operation: not authorized"},
-  "eu-west-2/acm.list-certificates": {"CertificateSummaryList": [{"CertificateArn": "arn:aws:acm:eu-west-2:111122223333:certificate/0123-4567", "DomainName": "portal.example.com"}]},
-  "eu-west-2/wafv2.list-web-acls.REGIONAL": {"WebACLs": [{"ARN": "arn:aws:wafv2:eu-west-2:111122223333:regional/webacl/portal/0123-4567", "Name": "portal"}]},
-  "eu-west-2/codecommit.list-repositories": {"repositories": [{"repositoryName": "infra"}]},
-
-  "us-east-1/lambda.list-functions": {"Functions": [{"FunctionArn": "arn:aws:lambda:us-east-1:111122223333:function:edge-auth", "FunctionName": "edge-auth"}]},
-  "us-east-1/codecommit.list-repositories": {"__error__": "Could not connect to the endpoint URL: \"https://codecommit.us-east-1.amazonaws.com/\""},
-
-  "s3api.list-buckets": {"Buckets": [{"Name": "example-portal-uploads", "BucketRegion": "eu-west-2"}, {"Name": "example-old-logs"}]},
-  "iam.list-roles": {"Roles": [
-    {"Arn": "arn:aws:iam::111122223333:role/ci/deploy", "RoleName": "deploy", "Path": "/ci/"},
-    {"Arn": "arn:aws:iam::111122223333:role/aws-service-role/ecs.amazonaws.com/AWSServiceRoleForECS", "RoleName": "AWSServiceRoleForECS", "Path": "/aws-service-role/ecs.amazonaws.com/"}]},
-  "iam.list-users": {"Users": [{"Arn": "arn:aws:iam::111122223333:user/break-glass", "UserName": "break-glass"}]},
-  "cloudfront.list-distributions": {"DistributionList": {"Items": [
-    {"ARN": "arn:aws:cloudfront::111122223333:distribution/E1ABCDEF", "Comment": "portal \"static\" assets", "DomainName": "d1.cloudfront.net"},
-    {"ARN": "arn:aws:cloudfront::111122223333:distribution/E2ABCDEF", "Comment": "", "DomainName": "d2.cloudfront.net"}]}},
-  "route53.list-hosted-zones": {"HostedZones": [{"Id": "/hostedzone/Z0123456789ABC", "Name": "example.com."}]},
-  "us-east-1/wafv2.list-web-acls.CLOUDFRONT": {"WebACLs": [{"ARN": "arn:aws:wafv2:us-east-1:111122223333:global/webacl/cdn/0123-4567", "Name": "cdn"}]}
+ "__profiles__": [
+  "default",
+  "prod",
+  "broken"
+ ],
+ "__regions__": {
+  "default": "eu-west-2",
+  "prod": "eu-west-1"
+ },
+ "sts.get-caller-identity": {
+  "UserId": "AROAEXAMPLE:jdoe",
+  "Account": "111122223333",
+  "Arn": "arn:aws:sts::111122223333:assumed-role/ReadOnlyAccess/jdoe"
+ },
+ "ec2.describe-regions": {
+  "Regions": [
+   {
+    "RegionName": "us-east-1"
+   },
+   {
+    "RegionName": "eu-west-2"
+   }
+  ]
+ },
+ "eu-west-2/ec2.describe-network-interfaces": {
+  "NetworkInterfaces": [
+   {
+    "NetworkInterfaceId": "eni-01",
+    "VpcId": "vpc-0123456789abcdef0",
+    "Groups": [
+     {
+      "GroupId": "sg-0123456789abcdef0"
+     }
+    ]
+   },
+   {
+    "NetworkInterfaceId": "eni-02",
+    "VpcId": "vpc-0123456789abcdef0",
+    "Groups": [
+     {
+      "GroupId": "sg-0123456789abcdef1"
+     },
+     {
+      "GroupId": "sg-0123456789abcdef0"
+     }
+    ]
+   }
+  ]
+ },
+ "eu-west-2/ec2.describe-vpcs": {
+  "Vpcs": [
+   {
+    "VpcId": "vpc-0123456789abcdef0",
+    "IsDefault": false,
+    "CidrBlock": "10.0.0.0/16",
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "main"
+     }
+    ]
+   },
+   {
+    "VpcId": "vpc-0default00000euw2",
+    "IsDefault": true,
+    "CidrBlock": "172.31.0.0/16"
+   }
+  ]
+ },
+ "eu-west-2/ec2.describe-flow-logs": {
+  "FlowLogs": [
+   {
+    "FlowLogId": "fl-01",
+    "ResourceId": "vpc-0123456789abcdef0"
+   }
+  ]
+ },
+ "eu-west-2/ec2.describe-security-groups": {
+  "SecurityGroups": [
+   {
+    "GroupId": "sg-0123456789abcdef0",
+    "GroupName": "web",
+    "VpcId": "vpc-0123456789abcdef0",
+    "Description": "portal web servers",
+    "IpPermissions": [
+     {
+      "IpProtocol": "tcp",
+      "FromPort": 443,
+      "ToPort": 443,
+      "IpRanges": [
+       {
+        "CidrIp": "0.0.0.0/0"
+       }
+      ],
+      "Ipv6Ranges": [
+       {
+        "CidrIpv6": "::/0"
+       }
+      ]
+     },
+     {
+      "IpProtocol": "tcp",
+      "FromPort": 80,
+      "ToPort": 80,
+      "IpRanges": [
+       {
+        "CidrIp": "0.0.0.0/0"
+       }
+      ]
+     },
+     {
+      "IpProtocol": "tcp",
+      "FromPort": 8080,
+      "ToPort": 8080,
+      "IpRanges": [
+       {
+        "CidrIp": "10.0.0.0/16"
+       }
+      ]
+     }
+    ],
+    "IpPermissionsEgress": [
+     {
+      "IpProtocol": "-1",
+      "IpRanges": [
+       {
+        "CidrIp": "0.0.0.0/0"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "GroupId": "sg-0123456789abcdef1",
+    "GroupName": "launch-wizard-1",
+    "VpcId": "vpc-0123456789abcdef0",
+    "Description": "launch-wizard-1 created 2024-05-01",
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "bastion"
+     }
+    ],
+    "IpPermissions": [
+     {
+      "IpProtocol": "tcp",
+      "FromPort": 22,
+      "ToPort": 22,
+      "IpRanges": [
+       {
+        "CidrIp": "0.0.0.0/0"
+       }
+      ]
+     }
+    ],
+    "IpPermissionsEgress": []
+   },
+   {
+    "GroupId": "sg-0123456789abcdef2",
+    "GroupName": "default",
+    "VpcId": "vpc-0123456789abcdef0",
+    "Description": "default VPC security group",
+    "IpPermissions": [],
+    "IpPermissionsEgress": []
+   },
+   {
+    "GroupId": "sg-0default00000euw2",
+    "GroupName": "default",
+    "VpcId": "vpc-0default00000euw2",
+    "Description": "default VPC security group",
+    "IpPermissions": [
+     {
+      "IpProtocol": "-1"
+     }
+    ],
+    "IpPermissionsEgress": [
+     {
+      "IpProtocol": "-1",
+      "IpRanges": [
+       {
+        "CidrIp": "0.0.0.0/0"
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ "eu-west-2/ec2.describe-network-acls": {
+  "NetworkAcls": [
+   {
+    "NetworkAclId": "acl-0123456789abcdef0",
+    "VpcId": "vpc-0123456789abcdef0",
+    "IsDefault": false
+   },
+   {
+    "NetworkAclId": "acl-0123456789abcdef9",
+    "VpcId": "vpc-0123456789abcdef0",
+    "IsDefault": true
+   },
+   {
+    "NetworkAclId": "acl-0default00000euw2",
+    "VpcId": "vpc-0default00000euw2",
+    "IsDefault": true
+   }
+  ]
+ },
+ "eu-west-2/ec2.describe-internet-gateways": {
+  "InternetGateways": [
+   {
+    "InternetGatewayId": "igw-0123456789abcdef0",
+    "Attachments": [
+     {
+      "VpcId": "vpc-0123456789abcdef0",
+      "State": "available"
+     }
+    ]
+   },
+   {
+    "InternetGatewayId": "igw-0default00000euw2",
+    "Attachments": [
+     {
+      "VpcId": "vpc-0default00000euw2",
+      "State": "available"
+     }
+    ]
+   }
+  ]
+ },
+ "eu-west-2/ec2.describe-nat-gateways": {
+  "NatGateways": [
+   {
+    "NatGatewayId": "nat-0123456789abcdef0",
+    "State": "available",
+    "VpcId": "vpc-0123456789abcdef0",
+    "NatGatewayAddresses": [
+     {
+      "PublicIp": "203.0.113.20"
+     }
+    ]
+   },
+   {
+    "NatGatewayId": "nat-0123456789abcdef1",
+    "State": "deleted"
+   }
+  ]
+ },
+ "eu-west-2/ec2.describe-transit-gateways": {
+  "TransitGateways": [
+   {
+    "TransitGatewayArn": "arn:aws:ec2:eu-west-2:111122223333:transit-gateway/tgw-0123456789abcdef0",
+    "State": "available"
+   }
+  ]
+ },
+ "eu-west-2/ec2.describe-vpn-connections": {
+  "VpnConnections": [
+   {
+    "VpnConnectionId": "vpn-0123456789abcdef0",
+    "State": "available",
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "office, london"
+     }
+    ],
+    "VgwTelemetry": [
+     {
+      "Status": "UP"
+     },
+     {
+      "Status": "DOWN"
+     }
+    ]
+   }
+  ]
+ },
+ "eu-west-2/ec2.describe-vpn-gateways": {
+  "VpnGateways": [
+   {
+    "VpnGatewayId": "vgw-0123456789abcdef1",
+    "State": "available",
+    "VpcAttachments": [
+     {
+      "VpcId": "vpc-0123456789abcdef0"
+     }
+    ]
+   },
+   {
+    "VpnGatewayId": "vgw-0123456789abcdef0",
+    "State": "deleted"
+   }
+  ]
+ },
+ "eu-west-2/ec2.describe-addresses": {
+  "Addresses": [
+   {
+    "AllocationId": "eipalloc-0123456789abcdef0",
+    "PublicIp": "203.0.113.30"
+   }
+  ]
+ },
+ "eu-west-2/ssm.describe-instance-information": {
+  "InstanceInformationList": [
+   {
+    "InstanceId": "i-0a1b2c3d4e5f60001",
+    "PlatformName": "Ubuntu",
+    "PlatformVersion": "22.04"
+   }
+  ]
+ },
+ "eu-west-2/ec2.describe-instances": {
+  "Reservations": [
+   {
+    "Instances": [
+     {
+      "InstanceId": "i-0a1b2c3d4e5f60001",
+      "PublicIpAddress": "203.0.113.10",
+      "PublicDnsName": "ec2-203-0-113-10.eu-west-2.compute.amazonaws.com",
+      "PrivateIpAddress": "10.0.1.10",
+      "Tags": [
+       {
+        "Key": "Env",
+        "Value": "prod"
+       },
+       {
+        "Key": "Name",
+        "Value": "portal-web-01"
+       }
+      ],
+      "State": {
+       "Name": "running"
+      },
+      "InstanceType": "t3.medium",
+      "PlatformDetails": "Linux/UNIX",
+      "MetadataOptions": {
+       "HttpTokens": "optional"
+      },
+      "IamInstanceProfile": {
+       "Arn": "arn:aws:iam::111122223333:instance-profile/portal-web"
+      },
+      "SecurityGroups": [
+       {
+        "GroupId": "sg-0123456789abcdef0"
+       }
+      ],
+      "VpcId": "vpc-0123456789abcdef0",
+      "LaunchTime": "2025-02-03T10:00:00+00:00"
+     }
+    ]
+   },
+   {
+    "Instances": [
+     {
+      "InstanceId": "i-0a1b2c3d4e5f60002",
+      "State": {
+       "Name": "stopped"
+      },
+      "InstanceType": "t3.small",
+      "PlatformDetails": "Windows",
+      "MetadataOptions": {
+       "HttpTokens": "required"
+      },
+      "PublicDnsName": "",
+      "SecurityGroups": [],
+      "VpcId": "vpc-0123456789abcdef0",
+      "LaunchTime": "2024-06-01T10:00:00+00:00"
+     }
+    ]
+   },
+   {
+    "Instances": [
+     {
+      "InstanceId": "i-0a1b2c3d4e5f60003",
+      "State": {
+       "Name": "terminated"
+      }
+     }
+    ]
+   }
+  ]
+ },
+ "eu-west-2/ec2.describe-volumes": {
+  "Volumes": [
+   {
+    "VolumeId": "vol-0123456789abcdef0",
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "portal-web-01 root"
+     }
+    ],
+    "State": "in-use",
+    "Size": 30,
+    "VolumeType": "gp3",
+    "Encrypted": true,
+    "KmsKeyId": "arn:aws:kms:eu-west-2:111122223333:key/bbbb2222-0000-0000-0000-000000000000",
+    "Attachments": [
+     {
+      "InstanceId": "i-0a1b2c3d4e5f60001"
+     }
+    ]
+   },
+   {
+    "VolumeId": "vol-0123456789abcdef1",
+    "State": "available",
+    "Size": 500,
+    "VolumeType": "gp2",
+    "Encrypted": false,
+    "Attachments": []
+   }
+  ]
+ },
+ "eu-west-2/eks.list-clusters": {
+  "clusters": [
+   "apps"
+  ]
+ },
+ "eu-west-2/eks.describe-cluster#apps": {
+  "cluster": {
+   "name": "apps",
+   "arn": "arn:aws:eks:eu-west-2:111122223333:cluster/apps",
+   "version": "1.31",
+   "status": "ACTIVE",
+   "resourcesVpcConfig": {
+    "endpointPublicAccess": true,
+    "endpointPrivateAccess": true,
+    "publicAccessCidrs": [
+     "0.0.0.0/0"
+    ]
+   },
+   "logging": {
+    "clusterLogging": [
+     {
+      "types": [
+       "api"
+      ],
+      "enabled": true
+     },
+     {
+      "types": [
+       "audit",
+       "authenticator"
+      ],
+      "enabled": false
+     }
+    ]
+   }
+  }
+ },
+ "eu-west-2/ecs.list-clusters": {
+  "clusterArns": [
+   "arn:aws:ecs:eu-west-2:111122223333:cluster/jobs"
+  ]
+ },
+ "eu-west-2/lambda.list-functions": {
+  "Functions": [
+   {
+    "FunctionArn": "arn:aws:lambda:eu-west-2:111122223333:function:export-reports",
+    "FunctionName": "export-reports",
+    "Runtime": "python3.8",
+    "LastModified": "2024-03-01T12:00:00.000+0000",
+    "Role": "arn:aws:iam::111122223333:role/export-reports"
+   }
+  ]
+ },
+ "eu-west-2/lambda.list-function-url-configs#export-reports": {
+  "FunctionUrlConfigs": [
+   {
+    "FunctionUrl": "https://abc123.lambda-url.eu-west-2.on.aws/",
+    "AuthType": "NONE"
+   }
+  ]
+ },
+ "eu-west-2/ecr.describe-repositories": {
+  "repositories": [
+   {
+    "repositoryArn": "arn:aws:ecr:eu-west-2:111122223333:repository/portal",
+    "repositoryName": "portal",
+    "imageScanningConfiguration": {
+     "scanOnPush": false
+    },
+    "imageTagMutability": "MUTABLE",
+    "encryptionConfiguration": {
+     "encryptionType": "AES256"
+    }
+   }
+  ]
+ },
+ "eu-west-2/elbv2.describe-load-balancers": {
+  "LoadBalancers": [
+   {
+    "LoadBalancerArn": "arn:aws:elasticloadbalancing:eu-west-2:111122223333:loadbalancer/app/portal/0123456789abcdef",
+    "LoadBalancerName": "portal",
+    "Type": "application",
+    "Scheme": "internet-facing",
+    "DNSName": "portal-123.eu-west-2.elb.amazonaws.com",
+    "State": {
+     "Code": "active"
+    },
+    "VpcId": "vpc-0123456789abcdef0"
+   },
+   {
+    "LoadBalancerArn": "arn:aws:elasticloadbalancing:eu-west-2:111122223333:loadbalancer/net/sftp/0123456789abcdef",
+    "LoadBalancerName": "sftp",
+    "Type": "network",
+    "Scheme": "internal",
+    "DNSName": "sftp-456.elb.eu-west-2.amazonaws.com",
+    "State": {
+     "Code": "active"
+    }
+   },
+   {
+    "LoadBalancerArn": "arn:aws:elasticloadbalancing:eu-west-2:111122223333:loadbalancer/gwy/inspection/0123456789abcdef",
+    "LoadBalancerName": "inspection",
+    "Type": "gateway",
+    "State": {
+     "Code": "active"
+    }
+   }
+  ]
+ },
+ "eu-west-2/elbv2.describe-listeners#arn:aws:elasticloadbalancing:eu-west-2:111122223333:loadbalancer/app/portal/0123456789abcdef": {
+  "Listeners": [
+   {
+    "Protocol": "HTTPS",
+    "Port": 443,
+    "SslPolicy": "ELBSecurityPolicy-TLS13-1-2-2021-06",
+    "DefaultActions": [
+     {
+      "Type": "forward"
+     }
+    ]
+   },
+   {
+    "Protocol": "HTTP",
+    "Port": 80,
+    "DefaultActions": [
+     {
+      "Type": "redirect"
+     }
+    ]
+   }
+  ]
+ },
+ "eu-west-2/elbv2.describe-listeners#arn:aws:elasticloadbalancing:eu-west-2:111122223333:loadbalancer/net/sftp/0123456789abcdef": {
+  "Listeners": [
+   {
+    "Protocol": "TCP",
+    "Port": 22,
+    "DefaultActions": [
+     {
+      "Type": "forward"
+     }
+    ]
+   }
+  ]
+ },
+ "eu-west-2/elb.describe-load-balancers": {
+  "LoadBalancerDescriptions": [
+   {
+    "LoadBalancerName": "legacy",
+    "Scheme": "internet-facing",
+    "DNSName": "legacy-789.eu-west-2.elb.amazonaws.com",
+    "ListenerDescriptions": [
+     {
+      "Listener": {
+       "Protocol": "HTTP",
+       "LoadBalancerPort": 80
+      }
+     }
+    ]
+   }
+  ]
+ },
+ "eu-west-2/apigateway.get-rest-apis": {
+  "items": [
+   {
+    "id": "a1b2c3d4e5",
+    "name": "partner-api",
+    "endpointConfiguration": {
+     "types": [
+      "REGIONAL"
+     ]
+    },
+    "apiKeySource": "HEADER"
+   }
+  ]
+ },
+ "eu-west-2/apigatewayv2.get-apis": {
+  "Items": [
+   {
+    "ApiId": "f6g7h8i9j0",
+    "Name": "webhooks",
+    "ProtocolType": "HTTP",
+    "ApiEndpoint": "https://f6g7h8i9j0.execute-api.eu-west-2.amazonaws.com"
+   }
+  ]
+ },
+ "eu-west-2/acm.list-certificates": {
+  "CertificateSummaryList": [
+   {
+    "CertificateArn": "arn:aws:acm:eu-west-2:111122223333:certificate/0123-4567",
+    "DomainName": "portal.example.com",
+    "Status": "ISSUED",
+    "Type": "AMAZON_ISSUED",
+    "NotAfter": "2099-01-01T00:00:00+00:00",
+    "InUse": true,
+    "RenewalEligibility": "ELIGIBLE"
+   },
+   {
+    "CertificateArn": "arn:aws:acm:eu-west-2:111122223333:certificate/89ab-cdef",
+    "DomainName": "old.example.com",
+    "Status": "EXPIRED",
+    "Type": "IMPORTED",
+    "NotAfter": "2025-01-01T00:00:00+00:00",
+    "InUse": false,
+    "RenewalEligibility": "INELIGIBLE"
+   }
+  ]
+ },
+ "eu-west-2/wafv2.list-web-acls.REGIONAL": {
+  "WebACLs": [
+   {
+    "ARN": "arn:aws:wafv2:eu-west-2:111122223333:regional/webacl/portal/0123-4567",
+    "Name": "portal"
+   }
+  ]
+ },
+ "eu-west-2/efs.describe-file-systems": {
+  "FileSystems": [
+   {
+    "FileSystemArn": "arn:aws:elasticfilesystem:eu-west-2:111122223333:file-system/fs-0123456789abcdef0",
+    "Name": "shared",
+    "LifeCycleState": "available",
+    "Encrypted": false,
+    "SizeInBytes": {
+     "Value": 5368709120
+    }
+   }
+  ]
+ },
+ "eu-west-2/fsx.describe-file-systems": {
+  "FileSystems": [
+   {
+    "ResourceARN": "arn:aws:fsx:eu-west-2:111122223333:file-system/fs-0fedcba9876543210",
+    "FileSystemType": "WINDOWS",
+    "Lifecycle": "AVAILABLE",
+    "KmsKeyId": "arn:aws:kms:eu-west-2:111122223333:key/aaaa1111-0000-0000-0000-000000000000",
+    "StorageCapacity": 300
+   }
+  ]
+ },
+ "eu-west-2/backup.list-backup-vaults": {
+  "BackupVaultList": [
+   {
+    "BackupVaultArn": "arn:aws:backup:eu-west-2:111122223333:backup-vault:Default",
+    "BackupVaultName": "Default",
+    "EncryptionKeyArn": "arn:aws:kms:eu-west-2:111122223333:key/aaaa1111-0000-0000-0000-000000000000",
+    "NumberOfRecoveryPoints": 42
+   }
+  ]
+ },
+ "eu-west-2/rds.describe-db-instances": {
+  "DBInstances": [
+   {
+    "DBInstanceArn": "arn:aws:rds:eu-west-2:111122223333:db:portal-db",
+    "DBInstanceIdentifier": "portal-db",
+    "Engine": "postgres",
+    "EngineVersion": "16.4",
+    "DBInstanceClass": "db.t3.medium",
+    "DBInstanceStatus": "available",
+    "PubliclyAccessible": true,
+    "StorageEncrypted": false,
+    "MultiAZ": false,
+    "BackupRetentionPeriod": 0,
+    "DeletionProtection": false,
+    "IAMDatabaseAuthenticationEnabled": false,
+    "AutoMinorVersionUpgrade": true,
+    "Endpoint": {
+     "Address": "portal-db.abc.eu-west-2.rds.amazonaws.com",
+     "Port": 5432
+    }
+   }
+  ]
+ },
+ "eu-west-2/rds.describe-db-clusters": {
+  "DBClusters": [
+   {
+    "DBClusterArn": "arn:aws:rds:eu-west-2:111122223333:cluster:reports",
+    "DBClusterIdentifier": "reports",
+    "Engine": "aurora-mysql",
+    "EngineVersion": "8.0.mysql_aurora.3.08.0",
+    "Status": "available",
+    "StorageEncrypted": true,
+    "MultiAZ": true,
+    "BackupRetentionPeriod": 7,
+    "DeletionProtection": true,
+    "IAMDatabaseAuthenticationEnabled": true,
+    "Endpoint": "reports.cluster-abc.eu-west-2.rds.amazonaws.com"
+   }
+  ]
+ },
+ "eu-west-2/dynamodb.list-tables": {
+  "TableNames": [
+   "sessions"
+  ]
+ },
+ "eu-west-2/dynamodb.describe-continuous-backups#sessions": {
+  "ContinuousBackupsDescription": {
+   "ContinuousBackupsStatus": "ENABLED",
+   "PointInTimeRecoveryDescription": {
+    "PointInTimeRecoveryStatus": "DISABLED"
+   }
+  }
+ },
+ "eu-west-2/opensearch.list-domain-names": {
+  "DomainNames": [
+   {
+    "DomainName": "logs"
+   }
+  ]
+ },
+ "eu-west-2/opensearch.describe-domain#logs": {
+  "DomainStatus": {
+   "ARN": "arn:aws:es:eu-west-2:111122223333:domain/logs",
+   "DomainName": "logs",
+   "EngineVersion": "OpenSearch_2.13",
+   "EncryptionAtRestOptions": {
+    "Enabled": true
+   },
+   "NodeToNodeEncryptionOptions": {
+    "Enabled": true
+   },
+   "DomainEndpointOptions": {
+    "EnforceHTTPS": false,
+    "TLSSecurityPolicy": "Policy-Min-TLS-1-0-2019-07"
+   },
+   "AdvancedSecurityOptions": {
+    "Enabled": false
+   },
+   "Endpoint": "search-logs-abc.eu-west-2.es.amazonaws.com"
+  }
+ },
+ "eu-west-2/redshift.describe-clusters": {
+  "Clusters": [
+   {
+    "ClusterIdentifier": "analytics",
+    "NodeType": "ra3.xlplus",
+    "ClusterVersion": "1.0",
+    "ClusterStatus": "available",
+    "PubliclyAccessible": false,
+    "Encrypted": true,
+    "Endpoint": {
+     "Address": "analytics.abc.eu-west-2.redshift.amazonaws.com"
+    }
+   }
+  ]
+ },
+ "eu-west-2/elasticache.describe-cache-clusters": {
+  "CacheClusters": [
+   {
+    "ARN": "arn:aws:elasticache:eu-west-2:111122223333:cluster:cache-001",
+    "CacheClusterId": "cache-001",
+    "Engine": "redis",
+    "EngineVersion": "7.1",
+    "CacheNodeType": "cache.t4g.small",
+    "CacheClusterStatus": "available",
+    "AtRestEncryptionEnabled": false,
+    "TransitEncryptionEnabled": false,
+    "AuthTokenEnabled": false
+   },
+   {
+    "ARN": "arn:aws:elasticache:eu-west-2:111122223333:cluster:cache-0001-001",
+    "CacheClusterId": "cache-0001-001",
+    "ReplicationGroupId": "cache",
+    "Engine": "redis"
+   }
+  ]
+ },
+ "eu-west-2/elasticache.describe-replication-groups": {
+  "ReplicationGroups": [
+   {
+    "ARN": "arn:aws:elasticache:eu-west-2:111122223333:replicationgroup:cache",
+    "ReplicationGroupId": "cache",
+    "Engine": "redis",
+    "CacheNodeType": "cache.r7g.large",
+    "Status": "available",
+    "MultiAZ": "enabled",
+    "AtRestEncryptionEnabled": true,
+    "TransitEncryptionEnabled": true,
+    "AuthTokenEnabled": true
+   }
+  ]
+ },
+ "eu-west-2/sqs.list-queues": {
+  "QueueUrls": [
+   "https://sqs.eu-west-2.amazonaws.com/111122223333/billing-events"
+  ]
+ },
+ "eu-west-2/sqs.get-queue-attributes#https://sqs.eu-west-2.amazonaws.com/111122223333/billing-events": {
+  "Attributes": {
+   "QueueArn": "arn:aws:sqs:eu-west-2:111122223333:billing-events",
+   "SqsManagedSseEnabled": "true"
+  }
+ },
+ "eu-west-2/sns.list-topics": {
+  "Topics": [
+   {
+    "TopicArn": "arn:aws:sns:eu-west-2:111122223333:alerts"
+   }
+  ]
+ },
+ "eu-west-2/sns.get-topic-attributes#arn:aws:sns:eu-west-2:111122223333:alerts": {
+  "Attributes": {
+   "TopicArn": "arn:aws:sns:eu-west-2:111122223333:alerts",
+   "SubscriptionsConfirmed": "3"
+  }
+ },
+ "eu-west-2/kinesis.list-streams": {
+  "StreamSummaries": [
+   {
+    "StreamARN": "arn:aws:kinesis:eu-west-2:111122223333:stream/clicks",
+    "StreamName": "clicks"
+   }
+  ]
+ },
+ "eu-west-2/kinesis.describe-stream-summary#clicks": {
+  "StreamDescriptionSummary": {
+   "StreamARN": "arn:aws:kinesis:eu-west-2:111122223333:stream/clicks",
+   "StreamName": "clicks",
+   "StreamStatus": "ACTIVE",
+   "EncryptionType": "NONE",
+   "RetentionPeriodHours": 24
+  }
+ },
+ "eu-west-2/kafka.list-clusters-v2": {
+  "ClusterInfoList": [
+   {
+    "ClusterArn": "arn:aws:kafka:eu-west-2:111122223333:cluster/events/0123-4567",
+    "ClusterName": "events",
+    "ClusterType": "PROVISIONED",
+    "State": "ACTIVE",
+    "Provisioned": {
+     "CurrentBrokerSoftwareInfo": {
+      "KafkaVersion": "3.6.0"
+     },
+     "EncryptionInfo": {
+      "EncryptionInTransit": {
+       "ClientBroker": "TLS"
+      }
+     },
+     "BrokerNodeGroupInfo": {
+      "ConnectivityInfo": {
+       "PublicAccess": {
+        "Type": "DISABLED"
+       }
+      }
+     }
+    }
+   }
+  ]
+ },
+ "eu-west-2/kms.list-aliases": {
+  "Aliases": [
+   {
+    "AliasName": "alias/aws/s3",
+    "TargetKeyId": "aaaa1111-0000-0000-0000-000000000000"
+   },
+   {
+    "AliasName": "alias/portal-data",
+    "TargetKeyId": "bbbb2222-0000-0000-0000-000000000000"
+   },
+   {
+    "AliasName": "alias/portal-data-old",
+    "TargetKeyId": "bbbb2222-0000-0000-0000-000000000000"
+   },
+   {
+    "AliasName": "alias/unused"
+   }
+  ]
+ },
+ "eu-west-2/kms.list-keys": {
+  "Keys": [
+   {
+    "KeyId": "aaaa1111-0000-0000-0000-000000000000",
+    "KeyArn": "arn:aws:kms:eu-west-2:111122223333:key/aaaa1111-0000-0000-0000-000000000000"
+   },
+   {
+    "KeyId": "bbbb2222-0000-0000-0000-000000000000",
+    "KeyArn": "arn:aws:kms:eu-west-2:111122223333:key/bbbb2222-0000-0000-0000-000000000000"
+   },
+   {
+    "KeyId": "cccc3333-0000-0000-0000-000000000000",
+    "KeyArn": "arn:aws:kms:eu-west-2:111122223333:key/cccc3333-0000-0000-0000-000000000000"
+   },
+   {
+    "KeyId": "dddd4444-0000-0000-0000-000000000000",
+    "KeyArn": "arn:aws:kms:eu-west-2:111122223333:key/dddd4444-0000-0000-0000-000000000000"
+   }
+  ]
+ },
+ "eu-west-2/kms.describe-key#bbbb2222-0000-0000-0000-000000000000": {
+  "KeyMetadata": {
+   "KeyManager": "CUSTOMER",
+   "KeyState": "Enabled",
+   "KeySpec": "SYMMETRIC_DEFAULT"
+  }
+ },
+ "eu-west-2/kms.get-key-rotation-status#bbbb2222-0000-0000-0000-000000000000": {
+  "KeyRotationEnabled": false
+ },
+ "eu-west-2/kms.describe-key#cccc3333-0000-0000-0000-000000000000": {
+  "KeyMetadata": {
+   "KeyManager": "CUSTOMER",
+   "KeyState": "PendingDeletion",
+   "KeySpec": "SYMMETRIC_DEFAULT",
+   "DeletionDate": "2026-11-20T00:00:00+00:00"
+  }
+ },
+ "eu-west-2/kms.describe-key#dddd4444-0000-0000-0000-000000000000": {
+  "KeyMetadata": {
+   "KeyManager": "AWS",
+   "KeyState": "Enabled"
+  }
+ },
+ "eu-west-2/secretsmanager.list-secrets": {
+  "SecretList": [
+   {
+    "ARN": "arn:aws:secretsmanager:eu-west-2:111122223333:secret:portal/db-AbCdEf",
+    "Name": "portal/db",
+    "LastChangedDate": "2024-05-01T09:00:00+00:00",
+    "LastAccessedDate": "2026-10-29T00:00:00+00:00"
+   }
+  ]
+ },
+ "us-east-1/secretsmanager.list-secrets": {
+  "__error__": "An error occurred (AccessDeniedException) when calling the ListSecrets operation: not authorized"
+ },
+ "eu-west-2/codecommit.list-repositories": {
+  "repositories": [
+   {
+    "repositoryName": "infra"
+   }
+  ]
+ },
+ "eu-west-2/ec2.get-ebs-encryption-by-default": {
+  "EbsEncryptionByDefault": true
+ },
+ "us-east-1/ec2.get-ebs-encryption-by-default": {
+  "EbsEncryptionByDefault": false
+ },
+ "eu-west-2/guardduty.list-detectors": {
+  "DetectorIds": [
+   "12abc34d567e8fa901bc2d34e56789f0"
+  ]
+ },
+ "us-east-1/guardduty.list-detectors": {
+  "DetectorIds": []
+ },
+ "us-east-1/lambda.list-functions": {
+  "Functions": [
+   {
+    "FunctionArn": "arn:aws:lambda:us-east-1:111122223333:function:edge-auth",
+    "FunctionName": "edge-auth",
+    "Runtime": "nodejs20.x",
+    "LastModified": "2026-06-01T12:00:00.000+0000",
+    "Role": "arn:aws:iam::111122223333:role/service-role/edge-auth"
+   }
+  ]
+ },
+ "us-east-1/lambda.list-function-url-configs#edge-auth": {
+  "FunctionUrlConfigs": []
+ },
+ "us-east-1/codecommit.list-repositories": {
+  "__error__": "Could not connect to the endpoint URL: \"https://codecommit.us-east-1.amazonaws.com/\""
+ },
+ "s3control.get-public-access-block#111122223333": {
+  "__error__": "An error occurred (NoSuchPublicAccessBlockConfiguration) when calling the GetPublicAccessBlock operation: The public access block configuration was not found"
+ },
+ "s3api.list-buckets": {
+  "Buckets": [
+   {
+    "Name": "example-portal-uploads",
+    "BucketRegion": "eu-west-2"
+   },
+   {
+    "Name": "example-old-logs"
+   }
+  ]
+ },
+ "s3api.get-public-access-block#example-portal-uploads": {
+  "PublicAccessBlockConfiguration": {
+   "BlockPublicAcls": true,
+   "IgnorePublicAcls": true,
+   "BlockPublicPolicy": true,
+   "RestrictPublicBuckets": true
+  }
+ },
+ "s3api.get-bucket-policy-status#example-portal-uploads": {
+  "PolicyStatus": {
+   "IsPublic": false
+  }
+ },
+ "s3api.get-bucket-acl#example-portal-uploads": {
+  "Owner": {
+   "ID": "abc"
+  },
+  "Grants": [
+   {
+    "Grantee": {
+     "Type": "CanonicalUser",
+     "ID": "abc"
+    },
+    "Permission": "FULL_CONTROL"
+   }
+  ]
+ },
+ "s3api.get-bucket-encryption#example-portal-uploads": {
+  "ServerSideEncryptionConfiguration": {
+   "Rules": [
+    {
+     "ApplyServerSideEncryptionByDefault": {
+      "SSEAlgorithm": "aws:kms",
+      "KMSMasterKeyID": "arn:aws:kms:eu-west-2:111122223333:key/bbbb2222-0000-0000-0000-000000000000"
+     }
+    }
+   ]
+  }
+ },
+ "s3api.get-bucket-versioning#example-portal-uploads": {
+  "Status": "Enabled"
+ },
+ "s3api.get-public-access-block#example-old-logs": {
+  "__error__": "An error occurred (NoSuchPublicAccessBlockConfiguration) when calling the GetPublicAccessBlock operation: The public access block configuration was not found"
+ },
+ "s3api.get-bucket-policy-status#example-old-logs": {
+  "PolicyStatus": {
+   "IsPublic": true
+  }
+ },
+ "s3api.get-bucket-acl#example-old-logs": {
+  "Owner": {
+   "ID": "abc"
+  },
+  "Grants": [
+   {
+    "Grantee": {
+     "Type": "Group",
+     "URI": "http://acs.amazonaws.com/groups/global/AllUsers"
+    },
+    "Permission": "READ"
+   }
+  ]
+ },
+ "s3api.get-bucket-encryption#example-old-logs": {
+  "ServerSideEncryptionConfiguration": {
+   "Rules": [
+    {
+     "ApplyServerSideEncryptionByDefault": {
+      "SSEAlgorithm": "AES256"
+     }
+    }
+   ]
+  }
+ },
+ "s3api.get-bucket-versioning#example-old-logs": {},
+ "iam.get-account-authorization-details": {
+  "RoleDetailList": [
+   {
+    "Arn": "arn:aws:iam::111122223333:role/ci/deploy",
+    "RoleName": "deploy",
+    "Path": "/ci/",
+    "CreateDate": "2025-01-10T00:00:00+00:00",
+    "MaxSessionDuration": 3600,
+    "RoleLastUsed": {
+     "LastUsedDate": "2026-10-28T10:00:00+00:00"
+    },
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Federated": "arn:aws:iam::111122223333:oidc-provider/token.actions.githubusercontent.com"
+       },
+       "Condition": {
+        "StringLike": {
+         "token.actions.githubusercontent.com:sub": "repo:example-org/*"
+        }
+       }
+      }
+     ]
+    },
+    "AttachedManagedPolicies": []
+   },
+   {
+    "Arn": "arn:aws:iam::111122223333:role/partner-audit",
+    "RoleName": "partner-audit",
+    "Path": "/",
+    "CreateDate": "2023-04-01T00:00:00+00:00",
+    "MaxSessionDuration": 43200,
+    "RoleLastUsed": {},
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "AWS": "arn:aws:iam::999988887777:root"
+       }
+      }
+     ]
+    },
+    "AttachedManagedPolicies": [
+     {
+      "PolicyName": "AdministratorAccess",
+      "PolicyArn": "arn:aws:iam::aws:policy/AdministratorAccess"
+     }
+    ]
+   },
+   {
+    "Arn": "arn:aws:iam::111122223333:role/aws-service-role/ecs.amazonaws.com/AWSServiceRoleForECS",
+    "RoleName": "AWSServiceRoleForECS",
+    "Path": "/aws-service-role/ecs.amazonaws.com/"
+   },
+   {
+    "Arn": "arn:aws:iam::111122223333:role/aws-reserved/sso.amazonaws.com/eu-west-2/AWSReservedSSO_Admin_0123456789abcdef",
+    "RoleName": "AWSReservedSSO_Admin_0123456789abcdef",
+    "Path": "/aws-reserved/sso.amazonaws.com/eu-west-2/"
+   }
+  ],
+  "UserDetailList": [
+   {
+    "Arn": "arn:aws:iam::111122223333:user/break-glass",
+    "UserName": "break-glass",
+    "CreateDate": "2021-03-01T00:00:00+00:00",
+    "GroupList": [
+     "Admins"
+    ],
+    "AttachedManagedPolicies": []
+   },
+   {
+    "Arn": "arn:aws:iam::111122223333:user/ci-bot",
+    "UserName": "ci-bot",
+    "CreateDate": "2026-09-01T00:00:00+00:00",
+    "GroupList": [],
+    "AttachedManagedPolicies": []
+   }
+  ],
+  "GroupDetailList": [
+   {
+    "GroupName": "Admins",
+    "AttachedManagedPolicies": [
+     {
+      "PolicyName": "AdministratorAccess",
+      "PolicyArn": "arn:aws:iam::aws:policy/AdministratorAccess"
+     }
+    ]
+   }
+  ]
+ },
+ "iam.generate-credential-report": {
+  "State": "COMPLETE"
+ },
+ "iam.get-credential-report": {
+  "Content": "dXNlcixhcm4sdXNlcl9jcmVhdGlvbl90aW1lLHBhc3N3b3JkX2VuYWJsZWQscGFzc3dvcmRfbGFzdF91c2VkLHBhc3N3b3JkX2xhc3RfY2hhbmdlZCxwYXNzd29yZF9uZXh0X3JvdGF0aW9uLG1mYV9hY3RpdmUsYWNjZXNzX2tleV8xX2FjdGl2ZSxhY2Nlc3Nfa2V5XzFfbGFzdF9yb3RhdGVkLGFjY2Vzc19rZXlfMV9sYXN0X3VzZWRfZGF0ZSxhY2Nlc3Nfa2V5XzFfbGFzdF91c2VkX3JlZ2lvbixhY2Nlc3Nfa2V5XzFfbGFzdF91c2VkX3NlcnZpY2UsYWNjZXNzX2tleV8yX2FjdGl2ZSxhY2Nlc3Nfa2V5XzJfbGFzdF9yb3RhdGVkLGFjY2Vzc19rZXlfMl9sYXN0X3VzZWRfZGF0ZSxhY2Nlc3Nfa2V5XzJfbGFzdF91c2VkX3JlZ2lvbixhY2Nlc3Nfa2V5XzJfbGFzdF91c2VkX3NlcnZpY2UsY2VydF8xX2FjdGl2ZSxjZXJ0XzFfbGFzdF9yb3RhdGVkLGNlcnRfMl9hY3RpdmUsY2VydF8yX2xhc3Rfcm90YXRlZAo8cm9vdF9hY2NvdW50Pixhcm46YXdzOmlhbTo6MTExMTIyMjIzMzMzOnJvb3QsMjAyMC0wMS0wMVQwMDowMDowMCswMDowMCxub3Rfc3VwcG9ydGVkLDIwMjYtMDEtMTBUMDk6MDA6MDArMDA6MDAsbm90X3N1cHBvcnRlZCxub3Rfc3VwcG9ydGVkLHRydWUsZmFsc2UsTi9BLE4vQSxOL0EsTi9BLGZhbHNlLE4vQSxOL0EsTi9BLE4vQSxmYWxzZSxOL0EsZmFsc2UsTi9BCmJyZWFrLWdsYXNzLGFybjphd3M6aWFtOjoxMTExMjIyMjMzMzM6dXNlci9icmVhay1nbGFzcywyMDIxLTAzLTAxVDAwOjAwOjAwKzAwOjAwLHRydWUsMjAyNC0wMi0wMVQxMDowMDowMCswMDowMCwyMDIxLTAzLTAxVDAwOjAwOjAwKzAwOjAwLE4vQSxmYWxzZSx0cnVlLDIwMjQtMDEtMDFUMDA6MDA6MDArMDA6MDAsTi9BLE4vQSxOL0EsZmFsc2UsTi9BLE4vQSxOL0EsTi9BLGZhbHNlLE4vQSxmYWxzZSxOL0EKY2ktYm90LGFybjphd3M6aWFtOjoxMTExMjIyMjMzMzM6dXNlci9jaS1ib3QsMjAyNi0wOS0wMVQwMDowMDowMCswMDowMCxmYWxzZSxOL0EsTi9BLE4vQSxmYWxzZSx0cnVlLDIwMjYtMDktMDFUMDA6MDA6MDArMDA6MDAsMjAyNi0xMC0yOVQwODowMDowMCswMDowMCxldS13ZXN0LTIsczMsZmFsc2UsTi9BLE4vQSxOL0EsTi9BLGZhbHNlLE4vQSxmYWxzZSxOL0EK",
+  "ReportFormat": "text/csv"
+ },
+ "iam.list-account-aliases": {
+  "AccountAliases": [
+   "example-prod"
+  ]
+ },
+ "iam.get-account-summary": {
+  "SummaryMap": {
+   "AccountMFAEnabled": 1,
+   "AccountAccessKeysPresent": 0,
+   "Users": 2
+  }
+ },
+ "iam.get-account-password-policy": {
+  "__error__": "An error occurred (NoSuchEntity) when calling the GetAccountPasswordPolicy operation: The Password Policy with domain name 111122223333 cannot be found."
+ },
+ "cloudtrail.describe-trails": {
+  "trailList": [
+   {
+    "Name": "org-trail",
+    "TrailARN": "arn:aws:cloudtrail:eu-west-2:111122223333:trail/org-trail",
+    "HomeRegion": "eu-west-2",
+    "IsMultiRegionTrail": true
+   }
+  ]
+ },
+ "eu-west-2/cloudtrail.get-trail-status#arn:aws:cloudtrail:eu-west-2:111122223333:trail/org-trail": {
+  "IsLogging": true
+ },
+ "cloudfront.list-distributions": {
+  "DistributionList": {
+   "Items": [
+    {
+     "ARN": "arn:aws:cloudfront::111122223333:distribution/E1ABCDEF",
+     "Comment": "portal \"static\" assets",
+     "DomainName": "d1.cloudfront.net",
+     "Enabled": true,
+     "Aliases": {
+      "Quantity": 1,
+      "Items": [
+       "static.example.com"
+      ]
+     },
+     "DefaultCacheBehavior": {
+      "ViewerProtocolPolicy": "allow-all"
+     },
+     "ViewerCertificate": {
+      "CloudFrontDefaultCertificate": false,
+      "MinimumProtocolVersion": "TLSv1_2016"
+     },
+     "WebACLId": ""
+    },
+    {
+     "ARN": "arn:aws:cloudfront::111122223333:distribution/E2ABCDEF",
+     "Comment": "",
+     "DomainName": "d2.cloudfront.net",
+     "Enabled": true,
+     "Aliases": {
+      "Quantity": 0
+     },
+     "DefaultCacheBehavior": {
+      "ViewerProtocolPolicy": "redirect-to-https"
+     },
+     "ViewerCertificate": {
+      "CloudFrontDefaultCertificate": true,
+      "MinimumProtocolVersion": "TLSv1"
+     },
+     "WebACLId": "arn:aws:wafv2:us-east-1:111122223333:global/webacl/cdn/0123-4567"
+    }
+   ]
+  }
+ },
+ "route53.list-hosted-zones": {
+  "HostedZones": [
+   {
+    "Id": "/hostedzone/Z0123456789ABC",
+    "Name": "example.com.",
+    "Config": {
+     "PrivateZone": false
+    },
+    "ResourceRecordSetCount": 14
+   }
+  ]
+ },
+ "us-east-1/wafv2.list-web-acls.CLOUDFRONT": {
+  "WebACLs": [
+   {
+    "ARN": "arn:aws:wafv2:us-east-1:111122223333:global/webacl/cdn/0123-4567",
+    "Name": "cdn"
+   }
+  ]
+ },
+ "us-east-1/ec2.describe-vpcs": {
+  "Vpcs": [
+   {
+    "VpcId": "vpc-0default00000use1",
+    "IsDefault": true,
+    "CidrBlock": "172.31.0.0/16"
+   }
+  ]
+ },
+ "us-east-1/ec2.describe-security-groups": {
+  "SecurityGroups": [
+   {
+    "GroupId": "sg-0default00000use1",
+    "GroupName": "default",
+    "VpcId": "vpc-0default00000use1",
+    "Description": "default VPC security group",
+    "IpPermissions": [
+     {
+      "IpProtocol": "-1",
+      "UserIdGroupPairs": [
+       {
+        "GroupId": "sg-0default00000use1"
+       }
+      ]
+     }
+    ],
+    "IpPermissionsEgress": [
+     {
+      "IpProtocol": "-1",
+      "IpRanges": [
+       {
+        "CidrIp": "0.0.0.0/0"
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ "us-east-1/ec2.describe-network-acls": {
+  "NetworkAcls": [
+   {
+    "NetworkAclId": "acl-0default00000use1",
+    "VpcId": "vpc-0default00000use1",
+    "IsDefault": true
+   }
+  ]
+ },
+ "us-east-1/ec2.describe-internet-gateways": {
+  "InternetGateways": [
+   {
+    "InternetGatewayId": "igw-0default00000use1",
+    "Attachments": [
+     {
+      "VpcId": "vpc-0default00000use1",
+      "State": "available"
+     }
+    ]
+   }
+  ]
+ },
+ "us-east-1/ec2.describe-network-interfaces": {
+  "NetworkInterfaces": []
+ }
 }

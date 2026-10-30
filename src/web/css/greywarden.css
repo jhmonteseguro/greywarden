@@ -2166,3 +2166,15 @@ a.gw-intel-flagchip:hover { color: var(--gw-text-strong); border-color: var(--gw
     .gw-report table.facts th, .gw-report table.facts td { display: block; width: 100%; border: 0; padding: .1rem 0; }
     .gw-report table.facts td { padding-bottom: .5rem; border-bottom: 1px solid var(--gw-border-subtle); }
 }
+
+/* Cloud configuration (imported settings and findings on cloud assets / accounts) */
+.gw-cloud-config__when { margin-left: .5rem; font-weight: 400; letter-spacing: 0; text-transform: none; }
+.gw-cloud-config__heading { margin: 0 0 .6rem; font-size: var(--gw-fs-xs); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--gw-text-muted); }
+.gw-cloud-findings { list-style: none; padding: 0; margin: 0; border: 1px solid var(--gw-border-subtle); border-radius: 6px; overflow: hidden; }
+.gw-cloud-findings__item { display: flex; align-items: flex-start; gap: .6rem; padding: .5rem .75rem; font-size: var(--gw-fs-sm); background: var(--gw-inset); }
+.gw-cloud-findings__item + .gw-cloud-findings__item { border-top: 1px solid var(--gw-border-subtle); }
+.gw-cloud-findings__item .gw-badge { flex: none; min-width: 4.5rem; justify-content: center; }
+.gw-cloud-findings--none .bi { color: var(--gw-success); }
+.gw-cloud-config__settings { grid-template-columns: minmax(0, 14rem) minmax(0, 1fr); }
+@media (max-width: 575.98px) { .gw-cloud-config__settings { grid-template-columns: minmax(0, 1fr); } .gw-cloud-config__settings dd { margin-bottom: .35rem; } }
+.gw-quickfilters--facets { flex-wrap: wrap; margin-bottom: .75rem; }
