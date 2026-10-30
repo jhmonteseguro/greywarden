@@ -6,6 +6,12 @@ releases).
 
 ## [Unreleased]
 
+### Fixed
+
+- The supplier create and edit forms now have a Links section for linking related risks, incidents, decisions and the
+  controls that rely on the supplier. Before this fix, those links could only be set from the other record's form. Cloud
+  accounts are still linked from the cloud account's form.
+
 ## [0.14.0-alpha] - 2026-10-30
 
 ### Added

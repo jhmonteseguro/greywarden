@@ -246,7 +246,7 @@ ob_start(); ?>
     <div class="col-lg-4"><?= LinkedRecords::widget(['title' => 'Controls that rely on them', 'icon' => 'shield-shaded', 'models' => $controls,
         'extra' => static fn(Control $c) => Badge::status('control-status', $c->status, Control::statusOptions())]) ?></div>
 </div>
-<p class="gw-muted gw-small">Risks, incidents, decisions and controls link to a supplier from their own edit forms.</p>
+<p class="gw-muted gw-small">Link risks, incidents, decisions and controls here from the supplier's edit form, or from their own edit forms.</p>
 <?php $links = ob_get_clean();
 
 $attachments = Attachment::listFor($model);

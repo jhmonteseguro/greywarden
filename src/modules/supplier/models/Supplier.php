@@ -27,7 +27,7 @@ use Yii;
  * personal data and access level on every save (see deriveTier()); it sets the
  * review interval and scopes supplier checks. A supplier's cloud accounts point
  * at it (CloudAccount::$supplier_id); risks, incidents, decisions and controls
- * link to it from their side.
+ * link to it through the same link tables, from either side.
  *
  * @property int $id
  * @property string $reference
@@ -89,6 +89,16 @@ class Supplier extends DomainRecord
 
     /** @var array<int,string>|string|null manual check results from the form: control id => pass | fail | '' (null = not submitted) */
     public $checks = null;
+
+    // Many-to-many link properties (null = untouched)
+    /** @var int[]|string|null link ids (null = not submitted) */
+    public $riskIds = null;
+    /** @var int[]|string|null link ids (null = not submitted) */
+    public $incidentIds = null;
+    /** @var int[]|string|null link ids (null = not submitted) */
+    public $decisionIds = null;
+    /** @var int[]|string|null link ids (null = not submitted) */
+    public $controlIds = null;
 
     public static function tableName(): string
     {
@@ -182,6 +192,16 @@ class Supplier extends DomainRecord
         return $tier ? 'Tier ' . (int) $tier : '';
     }
 
+    public function linkDefinitions(): array
+    {
+        return [
+            'riskIds' => ['table' => 'risk_supplier', 'self' => 'supplier_id', 'other' => 'risk_id', 'class' => Risk::class, 'label' => 'Related risks'],
+            'incidentIds' => ['table' => 'incident_supplier', 'self' => 'supplier_id', 'other' => 'incident_id', 'class' => Incident::class, 'label' => 'Incidents involving them'],
+            'decisionIds' => ['table' => 'decision_supplier', 'self' => 'supplier_id', 'other' => 'decision_id', 'class' => Decision::class, 'label' => 'Related decisions'],
+            'controlIds' => ['table' => 'control_supplier', 'self' => 'supplier_id', 'other' => 'control_id', 'class' => Control::class, 'label' => 'Controls that rely on them'],
+        ];
+    }
+
     public function enumAttributes(): array
     {
         return [
@@ -239,6 +259,10 @@ class Supplier extends DomainRecord
             ['notice_days', 'integer', 'min' => 0, 'max' => 3650],
             ['breach_notice_hours', 'integer', 'min' => 0, 'max' => 8760],
             ['checks', 'validateChecks'],
+            ['riskIds', 'each', 'rule' => ['exist', 'targetClass' => Risk::class, 'targetAttribute' => 'id']],
+            ['incidentIds', 'each', 'rule' => ['exist', 'targetClass' => Incident::class, 'targetAttribute' => 'id']],
+            ['decisionIds', 'each', 'rule' => ['exist', 'targetClass' => Decision::class, 'targetAttribute' => 'id']],
+            ['controlIds', 'each', 'rule' => ['exist', 'targetClass' => Control::class, 'targetAttribute' => 'id']],
         ];
     }
 

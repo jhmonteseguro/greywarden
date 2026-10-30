@@ -7,13 +7,18 @@
 use app\models\Lookup;
 use app\models\User;
 use app\modules\inventory\components\DevicePosture;
+use app\modules\control\models\Control;
+use app\modules\decision\models\Decision;
+use app\modules\incident\models\Incident;
 use app\modules\inventory\models\Device;
+use app\modules\risk\models\Risk;
 use app\modules\supplier\components\SupplierChecks;
 use app\modules\supplier\components\SupplierPosture;
 use app\modules\supplier\models\Supplier;
 use app\widgets\ActiveForm;
 use yii\helpers\Html;
 
+$picker = static fn(string $placeholder) => ['multiple' => true, 'size' => 8, 'class' => 'form-select gw-multiselect', 'data-gw-picker' => $placeholder];
 $results = ['' => 'Not assessed'] + array_intersect_key(DevicePosture::resultLabels(), [SupplierPosture::RESULT_PASS => 1, SupplierPosture::RESULT_FAIL => 1]);
 ?>
 <?php $form = ActiveForm::begin(['id' => 'supplier-form', 'options' => ['class' => 'gw-form gw-form--supplier']]); ?>
@@ -91,6 +96,17 @@ $results = ['' => 'Not assessed'] + array_intersect_key(DevicePosture::resultLab
     <?php if (count(SupplierChecks::all()) > count(SupplierChecks::manual())): ?>
         <p class="form-text gw-field__hint mb-0">DPA and assurance checks are read from the DPA answer above and the Assurance tab.</p>
     <?php endif; ?>
+</fieldset>
+
+<fieldset class="gw-fieldset">
+    <legend class="gw-fieldset__title">Links</legend>
+    <div class="row">
+        <div class="col-md-6"><?= $form->field($model, 'riskIds')->listBox(Risk::selectOptions($model->riskIds ?? []), $picker('Filter risks…')) ?></div>
+        <div class="col-md-6"><?= $form->field($model, 'incidentIds')->listBox(Incident::selectOptions($model->incidentIds ?? []), $picker('Filter incidents…')) ?></div>
+        <div class="col-md-6"><?= $form->field($model, 'decisionIds')->listBox(Decision::selectOptions($model->decisionIds ?? []), $picker('Filter decisions…')) ?></div>
+        <div class="col-md-6"><?= $form->field($model, 'controlIds')->listBox(Control::selectOptions($model->controlIds ?? []), $picker('Filter controls, e.g. CTL-0003 or MFA')) ?></div>
+    </div>
+    <p class="form-text gw-field__hint mb-0">Cloud accounts are linked by picking this supplier on the cloud account's edit form.</p>
 </fieldset>
 
 <fieldset class="gw-fieldset">

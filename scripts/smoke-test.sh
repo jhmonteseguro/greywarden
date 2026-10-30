@@ -478,8 +478,9 @@ post analyst /suppliers/create /suppliers/create 200 "Supplier[name]=" "Supplier
 grep -q 'Supplier name cannot be blank' "$BODY" && grep -q 'not a valid URL' "$BODY" && ok || bad "supplier validation not shown"
 post analyst /suppliers/create /suppliers/create 302 "Supplier[name]=Smoke supplier" "Supplier[status]=active" "Supplier[criticality]=medium" \
     "Supplier[data_classification]=confidential" "Supplier[access_level]=privileged" "Supplier[personal_data]=1" "Supplier[dpa_status]=not_signed" \
-    "Supplier[checks][$SUP_DD]=fail"
+    "Supplier[checks][$SUP_DD]=fail" "Supplier[controlIds][]=$SUP_DD"
 SSUP=$(last_id supplier)
+[[ "$(sql "SELECT COUNT(*) FROM control_supplier WHERE supplier_id=$SSUP AND control_id=$SUP_DD")" == 1 ]] && ok || bad "supplier form control link not saved"
 check analyst "/suppliers/$SSUP" 200
 grep -q 'SUP-00' "$BODY" && grep -q 'data-value="non-compliant"' "$BODY" && grep -q 'privileged access to our systems' "$BODY" && ok || bad "supplier create / tier / posture failed"
 post analyst "/suppliers/$SSUP" "/suppliers/$SSUP/add-assurance" 302 "SupplierAssurance[type]=iso27001" "SupplierAssurance[expires_on]=$(date -d '+20 days' +%Y-%m-%d)"

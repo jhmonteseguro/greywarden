@@ -272,6 +272,35 @@ class SupplierFlowsTest extends FunctionalTestCase
         $this->assertSee('Amazon Web Services');
         $this->assertSee('data-kind="tier"');
 
+        // Links set from the supplier's own form, and cleared again
+        $wingtip = $this->supplier('Adventure Works Print');
+        $this->get("/suppliers/{$wingtip->id}/update");
+        foreach (['Filter risks', 'Filter incidents', 'Filter decisions', 'Filter controls'] as $text) {
+            $this->assertSee($text);
+        }
+        $form = $wingtip->getAttributes(['name', 'status', 'criticality', 'data_classification', 'access_level']);
+        $this->post("/suppliers/{$wingtip->id}/update", ['Supplier' => $form + ['riskIds' => [$risk->id], 'incidentIds' => [$incident->id],
+            'decisionIds' => [$decision->id], 'controlIds' => [$guardrails->id]]]);
+        $this->assertRedirect("/suppliers/{$wingtip->id}");
+        $wingtip->refresh();
+        $this->assertSame([$risk->id], array_column($wingtip->risks, 'id'));
+        $this->assertSame([$incident->id], array_column($wingtip->incidents, 'id'));
+        $this->assertSame([$decision->id], array_column($wingtip->decisions, 'id'));
+        $this->assertSame([$guardrails->id], array_column($wingtip->controls, 'id'));
+        $this->assertContains($wingtip->id, array_column($risk->suppliers, 'id'));
+        $this->get("/suppliers/{$wingtip->id}");
+        $this->assertSee($risk->reference);
+        $this->assertSee($guardrails->reference);
+        $this->post("/suppliers/{$wingtip->id}/update", ['Supplier' => $form + ['riskIds' => [999999]]]);
+        $this->assertOk();
+        $this->assertSee('gw-error-summary');
+        $this->assertSame([$risk->id], array_column($wingtip->getRisks()->all(), 'id'));
+        $this->post("/suppliers/{$wingtip->id}/update", ['Supplier' => $form + ['riskIds' => '', 'incidentIds' => '', 'decisionIds' => '', 'controlIds' => '']]);
+        $this->assertRedirect("/suppliers/{$wingtip->id}");
+        $wingtip->refresh();
+        $this->assertSame([], $wingtip->risks);
+        $this->assertSame([], $wingtip->controls);
+
         // Supplier checks in the Control Register
         $assurance = Control::findOne(['title' => 'Current security assurance from critical suppliers']);
         $this->get("/controls/{$assurance->id}");
