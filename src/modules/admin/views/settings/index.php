@@ -1,18 +1,20 @@
 <?php
 /**
  * Admin › Settings: branding, the compliance frameworks switched on, the
- * wording of incident PDF reports and edge monitoring (separate forms, so each
- * saves on its own).
+ * wording of incident PDF reports, management reports and edge monitoring
+ * (separate forms, so each saves on its own).
  * @var yii\web\View $this
  * @var app\modules\admin\models\BrandingForm $model
  * @var app\modules\admin\models\ComplianceForm $compliance
  * @var app\modules\admin\models\IncidentReportForm $incidentReport
+ * @var app\modules\admin\models\ReportForm $report
  * @var app\modules\admin\models\EdgeForm $edge
  */
 
 use app\components\Branding;
 use app\modules\admin\models\ComplianceForm;
 use app\modules\admin\models\IncidentReportForm;
+use app\modules\admin\models\ReportForm;
 use app\modules\control\components\FrameworkCatalogue;
 use app\modules\incident\components\IncidentWording;
 use app\widgets\ActiveForm;
@@ -104,6 +106,21 @@ $check = static fn(string $class) => static fn($index, $label, $name, $checked, 
 
 <div class="gw-form__actions">
     <?= Html::submitButton('Save incident report wording', ['class' => 'btn btn-primary gw-btn']) ?>
+</div>
+<?php ActiveForm::end(); ?>
+
+<?php $form = ActiveForm::begin(['id' => 'report-settings-form', 'options' => ['class' => 'gw-form gw-form--settings']]); ?>
+<?= $form->errorSummary($report, ['class' => 'alert alert-danger gw-error-summary']) ?>
+
+<fieldset class="gw-fieldset" id="management-reports">
+    <legend class="gw-fieldset__title">Management reports</legend>
+    <div class="row">
+        <div class="col-md-6"><?= $form->field($report, 'risk_appetite')->dropDownList(ReportForm::appetiteOptions()) ?></div>
+    </div>
+</fieldset>
+
+<div class="gw-form__actions">
+    <?= Html::submitButton('Save management report settings', ['class' => 'btn btn-primary gw-btn']) ?>
 </div>
 <?php ActiveForm::end(); ?>
 

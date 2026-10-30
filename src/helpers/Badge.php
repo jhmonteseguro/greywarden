@@ -90,10 +90,14 @@ final class Badge
         'audit-action' => [
             'create' => 'success', 'update' => 'info', 'archive' => 'warning', 'restore' => 'info', 'delete' => 'danger',
             'attach' => 'info', 'detach' => 'warning', 'export' => 'neutral',
+            'regenerate' => 'info', 'approve' => 'success', 'approval_withdraw' => 'warning',
             'review' => 'success', 'review_remove' => 'warning', 'assurance' => 'info', 'assurance_remove' => 'warning',
             'login' => 'neutral', 'logout' => 'neutral', 'login_failed' => 'danger', 'login_blocked' => 'critical',
             'password_change' => 'info', 'password_reset' => 'warning', 'unlock' => 'info',
         ],
+        // Management reports (app\modules\report)
+        'report-status' => ['draft' => 'warning', 'approved' => 'success'],
+        'rag' => ['green' => 'success', 'amber' => 'warning', 'red' => 'danger'],
         'bool' => ['yes' => 'success', 'no' => 'danger'],
         // Incident CIA impact (app\modules\incident\models\Incident::IMPACT_ATTRIBUTES)
         'cia' => ['confidentiality' => 'info', 'integrity' => 'info', 'availability' => 'info'],

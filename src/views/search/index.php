@@ -18,6 +18,7 @@ use app\modules\decision\models\Decision;
 use app\modules\incident\models\Incident;
 use app\modules\intel\models\BlocklistEntry;
 use app\modules\inventory\models\Device;
+use app\modules\report\models\Report;
 use app\modules\risk\models\Risk;
 use app\modules\supplier\models\Supplier;
 use yii\helpers\Html;
@@ -71,6 +72,9 @@ $this->params['subtitle'] = $q === '' ? 'Enter a reference, title, hostname, ser
                         } elseif ($item instanceof FrameworkRequirement) {
                             echo '<span class="gw-muted">' . Html::encode($item->getFrameworkLabel() . ' · ' . $item->group_name) . '</span>'
                                 . ($item->applicable ? '' : ' ' . Badge::flag('archived', 'Not applicable'));
+                        } elseif ($item instanceof Report) {
+                            echo Badge::status('report-status', $item->status, Report::statusOptions())
+                                . ($item->rag ? ' ' . Badge::render('rag', $item->rag, $item->getRagLabel()) : '');
                         } elseif ($item instanceof Decision) {
                             echo Badge::status('decision-status', $item->status, Decision::statusOptions());
                         } elseif ($item instanceof Incident) {

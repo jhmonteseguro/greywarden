@@ -29,6 +29,7 @@ use app\modules\intel\models\IntelIndicator;
 use app\modules\intel\models\IntelNote;
 use app\modules\inventory\components\DeviceChecks;
 use app\modules\inventory\models\Device;
+use app\modules\report\models\Report;
 use app\modules\risk\models\Risk;
 use app\modules\supplier\components\SupplierCheck;
 use app\modules\supplier\components\SupplierChecks;
@@ -136,7 +137,7 @@ class SeedController extends Controller
     {
         mt_srand(20261009);
         $hasData = Risk::find()->exists() || Device::find()->exists() || Incident::find()->exists() || Decision::find()->exists() || CloudAccount::find()->exists()
-            || Supplier::find()->exists();
+            || Supplier::find()->exists() || Report::find()->exists();
         if ($hasData && !$this->reset) {
             $this->stderr("Domain data already exists. Re-run with --reset=1 to wipe and reseed.\n", Console::FG_YELLOW);
             return ExitCode::OK;
@@ -170,6 +171,7 @@ class SeedController extends Controller
             [$suppliers, $supplierControls] = $this->seedSuppliers($risks, $decisions, $incidents);
             $blocks = $this->seedIntel($incidents);
             $findings = $this->seedEdge();
+            $reports = $this->seedReports();
             $tx->commit();
         } catch (\Throwable $e) {
             $tx->rollBack();
@@ -183,8 +185,8 @@ class SeedController extends Controller
         Actor::override(null);
         Yii::$app->cache->flush();
 
-        $this->stdout(sprintf("Seeded %d risks, %d controls, %d decisions, %d incidents, %d devices, %d cloud accounts, %d cloud assets, %d suppliers, %d blocklist entries, %d edge findings.\n",
-            count($risks), $controls + $cloudControls + $supplierControls, count($decisions), count($incidents), count($devices), $accounts, $assets, $suppliers, $blocks, $findings), Console::FG_GREEN);
+        $this->stdout(sprintf("Seeded %d risks, %d controls, %d decisions, %d incidents, %d devices, %d cloud accounts, %d cloud assets, %d suppliers, %d blocklist entries, %d edge findings, %d reports.\n",
+            count($risks), $controls + $cloudControls + $supplierControls, count($decisions), count($incidents), count($devices), $accounts, $assets, $suppliers, $blocks, $findings, $reports), Console::FG_GREEN);
         $this->stdout(sprintf("Demo users (password from DEMO_PASSWORD): analyst, jpatel (analysts), viewer (read-only).\n"));
         return ExitCode::OK;
     }
@@ -208,11 +210,11 @@ class SeedController extends Controller
             $db->createCommand()->delete($t)->execute();
         }
         $db->createCommand()->update('decision', ['superseded_by_id' => null])->execute();
-        foreach (['edge_finding', 'edge_pull', 'intel_blocklist', 'intel_note', 'intel_indicator', 'risk', 'incident', 'decision', 'device', 'cloud_asset', 'cloud_account', 'supplier', 'control'] as $t) {
+        foreach (['report', 'edge_finding', 'edge_pull', 'intel_blocklist', 'intel_note', 'intel_indicator', 'risk', 'incident', 'decision', 'device', 'cloud_asset', 'cloud_account', 'supplier', 'control'] as $t) {
             $db->createCommand()->delete($t)->execute();
         }
         $db->createCommand()->update('framework_requirement', ['applicable' => 1, 'justification' => null, 'updated_at' => null, 'updated_by' => null])->execute();
-        $db->createCommand()->delete('audit_log', ['entity_type' => ['risk', 'incident', 'decision', 'device', 'cloud_account', 'cloud_asset', 'supplier', 'blocklist', 'indicator', 'control', 'requirement', 'edge-finding']])->execute();
+        $db->createCommand()->delete('audit_log', ['entity_type' => ['risk', 'incident', 'decision', 'device', 'cloud_account', 'cloud_asset', 'supplier', 'blocklist', 'indicator', 'control', 'requirement', 'edge-finding', 'report']])->execute();
         DeviceChecks::reset();
         CloudChecks::reset();
         SupplierChecks::reset();
@@ -224,7 +226,7 @@ class SeedController extends Controller
     {
         $db = Yii::$app->db;
         if ($db->driverName === 'mysql') {
-            foreach (['risk', 'incident', 'decision', 'device', 'cloud_account', 'cloud_asset', 'supplier', 'supplier_assurance', 'incident_timeline', 'intel_blocklist', 'intel_note', 'intel_indicator', 'control', 'control_test', 'record_review', 'record_note', 'attachment', 'edge_finding', 'edge_pull'] as $t) {
+            foreach (['risk', 'incident', 'decision', 'device', 'cloud_account', 'cloud_asset', 'supplier', 'supplier_assurance', 'incident_timeline', 'intel_blocklist', 'intel_note', 'intel_indicator', 'control', 'control_test', 'record_review', 'record_note', 'attachment', 'edge_finding', 'edge_pull', 'report'] as $t) {
                 $db->createCommand("ALTER TABLE {{{$t}}} AUTO_INCREMENT = 1")->execute();
             }
         }
@@ -823,6 +825,33 @@ class SeedController extends Controller
      * a content-discovery script, a survey scanner and a dismissed single probe.
      * Three share AS64501, so it shows as a network with repeat findings.
      */
+    /**
+     * Management reports: last quarter's, approved with a summary, and this
+     * month's so far as a draft (it compares with last quarter's).
+     */
+    private function seedReports(): int
+    {
+        $this->as('jpatel');
+        $quarter = new Report(['scenario' => Report::SCENARIO_CREATE, 'preset' => 'last-quarter']);
+        if (!$quarter->create()) {
+            throw new \RuntimeException('Report invalid: ' . json_encode($quarter->getErrors()));
+        }
+        $quarter->scenario = Report::SCENARIO_DEFAULT;
+        $quarter->management_summary = 'Overall position is ' . strtolower($quarter->getRagLabel()) . ' for ' . $quarter->getPeriodName()
+            . ". The open critical and high incidents and the risks above appetite are being worked through by their owners.\n"
+            . 'We ask the board to note the risk acceptances in section 4 and to confirm budget for the planned MFA and backup controls.';
+        $this->save($quarter);
+        $this->as('admin');
+        $quarter->approve('Reviewed with the leadership team.');
+
+        $this->as('analyst');
+        $month = new Report(['scenario' => Report::SCENARIO_CREATE, 'preset' => 'this-month']);
+        if (!$month->create()) {
+            throw new \RuntimeException('Report invalid: ' . json_encode($month->getErrors()));
+        }
+        return 2;
+    }
+
     private function seedEdge(): int
     {
         Actor::override(null);

@@ -42,6 +42,11 @@ For real data, see [Production](#production); for the full setup, see [Developme
   the assurance they have given (ISO 27001, SOC 2, Cyber Essentials… with expiry dates), periodic reviews and posture
   against **supplier checks** from the Control Register; cloud accounts belong to a supplier, and risks, incidents,
   decisions and controls link to suppliers
+* **Management reports**: a security posture report for a month, quarter, the year to date or any dates, for
+  management: overall status (RAG) and summary, headline figures compared with the start of the period, then risk,
+  incidents, controls and frameworks, decisions and risk acceptances, assets, suppliers and what falls due next. The
+  figures are frozen when the report is generated, and it is approved (signed off) before it goes out; view it in the
+  browser or print it as a PDF
 * **Edge findings**: pulls the zone's Cloudflare traffic analytics every 15 minutes, flags addresses that probe for
   secrets and admin pages, enumerate paths, send attack payloads or use scanner tools (scored and explained), and
   recommends what to do: raise an incident when a sensitive path answered 200, block for a few days, block the probe
@@ -502,6 +507,44 @@ each export is recorded in the incident's History.
   (lists longer than 25 are cut short).
 * The meaning of each status and severity can be reworded in **Admin › Settings › Incident reports**; clear a box to
   go back to the built-in wording.
+
+### Management reports
+
+*Reporting › Management Reports* holds security posture reports (`RPT-0001`…) for a period, typically run at the end of
+each month and quarter. **New report** offers last month, last quarter, this month or quarter so far, the year to date,
+or custom dates (a period ends today at the latest and covers at most 400 days).
+
+* **Frozen figures**: `ReportBuilder` works the figures out when the report is created and stores them as JSON on the
+  report, so last quarter's report reads the same next year. While the report is a draft, *Regenerate figures* works
+  them out again.
+* **Start and end of the period**: risks, controls, decisions and suppliers are rebuilt as they stood at the start and
+  end of the period from the audit trail (`History::asAt()` undoes the logged changes made after that moment), so the
+  report shows real changes: risks added, closed, rose and fell; controls that changed status; overdue reviews and tests
+  then and now. Incidents count by when they were found and closed, control tests and reviews by their dates. Device,
+  cloud and supplier check results and framework coverage only exist as they are now, so they show the position when
+  the figures were generated and compare with the previous report.
+* **Contents**: *At a glance* (overall status, management summary, up to eight headline tiles with the change from the start
+  of the period, the previous period or the last report, and the points the figures flag); **1. Risk** (open risks by
+  rating at the start and end, residual heatmap, top five, risks above appetite, changes, reviews, treatment past its
+  target date); **2. Incidents** (by severity, average time to detect / contain / close, the incidents with their
+  management summaries, lessons learned, controls that failed); **3. Controls and compliance** (by status, share rated
+  effective, tests in the period, status changes, overdue tests, planned controls past their target date, framework
+  coverage); **4. Decisions** (risk acceptances, decisions made, reviews overdue); **5. Assets and exposure** (devices,
+  cloud, edge findings); **6. Suppliers** (tiers, assurance gaps, DPAs, contracts ending, supplier incidents);
+  **Looking ahead** (reviews, tests, target dates, notice deadlines and assurance expiring in the next 30 days, or 90
+  after a quarter or year); and an appendix with activity per register and per person, how the figures are worked out
+  and the sign-off. Sections for modules not in use are left out.
+* **Overall status**: the report suggests Red (critical risks above appetite, open critical or high incidents, missed
+  regulator deadlines), Amber (anything else above appetite, open or overdue) or Green, with its reasons; the author
+  chooses and writes the management summary on *Edit*.
+* **Sign-off**: analysts approve a draft once it has an overall status and a summary, with an optional note; it is then
+  read-only and shows who approved it and when. An administrator can withdraw the approval. Generating, regenerating,
+  approving, withdrawing and each PDF export are in the report's History.
+* **Risk appetite**: *Admin › Settings › Management reports* sets the highest residual score the organisation accepts
+  (default 9, the top of Medium); open risks scoring above it are *above appetite*. A risk is *above target* when its
+  residual score is higher than its own target score.
+* Viewers can read reports and download the PDF; analysts create, edit, regenerate and approve; administrators withdraw
+  approvals and delete archived reports.
 
 ### Branding (Admin › Settings)
 

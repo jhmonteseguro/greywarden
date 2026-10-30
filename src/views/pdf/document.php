@@ -95,6 +95,41 @@ $register = $this->params['pdf.register'] ?? $model::entityLabel();
     table.timeline td.timeline__by { width: 80pt; }
     .appendix { page-break-before: always; }
     .appendix h2:first-child { margin-top: 0; }
+    /* Management report (modules/report/views/report/_body.php) */
+    table.rag-box { width: 100%; border-collapse: collapse; margin: 0 0 10pt; border: 1px solid #cbd2d9; }
+    table.rag-box td { vertical-align: top; padding: 8pt 10pt; }
+    td.rag-box__status { width: 22%; border-right: 1px solid #cbd2d9; }
+    .rag-box__label { font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.5pt; color: #52606d; }
+    .rag-box__value { font-size: 16pt; font-weight: bold; }
+    .rag-box__meaning { margin-top: 4pt; }
+    .rag-box--green td.rag-box__status { background: #e7f4e8; color: #2b6e2e; }
+    .rag-box--amber td.rag-box__status { background: #fff4d6; color: #8a5d00; }
+    .rag-box--red td.rag-box__status { background: #fde8e7; color: #b42318; }
+    table.tiles { width: 100%; border-collapse: separate; border-spacing: 5pt; margin: 0 -5pt 4pt; }
+    td.tile { width: 25%; border: 1px solid #cbd2d9; padding: 5pt 7pt; vertical-align: top; }
+    td.tile--empty { border: 0; }
+    .tile__label { font-size: 7pt; text-transform: uppercase; letter-spacing: 0.4pt; color: #52606d; }
+    .tile__value { font-size: 17pt; font-weight: bold; line-height: 1.15; }
+    .tile__compare, .tile__note { font-size: 7pt; }
+    .tile__note { color: #7b8794; }
+    .tile__delta--good { color: #2b6e2e; } .tile__delta--bad { color: #b42318; } .tile__delta--flat, .tile__delta--none { color: #7b8794; }
+    ul.points, ul.method { margin: 0 0 6pt; padding-left: 14pt; }
+    table.list td.num, table.list th.num { text-align: right; }
+    table.list--numbers th[scope=row] { text-align: left; font-weight: normal; text-transform: none; letter-spacing: 0; font-size: 9pt; color: #1f2933; border-bottom: 1px solid #e4e7eb; padding: 4pt 6pt 4pt 0; }
+    table.list tr.total td, table.list tr.total th { font-weight: bold; border-top: 1px solid #9aa5b1; }
+    table.split { width: 100%; border-collapse: collapse; }
+    table.split > tbody > tr > td, table.split > tr > td { width: 50%; vertical-align: top; padding-right: 10pt; }
+    table.split td.split__narrow { width: 34%; }
+    table.heatmap { border-collapse: separate; border-spacing: 2pt; }
+    table.heatmap td, table.heatmap th { width: 20pt; height: 16pt; text-align: center; vertical-align: middle; font-size: 8pt; }
+    .heatmap__axis { color: #7b8794; font-weight: normal; }
+    .heatmap__cell--low { background: #e7f4e8; } .heatmap__cell--medium { background: #fff4d6; }
+    .heatmap__cell--high { background: #fde9d9; } .heatmap__cell--critical { background: #fde8e7; }
+    .heatmap__cell--filled { font-weight: bold; border: 1px solid #52606d; }
+    h2#report-risks { page-break-before: always; }
+    table.list--numbers, table.heatmap, table.tiles { page-break-inside: avoid; }
+    .change { font-weight: bold; }
+    .change--rose { color: #b42318; } .change--fell, .change--closed { color: #2b6e2e; } .change--archived { color: #7b8794; }
     .rating--critical { color: #b42318; } .rating--high { color: #a44c06; } .rating--medium { color: #8a5d00; } .rating--low { color: #2b6e2e; }
 </style>
 </head>

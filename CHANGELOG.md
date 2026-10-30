@@ -6,6 +6,22 @@ releases).
 
 ## [Unreleased]
 
+### Added
+
+- Management reports (*Reporting › Management Reports*): a security posture report for last month, last quarter, the
+  month or quarter so far, the year to date or custom dates, viewed in the browser or printed as a PDF. It opens with
+  the overall status (Red / Amber / Green, suggested from the figures) and a management summary, up to eight headline figures
+  compared with the start of the period, the previous period or the last report, and the points that need attention;
+  then risk (start and end of the period by rating, heatmap, top risks, risks above appetite, changes, reviews),
+  incidents (by severity, average time to detect / contain / close, lessons learned, controls that failed), controls
+  and framework coverage, decisions and risk acceptances, devices, cloud and edge findings, suppliers, what falls due
+  next, and an appendix with activity and how the figures are worked out.
+- Report figures are frozen when generated. Risks, controls, decisions and suppliers at the start and end of the
+  period are rebuilt from the audit trail, so later edits never change a report. Drafts can be regenerated; analysts
+  approve a report (with an optional note), after which it is read-only, and administrators can withdraw the approval.
+- *Admin › Settings › Management reports*: the risk appetite, the highest residual score accepted (default 9).
+- Reports appear in search, and the demo data includes an approved report for last quarter and a draft for this month.
+
 ## [0.11.0-alpha] - 2026-10-29
 
 ### Added

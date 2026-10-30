@@ -64,7 +64,7 @@ class BrandingForm extends Model
     /** Also labels the compliance, incident report and edge monitoring settings: the audit log renders every "setting" entry through this form */
     public function attributeLabels(): array
     {
-        return (new ComplianceForm())->attributeLabels() + IncidentReportForm::auditLabels() + (new EdgeForm())->attributeLabels() + [
+        return (new ComplianceForm())->attributeLabels() + IncidentReportForm::auditLabels() + (new EdgeForm())->attributeLabels() + (new ReportForm())->attributeLabels() + [
             'app_name' => 'Display name',
             'organisation' => 'Organisation',
             'tagline' => 'Sign-in tagline',

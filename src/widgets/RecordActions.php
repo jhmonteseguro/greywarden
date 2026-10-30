@@ -18,6 +18,8 @@ class RecordActions extends Widget
     public string $before = '';
     /** show the PDF button (the controller must allow its `pdf` action, see CrudController::actionPdf) */
     public bool $pdf = false;
+    /** show the Edit button (off for records that are read-only in their current state) */
+    public bool $edit = true;
 
     public function run(): string
     {
@@ -33,7 +35,9 @@ class RecordActions extends Widget
         }
         if (Rbac::canManage()) {
             if (!$m->getIsArchived()) {
-                $buttons[] = Html::a('<i class="bi bi-pencil-square"></i> Edit', ['update', 'id' => $m->id], ['class' => 'btn btn-primary gw-btn gw-btn--edit']);
+                if ($this->edit) {
+                    $buttons[] = Html::a('<i class="bi bi-pencil-square"></i> Edit', ['update', 'id' => $m->id], ['class' => 'btn btn-primary gw-btn gw-btn--edit']);
+                }
                 $buttons[] = Html::a('<i class="bi bi-archive"></i> Archive', ['archive', 'id' => $m->id], [
                     'class' => 'btn btn-outline-warning gw-btn gw-btn--archive',
                     'data-method' => 'post',

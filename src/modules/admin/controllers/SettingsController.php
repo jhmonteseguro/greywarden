@@ -7,6 +7,7 @@ use app\modules\admin\models\BrandingForm;
 use app\modules\admin\models\ComplianceForm;
 use app\modules\admin\models\EdgeForm;
 use app\modules\admin\models\IncidentReportForm;
+use app\modules\admin\models\ReportForm;
 use Yii;
 use yii\filters\AccessControl;
 use yii\web\Controller;
@@ -15,7 +16,8 @@ use yii\web\Response;
 /**
  * Instance settings: branding (display name, organisation, logo, sign-in text,
  * PDF marking), the compliance frameworks switched on, the wording of
- * incident PDF reports and edge monitoring. Each has its own form.
+ * incident PDF reports, management reports and edge monitoring. Each has its
+ * own form.
  */
 class SettingsController extends Controller
 {
@@ -36,6 +38,7 @@ class SettingsController extends Controller
         $compliance = ComplianceForm::current();
         $incidentReport = IncidentReportForm::current();
         $edge = EdgeForm::current();
+        $report = ReportForm::current();
         if ($compliance->load($post)) {
             if ($compliance->save()) {
                 Yii::$app->session->setFlash('success', 'Compliance frameworks saved.');
@@ -46,6 +49,11 @@ class SettingsController extends Controller
                 Yii::$app->session->setFlash('success', 'Incident report wording saved.');
                 return $this->redirect(['index', '#' => 'incident-reports']);
             }
+        } elseif ($report->load($post)) {
+            if ($report->save()) {
+                Yii::$app->session->setFlash('success', 'Management report settings saved.');
+                return $this->redirect(['index', '#' => 'management-reports']);
+            }
         } elseif ($edge->load($post)) {
             if ($edge->save()) {
                 Yii::$app->session->setFlash('success', 'Edge monitoring settings saved.');
@@ -55,6 +63,6 @@ class SettingsController extends Controller
             Yii::$app->session->setFlash('success', 'Branding saved.');
             return $this->redirect(['index']);
         }
-        return $this->render('index', ['model' => $model, 'compliance' => $compliance, 'incidentReport' => $incidentReport, 'edge' => $edge]);
+        return $this->render('index', ['model' => $model, 'compliance' => $compliance, 'incidentReport' => $incidentReport, 'report' => $report, 'edge' => $edge]);
     }
 }

@@ -20,6 +20,7 @@ $config = [
         'inventory' => ['class' => app\modules\inventory\Module::class],
         'cloud' => ['class' => app\modules\cloud\Module::class],
         'supplier' => ['class' => app\modules\supplier\Module::class],
+        'report' => ['class' => app\modules\report\Module::class],
         'attack' => ['class' => app\modules\attack\Module::class],
         'intel' => ['class' => app\modules\intel\Module::class],
         'admin' => ['class' => app\modules\admin\Module::class],
@@ -109,6 +110,11 @@ $config = [
                 'suppliers/<id:\d+>' => 'supplier/supplier/view',
                 'suppliers/<id:\d+>/<action:[\w-]+>' => 'supplier/supplier/<action>',
                 'suppliers/<action:[\w-]+>' => 'supplier/supplier/<action>',
+                // Management reports: /reports, /reports/3, /reports/3/pdf ...
+                'reports' => 'report/report/index',
+                'reports/<id:\d+>' => 'report/report/view',
+                'reports/<id:\d+>/<action:[\w-]+>' => 'report/report/<action>',
+                'reports/<action:[\w-]+>' => 'report/report/<action>',
 
                 'attachments/<id:\d+>' => 'attachment/download',
                 'attachments/<id:\d+>/<action:[\w-]+>' => 'attachment/<action>',

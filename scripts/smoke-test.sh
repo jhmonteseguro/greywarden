@@ -101,13 +101,14 @@ V1=$(id_of device asset_tag DEV-0001); V26=$(id_of device asset_tag DEV-0026); V
 C1=$(id_of control reference CTL-0001); C5=$(id_of control reference CTL-0005); C8=$(id_of control reference CTL-0008); C18=$(id_of control reference CTL-0018)
 CLD1=$(id_of cloud_asset reference CLD-0001); CLD10=$(id_of cloud_asset reference CLD-0010); ACC1=$(id_of cloud_account reference ACC-0001); ACC2=$(id_of cloud_account reference ACC-0002)
 SUP1=$(id_of supplier reference SUP-0001); SUP5=$(id_of supplier reference SUP-0005); SUP9=$(id_of supplier reference SUP-0009)
+RPT1=$(id_of report reference RPT-0001); RPT2=$(id_of report reference RPT-0002)
 REQ_ISO=$(sql "SELECT id FROM framework_requirement WHERE external_id='A.8.7'"); REQ_CE=$(sql "SELECT id FROM framework_requirement WHERE external_id='CE-UA-4'")
 REQ_SOC2=$(sql "SELECT id FROM framework_requirement WHERE external_id='CC6.1'"); REQ_SOC2_A=$(sql "SELECT id FROM framework_requirement WHERE external_id='A1.2'")
 REQ_NIST=$(sql "SELECT id FROM framework_requirement WHERE external_id='PR.AA-01'"); REQ_CAF=$(sql "SELECT id FROM framework_requirement WHERE external_id='B4.d'")
 # Manual device checks in force, as Device[checks][<id>]=<result> fields
 CHECKS=($(sql "SELECT id FROM control WHERE device_check='manual' AND status IN ('implementing','implemented') AND archived_at IS NULL ORDER BY id"))
 checks() { local r=$1; for c in "${CHECKS[@]}"; do echo "Device[checks][$c]=$r"; done; }
-if [[ -z "$R1" || -z "$I19" || -z "$V38" || -z "$B1" || -z "$E1" || -z "$C18" || -z "$REQ_ISO" || -z "$CLD10" || -z "$ACC2" || -z "$SUP9" ]]; then echo "Demo data missing - run: make seed"; exit 1; fi
+if [[ -z "$R1" || -z "$I19" || -z "$V38" || -z "$B1" || -z "$E1" || -z "$C18" || -z "$REQ_ISO" || -z "$CLD10" || -z "$ACC2" || -z "$SUP9" || -z "$RPT2" ]]; then echo "Demo data missing - run: make seed"; exit 1; fi
 
 # ---------------------------------------------------------------- temporary admin + cleanup
 SMOKE_USER="smoke.user.$$"
@@ -181,6 +182,8 @@ READ_PAGES=(
     /suppliers "/suppliers?filter=active" "/suppliers?filter=onboarding" "/suppliers?filter=tier-1" "/suppliers?filter=mine" "/suppliers?filter=non-compliant"
     "/suppliers?filter=not-assessed" "/suppliers?filter=review-overdue" "/suppliers?filter=assurance" "/suppliers?filter=renewals" "/suppliers?filter=archived"
     "/suppliers?filter=all&sort=-criticality&tier=1" /suppliers/$SUP1 /suppliers/$SUP5 /suppliers/$SUP9 "/controls?filter=supplier-checks" "/search?q=Fabrikam"
+    # Management reports
+    /reports "/reports?filter=draft" "/reports?filter=approved" "/reports?filter=archived" "/reports?sort=-rag&rag=red&q=posture" /reports/$RPT1 /reports/$RPT2 "/search?q=posture"
     "/?heatmap=inherent"
     # Control Register and frameworks
     /controls "/controls?filter=mine" "/controls?filter=planned" "/controls?filter=implemented" "/controls?filter=test-due-soon" "/controls?filter=test-overdue" "/controls?filter=weak"
@@ -206,7 +209,7 @@ READ_PAGES=(
 )
 WRITE_PAGES=(/risks/create /risks/$R1/update /controls/create /controls/$C1/update /controls/$C5/update /decisions/create /decisions/$D1/update /incidents/create /incidents/$I1/update /devices/create /devices/$V1/update
     /cloud/assets/create "/cloud/assets/create?account=$ACC1" /cloud/assets/$CLD1/update /cloud/accounts/create /cloud/accounts/$ACC1/update
-    /suppliers/create /suppliers/$SUP1/update
+    /suppliers/create /suppliers/$SUP1/update /reports/create /reports/$RPT2/update
     /intel/blocklist/create "/intel/blocklist/create?value=192.0.2.99" /intel/blocklist/$B1/update)
 U2=$(id_of user username viewer)
 ADMIN_PAGES=(/admin/user /admin/user/1 /admin/user/$U2 /admin/user/create /admin/user/$U2/update /admin/user/$U2/reset-password
@@ -495,6 +498,29 @@ post admin "/suppliers/$SSUP" "/suppliers/$SSUP/delete" 302
 check admin "/suppliers/$SSUP" 404
 check viewer / 200
 grep -q 'gw-attention__group--supplier-review' "$BODY" && grep -q 'gw-attention__group--supplier-checks' "$BODY" && ok || bad "supplier groups missing from Needs attention"
+
+# Management reports: validation, create for a period, PDF, summary, approval, read-only once approved, withdraw (admin), archive/delete
+post analyst /reports/create /reports/create 200 "Report[preset]=custom" "Report[period_type]=custom" "Report[period_start]=2026-09-10" "Report[period_end]=2026-09-01"
+grep -q 'The period cannot end before it starts' "$BODY" && ok || bad "report validation not shown"
+post analyst /reports/create /reports/create 302 "Report[preset]=last-month"
+SRPT=$(last_id report)
+check analyst "/reports/$SRPT" 200
+grep -q 'At a glance' "$BODY" && grep -q 'Looking ahead' "$BODY" && grep -q 'Before it can be approved' "$BODY" && ok || bad "report page incomplete"
+req viewer GET "/reports/$SRPT/pdf"
+[[ "$CODE" == 200 ]] && head -c 5 "$BODY" | grep -q '%PDF-' && ok || bad "report PDF failed ($CODE)"
+post viewer "/reports/$SRPT" "/reports/$SRPT/approve" 403
+post analyst "/reports/$SRPT/update" "/reports/$SRPT/update" 302 "Report[title]=Smoke report" "Report[rag]=amber" "Report[management_summary]=Smoke summary"
+post analyst "/reports/$SRPT" "/reports/$SRPT/regenerate" 302
+post analyst "/reports/$SRPT" "/reports/$SRPT/approve" 302 "approval_note=Smoke sign-off"
+[[ "$(sql "SELECT status FROM report WHERE id=$SRPT")" == approved ]] && ok || bad "report not approved"
+check analyst "/reports/$SRPT/update" 302
+post analyst "/reports/$SRPT" "/reports/$SRPT/withdraw" 403
+post admin "/reports/$SRPT" "/reports/$SRPT/withdraw" 302
+[[ "$(sql "SELECT status FROM report WHERE id=$SRPT")" == draft ]] && ok || bad "report approval not withdrawn"
+post analyst "/reports/$SRPT" "/reports/$SRPT/archive" 302
+post admin "/reports/$SRPT" "/reports/$SRPT/delete" 302
+check admin "/reports/$SRPT" 404
+post admin /admin/settings /admin/settings 302 "ReportForm[risk_appetite]=9"
 
 # Control: validation, create with frameworks / ATT&CK / risk link, device check, tests, incident roles, archive/delete
 MFA_MIT=$(sql "SELECT id FROM attack_mitigation WHERE external_id='M1032'")

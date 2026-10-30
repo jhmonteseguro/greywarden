@@ -31,6 +31,12 @@ final class Navigation
                 ],
             ],
             [
+                'label' => 'Reporting',
+                'items' => [
+                    ['label' => 'Management Reports', 'icon' => 'file-earmark-bar-graph', 'url' => ['/report/report/index'], 'permission' => Rbac::PERM_VIEW, 'active' => ['report/']],
+                ],
+            ],
+            [
                 'label' => 'Compliance',
                 'items' => array_map(static fn(string $framework) => [
                     'label' => FrameworkCatalogue::navLabel($framework), 'icon' => FrameworkCatalogue::icon($framework),
