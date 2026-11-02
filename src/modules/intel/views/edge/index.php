@@ -17,12 +17,14 @@ use app\components\Rbac;
 use app\helpers\Badge;
 use app\modules\intel\components\Assessment;
 use app\modules\intel\components\edge\EdgeAdvisor;
+use app\modules\intel\components\edge\EdgeBlocker;
 use app\modules\intel\components\edge\EdgeSettings;
 use app\modules\intel\models\EdgeFinding;
 use app\modules\intel\models\EdgeFindingSearch;
 use app\widgets\grid\ReferenceColumn;
 use app\widgets\GridView;
 use app\widgets\QuickFilters;
+use yii\grid\CheckboxColumn;
 use yii\helpers\Html;
 use yii\helpers\Url;
 
@@ -47,6 +49,7 @@ if (Rbac::canManage()) {
     }
 }
 $this->params['actions'] = implode("\n", $actions);
+$canBulk = Rbac::canManage() && $dataProvider->getTotalCount() > 0;
 ?>
 <?php if (!$configured): ?>
     <div class="alert alert-info gw-callout" role="status">
@@ -80,11 +83,52 @@ $this->params['actions'] = implode("\n", $actions);
     'placeholder' => 'Search address, ASN, path…',
 ]) ?>
 
+<?php if ($canBulk): ?>
+    <?= Html::beginForm(['bulk'], 'post', ['id' => 'edge-bulk', 'class' => 'gw-bulk', 'data-gw-bulk' => '', 'data-total' => $dataProvider->getTotalCount(), 'hidden' => true]) ?>
+        <?php foreach (['filter' => $searchModel->filter, 'q' => $searchModel->q, 'priority' => $searchModel->priority, 'intel_rating' => $searchModel->intel_rating] as $name => $value): ?>
+            <?php if ((string) $value !== ''): ?><?= Html::hiddenInput($name, $value) ?><?php endif; ?>
+        <?php endforeach; ?>
+        <?= Html::hiddenInput('scope', 'ids', ['data-gw-bulk-scope' => '']) ?>
+        <div class="gw-bulk__status" role="status" aria-live="polite">
+            <strong data-gw-bulk-count>0 selected</strong>
+            <span class="gw-bulk__all" data-gw-bulk-page hidden>
+                All <span data-gw-bulk-page-count></span> on this page are selected.
+                <button type="button" class="btn btn-link gw-bulk__link" data-gw-bulk-select-all>Select all <?= number_format($dataProvider->getTotalCount()) ?> matching findings</button>
+            </span>
+            <span class="gw-bulk__all" data-gw-bulk-everything hidden>
+                All <?= number_format($dataProvider->getTotalCount()) ?> matching findings are selected.
+                <button type="button" class="btn btn-link gw-bulk__link" data-gw-bulk-clear>Clear selection</button>
+            </span>
+        </div>
+        <div class="gw-bulk__actions">
+            <label class="visually-hidden" for="edge-bulk-days">Block length</label>
+            <?= Html::dropDownList('days', EdgeSettings::blockDays(), EdgeBlocker::dayOptions(), ['id' => 'edge-bulk-days', 'class' => 'form-select form-select-sm']) ?>
+            <?= Html::submitButton('<i class="bi bi-slash-circle" aria-hidden="true"></i> Block', ['name' => 'do', 'value' => 'block', 'class' => 'btn btn-sm btn-danger',
+                'data-gw-bulk-confirm' => 'Block the addresses of {n}?' . ($configured ? ' They are added to the Cloudflare blocklist.' : '')]) ?>
+            <?= Html::submitButton('<i class="bi bi-x-circle" aria-hidden="true"></i> Dismiss', ['name' => 'do', 'value' => 'dismiss', 'class' => 'btn btn-sm btn-outline-secondary',
+                'data-gw-bulk-confirm' => 'Dismiss {n}? They come back if the address returns with a high enough score.']) ?>
+            <?= Html::submitButton('<i class="bi bi-eye-slash" aria-hidden="true"></i> Ignore', ['name' => 'do', 'value' => 'ignore', 'class' => 'btn btn-sm btn-outline-secondary',
+                'data-gw-bulk-confirm' => 'Ignore {n}? New traffic from the addresses is still counted but never reopens them.']) ?>
+            <?php if ($searchModel->filter !== 'new' && $searchModel->filter !== 'high'): ?>
+                <?= Html::submitButton('<i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i> Reopen', ['name' => 'do', 'value' => 'reopen', 'class' => 'btn btn-sm btn-outline-secondary',
+                    'data-gw-bulk-confirm' => 'Reopen {n}? Blocklist entries stay in force.']) ?>
+            <?php endif; ?>
+        </div>
+    <?= Html::endForm() ?>
+<?php endif; ?>
+
 <?= GridView::widget([
     'dataProvider' => $dataProvider,
     'filterModel' => $searchModel,
     'emptyText' => $searchModel->filter === 'new' ? 'Nothing to triage. New findings appear here after each pull.' : 'No findings match.',
-    'columns' => [
+    'columns' => array_merge($canBulk ? [[
+        'class' => CheckboxColumn::class,
+        'name' => 'ids',
+        'headerOptions' => ['class' => 'gw-col-check'],
+        'contentOptions' => ['class' => 'gw-col-check'],
+        'header' => Html::tag('input', '', ['type' => 'checkbox', 'class' => 'form-check-input', 'data-gw-bulk-page-toggle' => '', 'aria-label' => 'Select every finding on this page']),
+        'checkboxOptions' => static fn(EdgeFinding $m) => ['form' => 'edge-bulk', 'class' => 'form-check-input', 'data-gw-bulk-row' => '', 'aria-label' => 'Select ' . $m->ip],
+    ]] : [], [
         ['class' => ReferenceColumn::class, 'attribute' => 'reference'],
         [
             'attribute' => 'ip',
@@ -134,7 +178,7 @@ $this->params['actions'] = implode("\n", $actions);
             'filter' => false,
             'value' => static fn(EdgeFinding $m) => Badge::render('edge-status', $m->status, $m->getStatusLabel()),
         ],
-    ],
+    ]),
 ]) ?>
 
 <div class="row g-4 mt-1">

@@ -662,6 +662,11 @@ post analyst "/intel/edge/$E2" "/intel/edge/$E2/dismiss" 302 "note=Smoke test di
 check analyst "/intel/edge/$E2" 200
 grep -q 'Smoke test dismiss' "$BODY" && grep -q 'Reopen' "$BODY" && ok || bad "dismissed edge finding not shown as dismissed"
 post analyst "/intel/edge/$E2" "/intel/edge/$E2/reopen" 302
+check analyst /intel/edge 200
+grep -q 'id="edge-bulk"' "$BODY" && grep -q 'data-gw-bulk-row' "$BODY" && ok || bad "edge bulk selection missing"
+post analyst /intel/edge /intel/edge/bulk 302 do=dismiss "ids[]=$E2" filter=new
+post analyst /intel/edge /intel/edge/bulk 302 do=reopen "ids[]=$E2" filter=all
+post viewer /intel/edge /intel/edge/bulk 403 do=block "ids[]=$E2"
 post viewer "/intel/edge/$E2" "/intel/edge/$E2/ignore" 403
 post viewer /intel/edge /intel/edge/pull 403
 post viewer /intel/sources /intel/sources/update 403

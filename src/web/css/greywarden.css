@@ -829,6 +829,20 @@ a.gw-ref:hover { color: var(--gw-accent-hover); text-decoration: underline; }
 .gw-col-title { min-width: 200px; }
 .gw-col-title .gw-small { margin-top: .1rem; }
 .gw-col-actions { width: 1%; white-space: nowrap; text-align: right; }
+.gw-col-check { width: 1%; padding-right: 0 !important; }
+.gw-col-check .form-check-input { margin: 0; cursor: pointer; }
+.gw-table > tbody > tr.is-selected > * { background-color: var(--gw-accent-soft); }
+.gw-table > tbody > tr.is-selected > *:first-child { box-shadow: inset 2px 0 0 var(--gw-accent); }
+
+/* Bulk action bar (form[data-gw-bulk], above a grid with a checkbox column) */
+.gw-bulk { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem .75rem; margin-bottom: .6rem;
+    padding: .5rem .75rem; background: var(--gw-surface-2); border: 1px solid var(--gw-accent-line); border-radius: var(--gw-radius); }
+.gw-bulk[hidden], .gw-bulk [hidden] { display: none !important; }
+.gw-bulk__status { display: flex; flex-wrap: wrap; align-items: baseline; gap: .25rem .6rem; font-size: var(--gw-fs-sm); color: var(--gw-text-muted); }
+.gw-bulk__status strong { color: var(--gw-text-strong); }
+.gw-bulk__link { padding: 0; font-size: inherit; vertical-align: baseline; }
+.gw-bulk__actions { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; }
+.gw-bulk__actions .form-select { width: auto; }
 .gw-table .gw-code { white-space: nowrap; word-break: normal; }
 .gw-col-changes { font-size: var(--gw-fs-xs); color: var(--gw-text-muted); max-width: 320px; }
 .gw-table .gw-empty { margin: 0; padding: 2.5rem 1rem; text-align: center; display: grid; justify-items: center; gap: .6rem; }

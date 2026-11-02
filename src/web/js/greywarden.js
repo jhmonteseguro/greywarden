@@ -22,6 +22,9 @@
  *  - [data-gw-fill="#input"]            radio: copies its value into the input (block dialog targets)
  *  - [data-gw-expiry="hours"]           sets [data-gw-target] datetime-local to now + hours (0 = clear / permanent)
  *  - [data-gw-scan]                     form / link starting an intel investigation: shows the #gw-scan sweep overlay
+ *  - form[data-gw-bulk]                 bulk actions on a grid: rows tick [data-gw-bulk-row] checkboxes (form="<form id>"),
+ *                                       [data-gw-bulk-page-toggle] ticks the page; the bar shows while anything is ticked and
+ *                                       offers every match across pages (scope=all); [data-gw-bulk-confirm] asks first ({n} = count)
  */
 (function () {
     'use strict';
@@ -506,6 +509,60 @@
         window.addEventListener('pageshow', hide);
     }
 
+    // ---- Bulk actions on a grid ------------------------------------------------------------
+    function initBulk() {
+        document.querySelectorAll('form[data-gw-bulk]').forEach(function (form) {
+            var rows = Array.prototype.slice.call(document.querySelectorAll('input[data-gw-bulk-row][form="' + form.id + '"]'));
+            var toggle = document.querySelector('[data-gw-bulk-page-toggle]');
+            var scope = form.querySelector('[data-gw-bulk-scope]');
+            var count = form.querySelector('[data-gw-bulk-count]');
+            var page = form.querySelector('[data-gw-bulk-page]');
+            var everything = form.querySelector('[data-gw-bulk-everything]');
+            var total = parseInt(form.getAttribute('data-total'), 10) || 0;
+            var fmt = function (n) { return n.toLocaleString() + ' finding' + (n === 1 ? '' : 's'); };
+            var selected = function () { return scope.value === 'all' ? total : rows.filter(function (r) { return r.checked; }).length; };
+            var update = function () {
+                var ticked = rows.filter(function (r) { return r.checked; }).length;
+                if (ticked < rows.length) { scope.value = 'ids'; }
+                var all = scope.value === 'all';
+                form.hidden = ticked === 0;
+                count.textContent = (all ? total : ticked).toLocaleString() + ' selected';
+                page.querySelector('[data-gw-bulk-page-count]').textContent = rows.length;
+                page.hidden = all || ticked !== rows.length || total <= rows.length;
+                everything.hidden = !all;
+                if (toggle) {
+                    toggle.checked = ticked > 0 && ticked === rows.length;
+                    toggle.indeterminate = ticked > 0 && ticked < rows.length;
+                }
+                rows.forEach(function (r) { var tr = r.closest('tr'); if (tr) { tr.classList.toggle('is-selected', r.checked); } });
+            };
+            rows.forEach(function (r) { r.addEventListener('change', update); });
+            if (toggle) {
+                toggle.addEventListener('change', function () {
+                    rows.forEach(function (r) { r.checked = toggle.checked; });
+                    update();
+                });
+            }
+            form.querySelector('[data-gw-bulk-select-all]').addEventListener('click', function () { scope.value = 'all'; update(); });
+            form.querySelector('[data-gw-bulk-clear]').addEventListener('click', function () {
+                rows.forEach(function (r) { r.checked = false; });
+                update();
+            });
+            form.querySelectorAll('[data-gw-bulk-confirm]').forEach(function (btn) {
+                btn.addEventListener('click', function (e) {
+                    if (btn.getAttribute('data-gw-confirmed')) { btn.removeAttribute('data-gw-confirmed'); return; }
+                    e.preventDefault();
+                    var message = btn.getAttribute('data-gw-bulk-confirm').replace('{n}', fmt(selected()));
+                    var go = function () { btn.setAttribute('data-gw-confirmed', '1'); btn.click(); };
+                    if (window.yii && window.yii.confirm) { window.yii.confirm(message, go); } else if (window.confirm(message)) { go(); }
+                });
+            });
+            // Back / forward cache can restore ticked boxes
+            update();
+            window.addEventListener('pageshow', update);
+        });
+    }
+
     onReady(function () {
         initSidebar();
         initSearchShortcut();
@@ -524,5 +581,6 @@
         initShowTab();
         initBlockForm();
         initScan();
+        initBulk();
     });
 })();

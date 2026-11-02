@@ -9,9 +9,9 @@ use app\modules\attack\models\AttackTechnique;
 use app\modules\incident\models\Incident;
 use app\modules\intel\components\edge\CloudflareTraffic;
 use app\modules\intel\components\edge\EdgeAdvisor;
+use app\modules\intel\components\edge\EdgeBlocker;
 use app\modules\intel\components\edge\EdgePuller;
 use app\modules\intel\components\edge\EdgeSettings;
-use app\modules\intel\models\BlocklistEntry;
 use app\modules\intel\models\EdgeFinding;
 use app\modules\intel\models\EdgeFindingSearch;
 use app\modules\intel\models\EdgePull;
@@ -32,11 +32,24 @@ use yii\web\Response;
  *   POST /intel/edge/pull       pull now
  *   POST /intel/edge/<id>/block | incident | dismiss | ignore | reopen
  *   POST /intel/edge/dismiss-low  dismiss every low-priority finding still to triage
+ *   POST /intel/edge/bulk       block | dismiss | ignore | reopen the ticked findings, or all matching the filters
  */
 class EdgeController extends Controller
 {
-    /** Block lengths offered on a finding (days; 0 = permanent) */
-    public const BLOCK_DAYS = [1, 7, 30, 90, 0];
+    /** Bulk actions other than block: action => [new status, statuses it applies to, past tense] */
+    public const BULK_ACTIONS = [
+        'block' => null,
+        'dismiss' => [EdgeFinding::STATUS_DISMISSED, [EdgeFinding::STATUS_NEW], 'dismissed'],
+        'ignore' => [EdgeFinding::STATUS_IGNORED, [EdgeFinding::STATUS_NEW, EdgeFinding::STATUS_DISMISSED], 'ignored'],
+        'reopen' => [EdgeFinding::STATUS_NEW, [EdgeFinding::STATUS_BLOCKED, EdgeFinding::STATUS_ESCALATED, EdgeFinding::STATUS_DISMISSED, EdgeFinding::STATUS_IGNORED], 'reopened'],
+    ];
+
+    /** Why a bulk action passed over a finding */
+    private const BULK_SKIP = [
+        'dismiss' => 'not to triage',
+        'ignore' => 'already closed',
+        'reopen' => 'already to triage',
+    ];
 
     public function behaviors(): array
     {
@@ -45,12 +58,12 @@ class EdgeController extends Controller
                 'class' => AccessControl::class,
                 'rules' => [
                     ['allow' => true, 'actions' => ['index', 'view'], 'roles' => [Rbac::PERM_VIEW]],
-                    ['allow' => true, 'actions' => ['pull', 'block', 'incident', 'dismiss', 'ignore', 'reopen', 'dismiss-low'], 'roles' => [Rbac::PERM_MANAGE]],
+                    ['allow' => true, 'actions' => ['pull', 'block', 'incident', 'dismiss', 'ignore', 'reopen', 'dismiss-low', 'bulk'], 'roles' => [Rbac::PERM_MANAGE]],
                 ],
             ],
             'verbs' => [
                 'class' => VerbFilter::class,
-                'actions' => ['pull' => ['POST'], 'block' => ['POST'], 'incident' => ['POST'], 'dismiss' => ['POST'], 'ignore' => ['POST'], 'reopen' => ['POST'], 'dismiss-low' => ['POST']],
+                'actions' => ['pull' => ['POST'], 'block' => ['POST'], 'incident' => ['POST'], 'dismiss' => ['POST'], 'ignore' => ['POST'], 'reopen' => ['POST'], 'dismiss-low' => ['POST'], 'bulk' => ['POST']],
             ],
         ];
     }
@@ -100,34 +113,92 @@ class EdgeController extends Controller
     public function actionBlock(int $id): Response
     {
         $model = $this->findModel($id);
-        $days = (int) Yii::$app->request->post('days', EdgeSettings::blockDays());
-        $days = in_array($days, self::BLOCK_DAYS, true) || ($days > 0 && $days <= 365) ? $days : EdgeSettings::blockDays();
-
-        $existing = array_values(array_filter(BlocklistEntry::findForIp($model->ip), static fn(BlocklistEntry $b) => $b->getIsInForce()));
-        if ($existing) {
-            $entry = $existing[0];
-            $notice = sprintf('%s is already blocked by %s.', $model->ip, $entry->reference);
+        $days = EdgeBlocker::days(Yii::$app->request->post('days', EdgeSettings::blockDays()));
+        $result = EdgeBlocker::block([$model], $days);
+        if ($result['failed']) {
+            Yii::$app->session->setFlash('danger', sprintf('%s was not blocked: %s', $model->ip, reset($result['failed'])));
+        } elseif ($result['blocked']) {
+            Yii::$app->session->setFlash('success', trim(sprintf('%s blocked as %s%s. %s', $model->ip, $model->blocklistEntry->reference, $days > 0 ? " for $days days" : '', $result['notice'])));
         } else {
-            $entry = new BlocklistEntry([
-                'value' => $model->ip,
-                'severity' => $model->priority === 'high' ? 'high' : 'medium',
-                'direction' => 'inbound',
-                'reason' => mb_substr(sprintf('Edge finding %s: %s.', $model->reference, $model->headline ?: 'suspicious traffic'), 0, 2000),
-                'incident_id' => $model->incident_id,
-                'expires_at' => $days > 0 ? date('Y-m-d H:i:s', strtotime(Actor::now() . " +$days days")) : null,
-                'cloudflare' => CloudflareTraffic::isConfigured(),
-            ]);
-            // An address blocked before but since unblocked or expired is a new entry; only an exact duplicate fails validation
-            if (!($entry->validate() && $entry->syncCloudflare() && $entry->save(false))) {
-                Yii::$app->session->setFlash('danger', sprintf('%s was not blocked: %s', $model->ip, implode(' ', $entry->getErrorSummary(true))));
-                return $this->redirect($model->getViewUrl());
-            }
-            $notice = trim(sprintf('%s blocked as %s%s. %s', $model->ip, $entry->reference, $days > 0 ? " for $days days" : '', $entry->cloudflareNotice));
+            $ref = $result['linked'][$model->reference] ?? $model->blocklistEntry->reference ?? '';
+            Yii::$app->session->setFlash('success', sprintf('%s is already blocked by %s.', $model->ip, $ref));
         }
-        $model->blocklist_id = $entry->id;
-        $model->resolve(EdgeFinding::STATUS_BLOCKED);
-        Yii::$app->session->setFlash('success', $notice);
         return $this->redirect($model->getViewUrl());
+    }
+
+    /**
+     * One action on several findings: the ticked rows (ids[]), or every finding matching
+     * the grid's filters (scope=all). Block, dismiss and ignore close findings still to
+     * triage (block also takes dismissed and ignored ones); reopen puts closed ones back.
+     */
+    public function actionBulk(): Response
+    {
+        $request = Yii::$app->request;
+        $filters = array_filter(array_intersect_key((array) $request->post(), array_flip(['filter', 'q', 'priority', 'intel_rating'])),
+            static fn($v) => is_string($v) && $v !== '');
+        $back = array_merge(['index'], $filters);
+        $do = $request->post('do');
+        $do = is_string($do) ? $do : '';
+        if (!array_key_exists($do, self::BULK_ACTIONS)) {
+            Yii::$app->session->setFlash('warning', 'Choose an action for the selected findings.');
+            return $this->redirect($back);
+        }
+
+        $query = EdgeFinding::find()->with(['blocklistEntry'])->orderBy(['id' => SORT_ASC]);
+        if ($request->post('scope') === 'all') {
+            $search = new EdgeFindingSearch();
+            $query->andWhere(['id' => $search->search($filters)->query->select('edge_finding.id')->column()]);
+        } else {
+            $ids = array_filter(array_map('intval', (array) $request->post('ids', [])));
+            $query->andWhere(['id' => $ids ?: [0]]);
+        }
+        $findings = $query->all();
+        if (!$findings) {
+            Yii::$app->session->setFlash('warning', 'No findings selected.');
+            return $this->redirect($back);
+        }
+
+        $plural = static fn(int $n, string $what = 'finding') => sprintf('%d %s%s', $n, $what, $n === 1 ? '' : ($what === 'address' ? 'es' : 's'));
+        if ($do === 'block') {
+            $days = EdgeBlocker::days($request->post('days', EdgeSettings::blockDays()));
+            $r = EdgeBlocker::block($findings, $days);
+            $parts = [];
+            if ($r['blocked']) {
+                $parts[] = sprintf('%s blocked%s.', $plural(count($r['blocked']), 'address'), $days > 0 ? " for $days days" : ' permanently');
+            }
+            if ($r['linked']) {
+                $parts[] = sprintf('%s already on the blocklist.', $plural(count($r['linked']), 'address'));
+            }
+            if ($r['skipped']) {
+                $parts[] = sprintf('%s already blocked.', $plural(count($r['skipped'])));
+            }
+            if ($r['notice'] !== '') {
+                $parts[] = $r['notice'];
+            }
+            if ($r['failed']) {
+                $first = reset($r['failed']);
+                $failed = sprintf('%s not blocked: %s', $plural(count($r['failed'])), count(array_unique($r['failed'])) === 1
+                    ? $first : implode(' ', array_map(static fn($ref, $why) => "$ref: $why", array_keys($r['failed']), $r['failed'])));
+                Yii::$app->session->setFlash('danger', mb_substr($failed, 0, 1000));
+            }
+            if ($parts) {
+                Yii::$app->session->setFlash('success', implode(' ', $parts));
+            }
+            return $this->redirect($back);
+        }
+
+        [$status, $from, $done] = self::BULK_ACTIONS[$do];
+        $count = 0;
+        foreach ($findings as $finding) {
+            if (!in_array($finding->status, $from, true)) {
+                continue;
+            }
+            $count += (int) ($status === EdgeFinding::STATUS_NEW ? $finding->reopen() : $finding->resolve($status, sprintf('%s in bulk.', ucfirst($done))));
+        }
+        $skipped = count($findings) - $count;
+        Yii::$app->session->setFlash('info', sprintf('%s %s.%s', $plural($count), $done,
+            $skipped ? sprintf(' %s skipped (%s).', $plural($skipped), self::BULK_SKIP[$do]) : ''));
+        return $this->redirect($back);
     }
 
     /** Raises an incident from the finding and opens it for editing */

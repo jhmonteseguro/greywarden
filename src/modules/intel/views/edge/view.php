@@ -11,7 +11,7 @@ use app\components\Rbac;
 use app\helpers\Badge;
 use app\modules\intel\components\edge\EdgeCatalogue;
 use app\modules\intel\components\edge\EdgeSettings;
-use app\modules\intel\controllers\EdgeController;
+use app\modules\intel\components\edge\EdgeBlocker;
 use app\modules\intel\models\EdgeFinding;
 use app\widgets\AuditHistory;
 use app\widgets\DetailView;
@@ -46,11 +46,7 @@ $profile = $model->getProfile();
 $signals = $model->getSignalList();
 $maxWeight = max(1, ...array_map(static fn($s) => (int) $s['weight'], $signals ?: [['weight' => 1]]));
 $blockDays = EdgeSettings::blockDays();
-$dayOptions = [];
-foreach (array_unique(array_merge(EdgeController::BLOCK_DAYS, [$blockDays])) as $d) {
-    $dayOptions[$d] = $d === 0 ? 'Permanently' : sprintf('For %d day%s', $d, $d === 1 ? '' : 's');
-}
-uksort($dayOptions, static fn($a, $b) => ($a ?: PHP_INT_MAX) <=> ($b ?: PHP_INT_MAX));
+$dayOptions = EdgeBlocker::dayOptions();
 
 ob_start(); ?>
 <?php if ($model->exposure && $model->status !== EdgeFinding::STATUS_IGNORED): ?>

@@ -6,6 +6,13 @@ releases).
 
 ## [Unreleased]
 
+### Added
+
+- Edge findings can be acted on in bulk. Tick findings in the grid (or the header box for the whole page) and a bar
+  above it offers Block, Dismiss, Ignore and Reopen for all of them at once. When a whole page is ticked, *Select all
+  matching findings* extends the selection to every finding matching the current filters, across all pages. A bulk
+  block adds every address to the Cloudflare list in one update and reports any address that could not be blocked.
+
 ## [0.15.0-alpha] - 2026-10-30
 
 ### Added

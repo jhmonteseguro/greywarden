@@ -269,6 +269,136 @@ class EdgeFlowsTest extends FunctionalTestCase
         $this->assertSame('0 low-priority findings dismissed.', $this->flash('info'));
     }
 
+    public function testBulkSelectionOnTheGrid(): void
+    {
+        $this->loginAs('viewer');
+        $this->get('/intel/edge');
+        $this->assertNotSee('id="edge-bulk"', 'viewers get no bulk actions');
+        $this->assertNotSee('data-gw-bulk-row');
+        $this->post('/intel/edge/bulk', ['do' => 'dismiss', 'ids' => [$this->finding('192.0.2.150')->id]]);
+        $this->assertStatus(403);
+
+        $this->loginAs('analyst');
+        $this->get('/intel/edge/bulk');
+        $this->assertStatus(405);
+        $this->get('/intel/edge?filter=new&q=192.0.2');
+        $this->assertSee('id="edge-bulk"');
+        $this->assertSee('data-gw-bulk-page-toggle');
+        $this->assertSee('form="edge-bulk"');
+        $this->assertSee('value="' . $this->finding('192.0.2.150')->id . '"');
+        $this->assertSee('Select all 2 matching findings');
+        $this->assertSee('name="q" value="192.0.2"', 'the filters go with the form');
+        $this->assertSee('name="days"');
+        $this->assertNotSee('value="reopen"', 'nothing to reopen in the triage queue');
+        $this->get('/intel/edge?filter=all');
+        $this->assertSee('value="reopen"');
+        // No rows, no bar
+        $this->get('/intel/edge?filter=escalated');
+        $this->assertNotSee('id="edge-bulk"');
+    }
+
+    public function testBulkDismissIgnoreReopen(): void
+    {
+        $a = $this->finding('192.0.2.150');
+        $b = $this->finding('203.0.113.9');
+        $dismissed = $this->finding('2001:db8::66');
+        $this->loginAs('analyst');
+
+        // Dismiss: only findings to triage; the filters come back on the redirect
+        $this->post('/intel/edge/bulk', ['do' => 'dismiss', 'ids' => [$a->id, $b->id, $dismissed->id], 'filter' => 'all', 'q' => '', 'priority' => 'high']);
+        $this->assertRedirect('/intel/edge?filter=all&priority=high');
+        $this->assertSame('2 findings dismissed. 1 finding skipped (not to triage).', $this->flash('info'));
+        $this->assertSame(EdgeFinding::STATUS_DISMISSED, $this->finding('192.0.2.150')->status);
+        $this->assertSame('Dismissed in bulk.', $this->finding('203.0.113.9')->note);
+
+        // Ignore takes dismissed findings too, but not blocked ones
+        $blocked = $this->finding('203.0.113.45');
+        $this->post('/intel/edge/bulk', ['do' => 'ignore', 'ids' => [$a->id, $blocked->id]]);
+        $this->assertSame('1 finding ignored. 1 finding skipped (already closed).', $this->flash('info'));
+        $this->assertSame(EdgeFinding::STATUS_IGNORED, $this->finding('192.0.2.150')->status);
+
+        // Reopen everything matching a filter
+        $this->post('/intel/edge/bulk', ['do' => 'reopen', 'scope' => 'all', 'filter' => 'all', 'q' => '192.0.2']);
+        $this->assertSame('1 finding reopened. 1 finding skipped (already to triage).', $this->flash('info'));
+        $this->assertSame(EdgeFinding::STATUS_NEW, $this->finding('192.0.2.150')->status);
+
+        // Nothing chosen
+        $this->post('/intel/edge/bulk', ['do' => 'dismiss']);
+        $this->assertRedirect('/intel/edge');
+        $this->assertSame('No findings selected.', $this->flash('warning'));
+        $this->post('/intel/edge/bulk', ['do' => 'dismiss', 'ids' => ['x', '']]);
+        $this->assertSame('No findings selected.', $this->flash('warning'));
+        $this->post('/intel/edge/bulk', ['do' => 'delete', 'ids' => [$a->id]]);
+        $this->assertSame('Choose an action for the selected findings.', $this->flash('warning'));
+        $this->post('/intel/edge/bulk', ['do' => ['block'], 'ids' => [$a->id], 'filter' => ['all']]);
+        $this->assertRedirect('/intel/edge');
+        $this->assertSame('Choose an action for the selected findings.', $this->flash('warning'));
+    }
+
+    public function testBulkBlock(): void
+    {
+        $a = $this->finding('192.0.2.150');
+        $b = $this->finding('192.0.2.151');
+        $blocked = $this->finding('203.0.113.45');
+        $this->loginAs('analyst');
+        $before = BlocklistEntry::find()->count();
+
+        $this->post('/intel/edge/bulk', ['do' => 'block', 'days' => 7, 'ids' => [$a->id, $b->id, $blocked->id], 'filter' => 'new']);
+        $this->assertRedirect('/intel/edge?filter=new');
+        $this->assertSame('2 addresses blocked for 7 days. 1 finding already blocked.', $this->flash('success'));
+        $this->assertSame($before + 2, (int) BlocklistEntry::find()->count());
+        foreach (['192.0.2.150', '192.0.2.151'] as $ip) {
+            $f = $this->finding($ip);
+            $this->assertSame(EdgeFinding::STATUS_BLOCKED, $f->status);
+            $this->assertSame($ip, $f->blocklistEntry->value);
+            $this->assertStringContainsString($f->reference, $f->blocklistEntry->reason);
+            $this->assertEqualsWithDelta(strtotime('+7 days'), strtotime($f->blocklistEntry->expires_at), 120);
+            $this->assertNull($f->blocklistEntry->cloudflare_added_at);
+        }
+        $this->assertSame('high', $this->finding('192.0.2.150')->blocklistEntry->severity);
+
+        // Reopened, an address with an entry in force is linked to it; scope=all blocks every match, permanently
+        $this->finding('192.0.2.150')->reopen();
+        $this->post('/intel/edge/bulk', ['do' => 'block', 'days' => 0, 'scope' => 'all', 'filter' => 'new']);
+        $this->assertSame('1 address blocked permanently. 1 address already on the blocklist.', $this->flash('success'));
+        $this->assertNull($this->finding('203.0.113.9')->blocklistEntry->expires_at);
+        $this->assertSame(0, (int) EdgeFinding::find()->where(['status' => EdgeFinding::STATUS_NEW])->count());
+
+        // An address whose entry has expired fails validation (edit the entry instead) and is reported with the reason
+        $first = $this->finding('192.0.2.150');
+        $second = $this->finding('192.0.2.151');
+        BlocklistEntry::updateAll(['expires_at' => '2020-01-01 00:00:00'], ['id' => [$first->blocklist_id, $second->blocklist_id]]);
+        $this->post('/intel/edge/bulk', ['do' => 'block', 'days' => 9999, 'ids' => [$first->id, $second->id]]);
+        $flash = $this->flash('danger');
+        $this->assertStringStartsWith(sprintf('2 findings not blocked: %s: 192.0.2.150 is already blocked (%s). %s:', $first->reference, $first->blocklistEntry->reference, $second->reference), $flash);
+        $this->assertSame($first->blocklist_id, $this->finding('192.0.2.150')->blocklist_id);
+    }
+
+    public function testBulkBlockPushesToCloudflareOnce(): void
+    {
+        putenv('CLOUDFLARE_API_TOKEN=t');
+        putenv('CLOUDFLARE_ZONE_ID=z');
+        $ids = [$this->finding('192.0.2.150')->id, $this->finding('192.0.2.151')->id, $this->finding('203.0.113.9')->id];
+        $this->loginAs('analyst');
+        $this->get('/intel/edge');
+        $this->assertSee('They are added to the Cloudflare blocklist.');
+
+        // The Cloudflare API refuses: nothing is blocked, one reason for all
+        Http::$fake = static fn() => ['status' => 403, 'body' => json_encode(['success' => false, 'errors' => [['code' => 10000, 'message' => 'Authentication error']]])];
+        $this->post('/intel/edge/bulk', ['do' => 'block', 'ids' => $ids]);
+        $this->assertStringStartsWith('3 findings not blocked: Cloudflare: Authentication error', $this->flash('danger'));
+        $this->assertSame(3, (int) EdgeFinding::find()->where(['id' => $ids, 'status' => EdgeFinding::STATUS_NEW])->count());
+
+        $cf = (new FakeCloudflare(null, true))->install();
+        $this->post('/intel/edge/bulk', ['do' => 'block', 'days' => 30, 'ids' => $ids]);
+        $flash = $this->flash('success');
+        $this->assertStringContainsString('3 addresses blocked for 30 days. Added to the Cloudflare list “greywarden_blocklist”', $flash);
+        $this->assertEqualsCanonicalizing(['192.0.2.150', '192.0.2.151', '203.0.113.9'], $cf->items());
+        $this->assertCount(1, $cf->requests('POST', '/items'), 'one list update for every address');
+        $this->assertNotNull($this->finding('192.0.2.150')->blocklistEntry->cloudflare_added_at);
+        FakeCloudflare::uninstall();
+    }
+
     public function testPullNow(): void
     {
         putenv('CLOUDFLARE_API_TOKEN=t');
