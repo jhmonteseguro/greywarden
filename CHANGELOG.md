@@ -6,6 +6,24 @@ releases).
 
 ## [Unreleased]
 
+### Added
+
+- **Threat Watch** (*Threat Intel › Threat Watch*): security news, government alerts, vendor advisories and threat research
+  from 28 public feeds in one triage queue, so you no longer have to check each site. Articles about the same event are
+  grouped into one story, and CVEs show whether they are in CISA KEV, used by ransomware, their EPSS chance of exploitation and
+  their CVSS score. Stories rank from critical to low, with the reasons shown on each story. Mark stories relevant or dismiss
+  them, singly or in bulk; a dismissed story comes back if it becomes critical or high. Critical and high stories also
+  appear on the dashboard, and stories and CVEs are in the global search.
+- **Watchlist** (*Threat Intel › Watchlist*): the products you care about, starting with common firewalls, VPNs, identity,
+  email, EDR and cloud products, plus operating systems, infrastructure makers, cloud providers and suppliers from your
+  registers. Each term shows how many stories it matches, and changes re-rank recent stories at once.
+- **News Sources** (*Threat Intel › News Sources*): the health of each feed, *Read now*, and for admins switching sources off
+  and adding any public RSS or Atom feed. The scheduler reads them every `THREAT_PULL_INTERVAL` minutes (default 15, `0` =
+  off); `make threat-pull` and `make threat-status` do the same by hand. An optional free `NVD_API_KEY` makes CVSS scores arrive
+  faster.
+- An `organisation` table. Threat Watch keeps shared public facts apart from each organisation's watchlist and triage, ready
+  for Greywarden to serve several organisations later. Nothing changes while there is one.
+
 ## [0.16.0-alpha] - 2026-11-02
 
 ### Added

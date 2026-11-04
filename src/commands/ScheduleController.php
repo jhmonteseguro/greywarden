@@ -6,6 +6,8 @@ use app\modules\intel\components\Cloudflare;
 use app\modules\intel\components\edge\EdgePuller;
 use app\modules\intel\components\edge\EdgeSettings;
 use app\modules\intel\models\BlocklistEntry;
+use app\modules\threat\components\ThreatPuller;
+use app\modules\threat\components\ThreatSettings;
 use RuntimeException;
 use Yii;
 use yii\console\Controller;
@@ -18,6 +20,7 @@ use yii\console\ExitCode;
  *   edge-pull       every EDGE_PULL_INTERVAL minutes (default 15, 0 = off): Cloudflare traffic → edge findings
  *                   (each pull also takes expired blocks out of Cloudflare)
  *   expire-blocks   hourly, only when edge pulls are off: expired blocks out of Cloudflare
+ *   threat-pull     every THREAT_PULL_INTERVAL minutes (default 15, 0 = off): news sources that are due → Threat Watch
  *
  * Jobs that need Cloudflare are skipped while it is not configured. Each job runs on
  * its own; a failure is logged and the loop carries on.
@@ -48,9 +51,11 @@ class ScheduleController extends Controller
     {
         $edge = EdgeSettings::pullInterval();
         $cloudflare = Cloudflare::isConfigured() ? null : 'Cloudflare is not configured';
+        $threat = ThreatSettings::pullInterval();
         return [
             'edge-pull' => ['interval' => $edge, 'off' => $cloudflare ?? ($edge === 0 ? 'EDGE_PULL_INTERVAL=0' : null), 'run' => fn() => $this->edgePull()],
             'expire-blocks' => ['interval' => 60, 'off' => $cloudflare ?? ($edge > 0 ? 'every edge pull does it' : null), 'run' => fn() => $this->expireBlocks()],
+            'threat-pull' => ['interval' => $threat, 'off' => $threat === 0 ? 'THREAT_PULL_INTERVAL=0' : null, 'run' => fn() => $this->threatPull()],
         ];
     }
 
@@ -118,6 +123,18 @@ class ScheduleController extends Controller
             ? 'edge-pull failed: ' . $pull->message
             : trim(sprintf('edge-pull %s → %s: %d requests from %d addresses, %d new, %d updated. %s',
                 $pull->window_start, $pull->window_end, $pull->requests, $pull->ips, $pull->findings_new, $pull->findings_updated, (string) $pull->message)));
+    }
+
+    private function threatPull(): void
+    {
+        try {
+            $pull = (new ThreatPuller())->run();
+        } catch (RuntimeException $e) {
+            $this->log('threat-pull skipped: ' . $e->getMessage());
+            return;
+        }
+        $this->log(trim(sprintf('threat-pull %s: %d sources read, %d failed, %d new articles, %d new stories, %d CVEs enriched. %s',
+            $pull->status, $pull->sources_read, $pull->sources_failed, $pull->articles_new, $pull->stories_new, $pull->cves_enriched, (string) $pull->message)));
     }
 
     private function expireBlocks(): void

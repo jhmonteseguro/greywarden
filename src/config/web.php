@@ -23,6 +23,7 @@ $config = [
         'report' => ['class' => app\modules\report\Module::class],
         'attack' => ['class' => app\modules\attack\Module::class],
         'intel' => ['class' => app\modules\intel\Module::class],
+        'threat' => ['class' => app\modules\threat\Module::class],
         'admin' => ['class' => app\modules\admin\Module::class],
     ],
     'components' => [
@@ -147,6 +148,18 @@ $config = [
                 'intel/blocklist/<id:\d+>' => 'intel/blocklist/view',
                 'intel/blocklist/<id:\d+>/<action:[\w-]+>' => 'intel/blocklist/<action>',
                 'intel/blocklist/<action:[\w-]+>' => 'intel/blocklist/<action>',
+
+                // Threat Watch: /threat, /threat/12, /threat/watchlist, /threat/sources
+                'threat' => 'threat/story/index',
+                'threat/<id:\d+>' => 'threat/story/view',
+                'threat/<id:\d+>/<action:(relevant|dismiss|reopen)>' => 'threat/story/<action>',
+                'threat/<action:(dismiss-low|bulk)>' => 'threat/story/<action>',
+                'threat/watchlist' => 'threat/watchlist/index',
+                'threat/watchlist/<id:\d+>/<action:(toggle|delete)>' => 'threat/watchlist/<action>',
+                'threat/watchlist/<action:(create|sync)>' => 'threat/watchlist/<action>',
+                'threat/sources' => 'threat/source/index',
+                'threat/sources/<id:\d+>/<action:(toggle|delete)>' => 'threat/source/<action>',
+                'threat/sources/<action:(create|pull)>' => 'threat/source/<action>',
 
                 'admin/<controller:(user|audit|lookup)>' => 'admin/<controller>/index',
                 'admin/<controller:(user|audit|lookup)>/<id:\d+>' => 'admin/<controller>/view',

@@ -25,6 +25,15 @@ use app\modules\intel\components\edge\EdgePuller;
 use app\modules\intel\models\BlocklistEntry;
 use app\modules\intel\models\EdgeFinding;
 use app\modules\intel\models\EdgePull;
+use app\models\Organisation;
+use app\modules\threat\components\StoryScorer;
+use app\modules\threat\components\ThreatPuller;
+use app\modules\threat\components\Watchlist;
+use app\modules\threat\models\ThreatCve;
+use app\modules\threat\models\ThreatPull;
+use app\modules\threat\models\ThreatSource;
+use app\modules\threat\models\ThreatTriage;
+use app\modules\threat\models\ThreatWatchTerm;
 use app\modules\intel\models\IntelIndicator;
 use app\modules\intel\models\IntelNote;
 use app\modules\inventory\components\DeviceChecks;
@@ -45,7 +54,7 @@ use yii\helpers\Console;
  * Demo data for designers / evaluation. Separate from migrations and optional.
  *
  *   php yii seed/demo            # refuses if domain data exists
- *   php yii seed/demo --reset=1  # wipes risks/decisions/incidents/devices/controls (and intel notes / blocklist / edge findings) first
+ *   php yii seed/demo --reset=1  # wipes risks/decisions/incidents/devices/controls (and intel notes / blocklist / edge findings / Threat Watch) first
  *
  * Threat intel demo data only uses documentation ranges (192.0.2.0/24, 198.51.100.0/24,
  * 203.0.113.0/24) and a documentation ASN, so investigating it never leaves the network.
@@ -172,6 +181,7 @@ class SeedController extends Controller
             $blocks = $this->seedIntel($incidents);
             $findings = $this->seedEdge();
             $reports = $this->seedReports();
+            $stories = $this->seedThreatWatch();
             $tx->commit();
         } catch (\Throwable $e) {
             $tx->rollBack();
@@ -185,8 +195,8 @@ class SeedController extends Controller
         Actor::override(null);
         Yii::$app->cache->flush();
 
-        $this->stdout(sprintf("Seeded %d risks, %d controls, %d decisions, %d incidents, %d devices, %d cloud accounts, %d cloud assets, %d suppliers, %d blocklist entries, %d edge findings, %d reports.\n",
-            count($risks), $controls + $cloudControls + $supplierControls, count($decisions), count($incidents), count($devices), $accounts, $assets, $suppliers, $blocks, $findings, $reports), Console::FG_GREEN);
+        $this->stdout(sprintf("Seeded %d risks, %d controls, %d decisions, %d incidents, %d devices, %d cloud accounts, %d cloud assets, %d suppliers, %d blocklist entries, %d edge findings, %d reports, %d threat stories.\n",
+            count($risks), $controls + $cloudControls + $supplierControls, count($decisions), count($incidents), count($devices), $accounts, $assets, $suppliers, $blocks, $findings, $reports, $stories), Console::FG_GREEN);
         $this->stdout(sprintf("Demo users (password from DEMO_PASSWORD): analyst, jpatel (analysts), viewer (read-only).\n"));
         return ExitCode::OK;
     }
@@ -210,11 +220,16 @@ class SeedController extends Controller
             $db->createCommand()->delete($t)->execute();
         }
         $db->createCommand()->update('decision', ['superseded_by_id' => null])->execute();
+        // Threat Watch: what was read and decided goes; sources and the starter watchlist stay
+        foreach (['threat_triage', 'threat_article', 'threat_story_cve', 'threat_story', 'threat_cve', 'threat_pull'] as $t) {
+            $db->createCommand()->delete($t)->execute();
+        }
+        $db->createCommand()->delete('threat_watch_term', ['origin' => [ThreatWatchTerm::ORIGIN_MANUAL, ...ThreatWatchTerm::DERIVED_ORIGINS]])->execute();
         foreach (['report', 'edge_finding', 'edge_pull', 'intel_blocklist', 'intel_note', 'intel_indicator', 'risk', 'incident', 'decision', 'device', 'cloud_asset', 'cloud_account', 'supplier', 'control'] as $t) {
             $db->createCommand()->delete($t)->execute();
         }
         $db->createCommand()->update('framework_requirement', ['applicable' => 1, 'justification' => null, 'updated_at' => null, 'updated_by' => null])->execute();
-        $db->createCommand()->delete('audit_log', ['entity_type' => ['risk', 'incident', 'decision', 'device', 'cloud_account', 'cloud_asset', 'supplier', 'blocklist', 'indicator', 'control', 'requirement', 'edge-finding', 'report']])->execute();
+        $db->createCommand()->delete('audit_log', ['entity_type' => ['risk', 'incident', 'decision', 'device', 'cloud_account', 'cloud_asset', 'supplier', 'blocklist', 'indicator', 'control', 'requirement', 'edge-finding', 'report', 'threat-story', 'threat-term', 'threat-source']])->execute();
         DeviceChecks::reset();
         CloudChecks::reset();
         SupplierChecks::reset();
@@ -226,7 +241,7 @@ class SeedController extends Controller
     {
         $db = Yii::$app->db;
         if ($db->driverName === 'mysql') {
-            foreach (['risk', 'incident', 'decision', 'device', 'cloud_account', 'cloud_asset', 'supplier', 'supplier_assurance', 'incident_timeline', 'intel_blocklist', 'intel_note', 'intel_indicator', 'control', 'control_test', 'record_review', 'record_note', 'attachment', 'edge_finding', 'edge_pull', 'report'] as $t) {
+            foreach (['risk', 'incident', 'decision', 'device', 'cloud_account', 'cloud_asset', 'supplier', 'supplier_assurance', 'incident_timeline', 'intel_blocklist', 'intel_note', 'intel_indicator', 'control', 'control_test', 'record_review', 'record_note', 'attachment', 'edge_finding', 'edge_pull', 'report', 'threat_triage', 'threat_article', 'threat_story', 'threat_pull'] as $t) {
                 $db->createCommand("ALTER TABLE {{{$t}}} AUTO_INCREMENT = 1")->execute();
             }
         }
@@ -815,6 +830,76 @@ class SeedController extends Controller
             $incidents[$idx + 1] = $inc;
         }
         return $incidents;
+    }
+
+    // ---- Threat Watch ------------------------------------------------------------------
+
+    /**
+     * Threat Watch stories, run through the real pipeline (grouping, scoring). Every product and CVE
+     * here is made up, so the public demo data never says anything untrue about a real vendor.
+     */
+    private function seedThreatWatch(): int
+    {
+        $now = time();
+        foreach (['Northgate VPN' => 'network', 'Larkspur Mail' => 'email', 'Brightwater EDR' => 'endpoint'] as $term => $category) {
+            (new ThreatWatchTerm(['organisation_id' => Organisation::DEFAULT_ID, 'term' => $term, 'category' => $category, 'origin' => ThreatWatchTerm::ORIGIN_MANUAL, 'is_enabled' => 1]))->save(false);
+        }
+        $item = static fn(string $slug, string $title, string $excerpt, int $hoursAgo, array $cves = [], ?array $kev = null) => [
+            'guid' => $kev !== null ? $cves[0] : "demo-$slug", 'title' => $title, 'url' => "https://news.example.com/$slug", 'excerpt' => $excerpt,
+            'cves' => $cves, 'published_at' => $now - $hoursAgo * 3600, 'kev' => $kev,
+        ];
+        $kev = static fn(string $vendor, string $product, int $daysAgo, int $ransomware = 0) => [
+            'description' => null, 'vendor' => $vendor, 'product' => $product, 'kev_added_on' => date('Y-m-d', $now - $daysAgo * 86400),
+            'kev_due_on' => date('Y-m-d', $now + (14 - $daysAgo) * 86400), 'kev_ransomware' => $ransomware, 'kev_action' => 'Apply the vendor update or stop using the product.',
+        ];
+        $feeds = [
+            'bleepingcomputer' => [
+                $item('northgate-zero-day', 'Northgate VPN zero-day exploited in the wild to steal session tokens', 'Attackers are exploiting an unpatched authentication bypass in Northgate VPN gateways. A fix is due this week.', 7, ['CVE-2026-90001']),
+                $item('quillon-print', 'Zero-day in Quillon Print Server exploited in attacks on law firms', 'A flaw in the print server lets attackers run code as SYSTEM. Researchers saw it used against a handful of targets.', 30),
+                $item('phishing-report', 'Phishing volumes rise again in the third quarter, report finds', 'Credential phishing grew by a fifth, with most lures impersonating delivery firms and shared document services.', 40),
+            ],
+            'the-record' => [
+                $item('northgate-record', 'Northgate VPN customers urged to patch as attacks spread', 'Government agencies warned that exploitation of Northgate VPN gateways has widened since last week.', 5, ['CVE-2026-90001']),
+                $item('harbour-breach', 'Regional port operator confirms data breach after ransomware attack', 'The operator said staff records were taken. Shipping was not affected.', 54),
+            ],
+            'securityweek' => [
+                $item('larkspur-patch', 'Larkspur Mail patches critical remote code execution flaw', 'The update fixes a pre-authentication bug in the webmail component. There is no sign of attacks so far.', 20, ['CVE-2026-90003']),
+                $item('brightwater-mention', 'Vendors race to add AI triage to their security products', 'Brightwater EDR is among the products adding assistants for analysts this year.', 70),
+            ],
+            'hacker-news' => [
+                $item('weekly-recap', 'Weekly Recap: Northgate VPN attacks, Quillon zero-day and more', 'The week in security, from gateway attacks to print server bugs.', 12, ['CVE-2026-90001', 'CVE-2026-90002']),
+            ],
+            'talos' => [
+                $item('tallowood-talos', 'Ransomware crews move quickly on Tallowood CMS flaw', 'Affiliates are using the bug for initial access within days of disclosure.', 44, ['CVE-2026-90002']),
+            ],
+            'cisa-kev' => [
+                $item('kev-90001', 'CVE-2026-90001: Northgate VPN Authentication Bypass Vulnerability', 'Northgate VPN contains an authentication bypass that allows session hijacking.', 24, ['CVE-2026-90001'], $kev('Northgate', 'VPN', 1)),
+                $item('kev-90002', 'CVE-2026-90002: Tallowood CMS Deserialization Vulnerability', 'Tallowood CMS deserialises untrusted data, allowing remote code execution.', 72, ['CVE-2026-90002'], $kev('Tallowood', 'CMS', 3, 1)),
+            ],
+            'msrc' => [
+                $item('msrc-90005', 'CVE-2026-90005 Example Print Spooler Elevation of Privilege Vulnerability', 'Information published.', 26, ['CVE-2026-90005']),
+                $item('msrc-90006', 'CVE-2026-90006 Example Graphics Component Information Disclosure Vulnerability', 'Information published.', 26, ['CVE-2026-90006']),
+            ],
+        ];
+        $puller = new ThreatPuller();
+        $puller->now = $now;
+        $read = date('Y-m-d H:i:s', $now - 600);
+        foreach ($feeds as $key => $items) {
+            $source = ThreatSource::findOne(['key' => $key]);
+            $result = $puller->ingest($source, $items);
+            ThreatSource::updateAll(['last_fetched_at' => $read, 'last_success_at' => $read, 'items_total' => $result['articles']], ['id' => $source->id]);
+        }
+        foreach (['CVE-2026-90001' => [9.8, 'critical', .94321], 'CVE-2026-90002' => [8.8, 'high', .61200], 'CVE-2026-90003' => [9.1, 'critical', .03200]] as $id => [$cvss, $severity, $epss]) {
+            ThreatCve::updateAll(['cvss_score' => $cvss, 'cvss_severity' => $severity, 'epss_score' => $epss, 'epss_percentile' => .9, 'nvd_checked_at' => $read, 'epss_checked_at' => $read], ['cve_id' => $id]);
+        }
+        (new ThreatPull(['started_at' => $read, 'finished_at' => $read, 'status' => ThreatPull::STATUS_OK, 'sources_read' => count($feeds)]))->save(false);
+
+        Watchlist::sync(Organisation::DEFAULT_ID);
+        StoryScorer::run(Organisation::DEFAULT_ID, $now);
+        $story = static fn(string $like) => ThreatTriage::find()->forOrganisation()->joinWith('story')->andWhere(['like', 'threat_story.title', $like])->one();
+        $story('Phishing volumes')?->resolve(ThreatTriage::STATUS_DISMISSED, 'Background reading, nothing to do.');
+        $story('Larkspur Mail')?->resolve(ThreatTriage::STATUS_RELEVANT, 'We run this: patching in the next change window.');
+        return (int) ThreatTriage::find()->forOrganisation()->count();
     }
 
     // ---- Edge findings ----------------------------------------------------------------

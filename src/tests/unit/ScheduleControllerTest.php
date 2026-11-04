@@ -81,7 +81,7 @@ class ScheduleControllerTest extends DbTestCase
     {
         [$code, $out] = OutputCapture::run('schedule/status');
         $this->assertSame(ExitCode::OK, $code);
-        $this->assertSame("Jobs: edge-pull every 15 min; expire-blocks off (every edge pull does it).\n", $out);
+        $this->assertSame("Jobs: edge-pull every 15 min; expire-blocks off (every edge pull does it); threat-pull off (THREAT_PULL_INTERVAL=0).\n", $out);
 
         [$code, $out] = OutputCapture::run('schedule/run', ['once' => 1]);
         $this->assertSame(ExitCode::OK, $code);
@@ -91,7 +91,7 @@ class ScheduleControllerTest extends DbTestCase
 
         FakeCloudflare::uninstall();
         [, $out] = OutputCapture::run('schedule/status');
-        $this->assertSame("Jobs: edge-pull off (Cloudflare is not configured); expire-blocks off (Cloudflare is not configured).\n", $out);
+        $this->assertSame("Jobs: edge-pull off (Cloudflare is not configured); expire-blocks off (Cloudflare is not configured); threat-pull off (THREAT_PULL_INTERVAL=0).\n", $out);
         [, $out] = OutputCapture::run('schedule/run', ['once' => 1]);
         $this->assertSame(1, substr_count($out, "\n"), 'only the start line: nothing ran');
     }

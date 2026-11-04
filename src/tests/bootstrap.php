@@ -14,6 +14,10 @@ foreach (['CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_ZONE_ID', 'CLOUDFLARE_RULE_NAME', 
     putenv($secret);
 }
 
+// The scheduler's feed pull stays off unless a test switches it on
+putenv('THREAT_PULL_INTERVAL=0');
+putenv('NVD_API_KEY');
+
 // PHPUnit owns error handling (warnings in views fail the test); Yii must not replace it
 define('YII_ENABLE_ERROR_HANDLER', false);
 

@@ -19,7 +19,9 @@ use app\modules\inventory\models\Device;
 use app\modules\risk\models\Risk;
 use app\modules\report\models\Report;
 use app\modules\supplier\models\Supplier;
+use app\modules\threat\models\ThreatTriage;
 use Yii;
+use yii\db\Query;
 use yii\filters\AccessControl;
 use yii\web\Controller;
 use yii\web\Response;
@@ -111,6 +113,9 @@ class SearchController extends Controller
                 'edge' => ['label' => 'Edge findings', 'icon' => 'binoculars', 'items' => EdgeFinding::find()
                     ->where(['or', ['like', 'reference', $q], ['like', 'ip', $q]])
                     ->orderBy(['last_seen_at' => SORT_DESC])->limit(self::LIMIT)->all()],
+                'threat' => ['label' => 'Threat Watch', 'icon' => 'newspaper', 'items' => ThreatTriage::find()->forOrganisation()->joinWith('story')
+                    ->andWhere(['or', ['like', 'threat_story.title', $q], ['threat_story.id' => (new Query())->select('story_id')->from('threat_story_cve')->where(['like', 'cve_id', $q])]])
+                    ->orderBy(['threat_story.last_seen_at' => SORT_DESC])->limit(self::LIMIT)->all()],
             ];
             if (!FrameworkCatalogue::enabled()) {
                 unset($results['requirements']);

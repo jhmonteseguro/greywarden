@@ -86,6 +86,12 @@ final class Badge
         'edge-status' => ['new' => 'warning', 'blocked' => 'success', 'escalated' => 'danger', 'dismissed' => 'muted', 'ignored' => 'neutral'],
         'edge-priority' => ['high' => 'high', 'medium' => 'medium', 'low' => 'low'],
         'edge-pull' => ['ok' => 'success', 'partial' => 'warning', 'error' => 'danger'],
+        // Threat Watch (app\modules\threat)
+        'threat-status' => ['new' => 'warning', 'relevant' => 'info', 'dismissed' => 'muted'],
+        'threat-priority' => ['critical' => 'critical', 'high' => 'high', 'medium' => 'medium', 'low' => 'low'],
+        'threat-flag' => ['kev' => 'critical', 'exploited' => 'high', 'ransomware' => 'critical', 'watchlist' => 'info', 'roundup' => 'neutral'],
+        'threat-health' => ['ok' => 'success', 'failing' => 'danger', 'waiting' => 'neutral', 'off' => 'muted'],
+        'threat-origin' => ['starter' => 'neutral', 'manual' => 'info', 'device' => 'info', 'cloud' => 'info', 'supplier' => 'info'],
         'block-type' => ['ip' => 'info', 'cidr' => 'info', 'asn' => 'high'],
         'audit-action' => [
             'create' => 'success', 'update' => 'info', 'archive' => 'warning', 'restore' => 'info', 'delete' => 'danger',

@@ -78,6 +78,9 @@ class AuditLog extends ActiveRecord
             'blocklist' => ['Blocklist entry', \app\modules\intel\models\BlocklistEntry::class, '/intel/blocklist/view'],
             'indicator' => ['Intel indicator', \app\modules\intel\models\IntelIndicator::class, '/intel/investigate/indicator'],
             'edge-finding' => ['Edge finding', \app\modules\intel\models\EdgeFinding::class, '/intel/edge/view'],
+            'threat-story' => ['Threat Watch story', \app\modules\threat\models\ThreatTriage::class, '/threat/story/view'],
+            'threat-term' => ['Watchlist term', \app\modules\threat\models\ThreatWatchTerm::class, '/threat/watchlist/index'],
+            'threat-source' => ['News source', \app\modules\threat\models\ThreatSource::class, '/threat/source/index'],
         ];
     }
 

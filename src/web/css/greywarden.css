@@ -2192,3 +2192,45 @@ a.gw-intel-flagchip:hover { color: var(--gw-text-strong); border-color: var(--gw
 .gw-cloud-config__settings { grid-template-columns: minmax(0, 14rem) minmax(0, 1fr); }
 @media (max-width: 575.98px) { .gw-cloud-config__settings { grid-template-columns: minmax(0, 1fr); } .gw-cloud-config__settings dd { margin-bottom: .35rem; } }
 .gw-quickfilters--facets { flex-wrap: wrap; margin-bottom: .75rem; }
+
+/* ---- Threat Watch ------------------------------------------------------------- */
+.gw-threat-row__title { font-weight: 600; color: var(--gw-text-strong); text-decoration: none; }
+.gw-threat-row__title:hover { color: var(--gw-accent-hover); text-decoration: underline; }
+.gw-threat-row__summary { margin-top: .15rem; font-size: var(--gw-fs-xs); color: var(--gw-text-muted); }
+.gw-threat-flags { white-space: normal; }
+.gw-threat-summary { margin: 0; color: var(--gw-text-strong); }
+.gw-threat-note { font-size: var(--gw-fs-xs); }
+.gw-threat-articles { list-style: none; margin: 0; padding: 0; }
+.gw-threat-article { padding: .75rem var(--gw-panel-px); border-top: 1px solid var(--gw-border-subtle); overflow-wrap: anywhere; }
+.gw-threat-article__title { font-weight: 550; text-decoration: none; }
+.gw-threat-article__title:hover { text-decoration: underline; }
+.gw-threat-article__title .bi { font-size: .75em; opacity: .7; }
+.gw-threat-article__excerpt { margin: .3rem 0 0; font-size: var(--gw-fs-sm); color: var(--gw-text-muted); }
+.gw-threat-signal { grid-template-columns: 2.6rem minmax(0, 1fr); }
+.gw-threat-decide { display: flex; gap: .5rem; justify-content: flex-end; }
+.gw-threat-facts { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: .35rem 1rem; margin: 0; font-size: var(--gw-fs-sm); }
+.gw-threat-facts dt { font-weight: 500; color: var(--gw-text-muted); }
+.gw-threat-facts dd { margin: 0; color: var(--gw-text-strong); }
+.gw-threat-add { display: flex; flex-wrap: wrap; align-items: flex-end; gap: .75rem; }
+.gw-threat-add .gw-field { flex: 1 1 12rem; margin: 0; }
+.gw-threat-add .gw-threat-add__wide { flex: 3 1 18rem; }
+.gw-threat-terms td, .gw-threat-sources td { vertical-align: middle; }
+.gw-threat-terms__off td { color: var(--gw-text-muted); }
+.gw-threat-terms__actions { white-space: nowrap; }
+.gw-threat-error { margin-top: .15rem; font-size: var(--gw-fs-xs); color: var(--gw-danger-text); overflow-wrap: anywhere; }
+.gw-threat-brief { list-style: none; margin: 0; padding: 0; display: grid; gap: .5rem; }
+.gw-threat-brief__item { display: flex; flex-wrap: wrap; align-items: baseline; gap: .25rem .5rem; font-size: var(--gw-fs-sm); }
+.gw-threat-brief__title { flex: 1 1 16rem; min-width: 0; color: var(--gw-text-strong); text-decoration: none; overflow-wrap: anywhere; }
+.gw-threat-brief__title:hover { color: var(--gw-accent-hover); text-decoration: underline; }
+.gw-threat-brief__when { font-size: var(--gw-fs-xs); white-space: nowrap; }
+.gw-threat-brief__more { margin: .6rem 0 0; font-size: var(--gw-fs-xs); }
+.gw-threat-when-inline { display: none; }
+/* Phones: the story is what matters, so it gets the width; when it happened moves under the headline */
+@media (max-width: 767.98px) {
+    .gw-threat-col-aux { display: none; }
+    .gw-threat-when-inline { display: inline; }
+    .gw-threat-col-story { white-space: normal; min-width: 0; width: 100%; }
+    .gw-threat-row, .gw-threat-row .gw-intel-when, .gw-threat-sources td { white-space: normal; overflow-wrap: anywhere; }
+    .gw-threat-col-priority { padding-left: .25rem; padding-right: .25rem; }
+    .gw-threat-terms__actions .btn, .gw-threat-sources .btn { padding: .15rem .4rem; }
+}

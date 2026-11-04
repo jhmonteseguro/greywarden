@@ -54,7 +54,10 @@ For real data, see [Production](#production); for the full setup, see [Developme
   secrets and admin pages, enumerate paths, send attack payloads or use scanner tools (scored and explained), and
   recommends what to do: raise an incident when a sensitive path answered 200, block for a few days, block the probe
   paths for everyone with a suggested WAF rule, or block a network that keeps sending scanners
-* **Dashboard**: KPI tiles, residual heatmap, incident trend, device posture, a "needs attention" list,
+* **Threat Watch**: security news, government alerts, vendor advisories and research from 28 public feeds in one
+  triage queue. Articles about one event are grouped into a story, CVEs are enriched with CISA KEV, EPSS and CVSS, and
+  stories rank against a **watchlist** of what you run, kept up to date from your devices, cloud accounts and suppliers
+* **Dashboard**: KPI tiles, residual heatmap, incident trend, device posture, a "needs attention" list, Threat Watch,
   control effectiveness with progress against each framework switched on, recent activity
 * **MITRE ATT&CK** (Enterprise v20, bundled for offline use): techniques observed on incidents, threat techniques on risks,
   mitigations implemented by controls or adopted by decisions, an ATT&CK matrix shaded by incidents or risks,
@@ -201,6 +204,7 @@ Composer, Gii or the runtime create are owned by you. Uploaded files are stored 
 | `make sync-cloudflare AS=<user> [DRY_RUN=1]` | add / refresh the Cloudflare zones as cloud assets, using `CLOUDFLARE_API_TOKEN` |
 | `make suppliers-from-cloud AS=<user> [DRY_RUN=1]` | add one supplier per cloud provider in use, without linking the accounts (see [Supplier Register](#supplier-register)) |
 | `make edge-pull [AS=<user>] [MINUTES=60] [DRY_RUN=1]` / `make edge-status` | read the Cloudflare traffic since the last pull and update the edge findings now (the scheduler container also does this every `EDGE_PULL_INTERVAL` minutes) / show the zone's analytics limits and recent pulls (see [Edge findings](#edge-findings-cloudflare-traffic)) |
+| `make threat-pull [AS=<user>] [FORCE=1]` / `make threat-status` | read the Threat Watch sources that are due, or all of them with `FORCE=1` (the scheduler container does this every `THREAT_PULL_INTERVAL` minutes) / show source health and recent reads (see [Threat Watch](#threat-watch)) |
 | `make expire-blocks` | take expired blocklist entries out of Cloudflare (`make edge-pull` does this too) |
 | `make cloudflare-migrate [OLD_RULE="Block Bad Actors"] [DRY_RUN=1]` | one-off: move *Add to Cloudflare* entries from the old rule into the IP list and the **Greywarden Blocklist** rule (see [Threat intel](#threat-intel-ip--asn-investigation)) |
 | `make intel-status` / `make intel-update` | show the local threat-feed status / download every feed now (stale feeds also refresh automatically in the background) |
@@ -222,6 +226,8 @@ All configuration comes from `.env`, which docker compose passes to the PHP and 
 * `EDGE_PULL_INTERVAL` (default `15`, `0` = off): minutes between the scheduler container's Cloudflare edge pulls
   (see [Edge findings](#edge-findings-cloudflare-traffic)). The **scheduler** service (`php yii schedule/run`, same
   image as php) runs Greywarden's scheduled jobs, so no host crontab is needed; `make logs s=scheduler` shows them.
+* `THREAT_PULL_INTERVAL` (default `15`, `0` = off): minutes between the scheduler container's checks for
+  [Threat Watch](#threat-watch) sources that are due. `NVD_API_KEY` (optional, free) makes CVSS scores arrive ten times faster.
 * `APP_NAME` (default `Greywarden`): the product name, used when no display name is set in **Admin › Settings**.
   Branding (display name, organisation, logo, sign-in text, PDF marking) is set there, not in `.env`; see
   [Branding](#branding-admin--settings).
@@ -880,6 +886,50 @@ don't have to scroll through the logs for addresses that slipped past your rules
 * **Admin › Settings › Edge monitoring**: path prefixes your sites really serve (never counted as probes, left out of
   the WAF rule), addresses / networks / ASNs never to flag, the score that opens a finding (default 30), the default
   block length (7 days) and the flood threshold (120 requests a minute).
+
+## Threat Watch
+
+*Threat Intel › Threat Watch* (`/threat`) replaces checking dozens of sites with one queue that answers: what is being
+exploited, and does it affect us? It needs no setup: the **scheduler** container reads the sources, and only
+the feeds themselves are fetched, never the pages they link to.
+
+* **Sources** (*Threat Intel › News Sources*): CISA KEV, Microsoft and Zero Day Initiative advisories, NCSC UK and
+  CERT-EU, vendor threat research, exploit research and security news. Each source has its own pace, from 30 minutes for
+  news to 3 hours for research. The page shows which are working. Admins can switch sources off and add any RSS or
+  Atom feed on the public internet. Greywarden stores the headline, a short extract and the link, and the article stays with its
+  publisher. **CISA Advisories** starts switched off: cisa.gov refuses that feed from the PHP container (KEV is not
+  affected), and it can be switched on to try again.
+* **Stories**: articles naming the same CVEs, or with near-identical headlines, become one story. Roundups (weekly
+  bulletins, Patch Tuesday) stay on their own so they cannot glue unrelated events together, and they rank low: they
+  mention events rather than being about them, and those events rank on their own. A story citing CVEs from three or more
+  vendors counts as a roundup too. The grouping is cautious, so an event can appear twice, but two events are not merged.
+* **Enrichment**: **KEV** (known to be exploited, and used by ransomware), **EPSS** (chance of exploitation in the next 30
+  days) and **CVSS** (severity, from NVD). Without an `NVD_API_KEY`, CVSS arrives a few CVEs at a time, and NVD often has no
+  score yet for new CVEs.
+* **Watchlist** (*Threat Intel › Watchlist*): starts with common firewalls, VPNs, identity, email, EDR and cloud
+  products. Operating systems, the makers of infrastructure devices, cloud providers and suppliers in service are added
+  from your registers. Laptop and phone brands are left out, as the operating system says more. Each term shows how many
+  stories it matches, so a noisy one is easy to spot and switch off.
+* **Priority**, explained on each story:
+
+  | Priority | When |
+  |---|---|
+  | Critical | Being exploited (in KEV or reported) and on your watchlist |
+  | High | In KEV; or on your watchlist with a severe (CVSS 9+) or likely exploited (EPSS 50%+) CVE |
+  | Medium | On your watchlist; or exploitation reported; or a severe or likely exploited CVE |
+  | Low | Everything else |
+
+  "On your watchlist" means in a headline or a KEV product name, as vendors name their own products in everything they publish.
+* **Background advisories**: Microsoft and ZDI publish hundreds of items a week. They stay under the *Background advisories*
+  filter unless they are in KEV, are on your watchlist with a severe or likely exploited CVE, or a news source covers them.
+* **Triage**: mark stories *Relevant* or *Dismiss* them, one at a time or in bulk. A dismissed story comes back if it becomes
+  critical or high. Decisions are in the audit log.
+* **Several organisations**: sources, articles, stories and CVEs are public facts stored once. The watchlist and triage
+  belong to an organisation, and everything reads the current one through `app\models\Organisation`. There is only one
+  today, and the asset registers are not per-organisation yet, which `Watchlist::derived()` will need when they are.
+* **Security**: feed content is untrusted. It is reduced to plain text when read, links must be http(s), and documents with a
+  DOCTYPE are refused. Custom feeds must use https on the standard port, must resolve only to public addresses, and are
+  fetched pinned to the checked address without following redirects, so a feed cannot reach the internal network.
 
 ## Tests
 

@@ -102,6 +102,10 @@ C1=$(id_of control reference CTL-0001); C5=$(id_of control reference CTL-0005); 
 CLD1=$(id_of cloud_asset reference CLD-0001); CLD10=$(id_of cloud_asset reference CLD-0010); ACC1=$(id_of cloud_account reference ACC-0001); ACC2=$(id_of cloud_account reference ACC-0002)
 SUP1=$(id_of supplier reference SUP-0001); SUP5=$(id_of supplier reference SUP-0005); SUP9=$(id_of supplier reference SUP-0009)
 RPT1=$(id_of report reference RPT-0001); RPT2=$(id_of report reference RPT-0002)
+TW1=$(sql "SELECT t.id FROM threat_triage t JOIN threat_story s ON s.id = t.story_id WHERE s.title LIKE 'Northgate VPN%' LIMIT 1")
+TW2=$(sql "SELECT t.id FROM threat_triage t JOIN threat_story s ON s.id = t.story_id WHERE s.title LIKE 'Zero-day in Quillon%' LIMIT 1")
+WT1=$(id_of threat_watch_term term 'Northgate VPN'); WT2=$(id_of threat_watch_term term 'Okta'); WT3=$(sql "SELECT id FROM threat_watch_term WHERE origin = 'device' LIMIT 1")
+SRC1=$(id_of threat_source key schneier)
 REQ_ISO=$(sql "SELECT id FROM framework_requirement WHERE external_id='A.8.7'"); REQ_CE=$(sql "SELECT id FROM framework_requirement WHERE external_id='CE-UA-4'")
 REQ_SOC2=$(sql "SELECT id FROM framework_requirement WHERE external_id='CC6.1'"); REQ_SOC2_A=$(sql "SELECT id FROM framework_requirement WHERE external_id='A1.2'")
 REQ_NIST=$(sql "SELECT id FROM framework_requirement WHERE external_id='PR.AA-01'"); REQ_CAF=$(sql "SELECT id FROM framework_requirement WHERE external_id='B4.d'")
@@ -207,6 +211,9 @@ READ_PAGES=(
     # Edge findings (Cloudflare traffic): queue, filters, findings
     /intel/edge "/intel/edge?filter=all&sort=-score" "/intel/edge?filter=blocked&q=sqlmap" "/intel/edge?filter=exposure" "/intel/edge?filter=all&priority=high"
     /intel/edge/$E1 /intel/edge/$E2 "/search?q=192.0.2.150"
+    # Threat Watch: the queue, its filters, a story, the watchlist and sources
+    /threat "/threat?filter=urgent" "/threat?filter=exploited" "/threat?filter=matched" "/threat?filter=relevant" "/threat?filter=dismissed" "/threat?filter=background"
+    "/threat?filter=all&q=CVE-2026-90001&sort=-last_seen_at&priority=critical" /threat/$TW1 /threat/$TW2 /threat/watchlist /threat/sources "/search?q=CVE-2026-90001"
 )
 WRITE_PAGES=(/risks/create /risks/$R1/update /controls/create /controls/$C1/update /controls/$C5/update /decisions/create /decisions/$D1/update /incidents/create /incidents/$I1/update /devices/create /devices/$V1/update
     /cloud/assets/create "/cloud/assets/create?account=$ACC1" /cloud/assets/$CLD1/update /cloud/accounts/create /cloud/accounts/$ACC1/update
@@ -670,6 +677,36 @@ post viewer /intel/edge /intel/edge/bulk 403 do=block "ids[]=$E2"
 post viewer "/intel/edge/$E2" "/intel/edge/$E2/ignore" 403
 post viewer /intel/edge /intel/edge/pull 403
 post viewer /intel/sources /intel/sources/update 403
+
+# Threat Watch: the most urgent story leads; triage it, tune the watchlist; viewers cannot act (nothing here reads a real feed)
+check analyst /threat 200
+grep -q 'Northgate VPN zero-day' "$BODY" && grep -q 'id="threat-bulk"' "$BODY" && ok || bad "threat queue / bulk selection missing"
+check analyst "/threat/$TW1" 200
+grep -q 'Why it ranks here' "$BODY" && grep -q 'CVE-2026-90001' "$BODY" && grep -q 'noopener noreferrer' "$BODY" && ok || bad "threat story page incomplete"
+post analyst "/threat/$TW2" "/threat/$TW2/dismiss" 302 "note=Smoke test dismiss"
+check analyst "/threat/$TW2" 200
+grep -q 'Smoke test dismiss' "$BODY" && grep -q 'Reopen' "$BODY" && ok || bad "dismissed story not shown as dismissed"
+post analyst "/threat/$TW2" "/threat/$TW2/reopen" 302
+post analyst "/threat/$TW2" "/threat/$TW2/relevant" 302
+post analyst /threat /threat/bulk 302 do=reopen "ids[]=$TW2" filter=all
+post analyst /threat/watchlist /threat/watchlist/create 302 "ThreatWatchTerm[term]=Smoke Term" "ThreatWatchTerm[category]=other"
+check analyst /threat/watchlist 200
+grep -q 'Smoke Term' "$BODY" && ok || bad "watchlist term not added"
+post analyst /threat/watchlist "/threat/watchlist/$WT2/toggle" 302
+post analyst /threat/watchlist "/threat/watchlist/$WT2/toggle" 302
+post analyst /threat/watchlist /threat/watchlist/sync 302
+post analyst /threat/watchlist "/threat/watchlist/$(id_of threat_watch_term term 'Smoke Term')/delete" 302
+post analyst /threat/watchlist "/threat/watchlist/$WT3/delete" 302
+post analyst /threat/sources "/threat/sources/$SRC1/toggle" 403
+post admin /threat/sources "/threat/sources/$SRC1/toggle" 302
+post admin /threat/sources "/threat/sources/$SRC1/toggle" 302
+post admin /threat/sources /threat/sources/create 302 "ThreatSource[name]=Internal" "ThreatSource[url]=https://10.0.0.1/feed" "ThreatSource[category]=news"
+[ "$(sql "SELECT COUNT(*) FROM threat_source WHERE name = 'Internal'")" = 0 ] && ok || bad "a feed on a private address was added"
+post viewer /threat /threat/bulk 403 do=dismiss "ids[]=$TW2"
+post viewer "/threat/$TW2" "/threat/$TW2/dismiss" 403
+post viewer /threat/watchlist /threat/watchlist/create 403 "ThreatWatchTerm[term]=Nope"
+post viewer /threat/sources /threat/sources/pull 403
+post viewer /threat/sources /threat/sources/create 403 "ThreatSource[name]=Nope"
 check viewer /intel/ip/203.0.113.66 200
 grep -q 'gw-block-modal' "$BODY" && bad "viewer sees the block dialog" || ok
 

@@ -33,6 +33,7 @@ class Module extends \yii\base\Module
         ['class' => widgets\IncidentTrendPanel::class, 'span' => 'col-xxl-7 col-xl-6'],
         ['class' => widgets\NeedsAttentionPanel::class, 'span' => 'col-xxl-7 col-xl-6'],
         ['class' => widgets\DevicePosturePanel::class, 'span' => 'col-xxl-5 col-xl-6'],
+        ['class' => widgets\ThreatWatchPanel::class, 'span' => 'col-12'],
         ['class' => widgets\CloudPosturePanel::class, 'span' => 'col-12'],
         ['class' => widgets\ControlsPanel::class, 'span' => 'col-12'],
         ['class' => widgets\AttackPanel::class, 'span' => 'col-12'],

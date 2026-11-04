@@ -47,6 +47,9 @@ final class Navigation
             [
                 'label' => 'Threat Intel',
                 'items' => [
+                    ['label' => 'Threat Watch', 'icon' => 'newspaper', 'url' => ['/threat/story/index'], 'permission' => Rbac::PERM_VIEW, 'active' => ['threat/story/']],
+                    ['label' => 'Watchlist', 'icon' => 'eye', 'url' => ['/threat/watchlist/index'], 'permission' => Rbac::PERM_VIEW, 'active' => ['threat/watchlist/']],
+                    ['label' => 'News Sources', 'icon' => 'rss', 'url' => ['/threat/source/index'], 'permission' => Rbac::PERM_VIEW, 'active' => ['threat/source/']],
                     ['label' => 'ATT&CK Matrix', 'icon' => 'crosshair', 'url' => ['/attack/technique/index'], 'permission' => Rbac::PERM_VIEW, 'active' => ['attack/technique/']],
                     ['label' => 'Mitigations', 'icon' => 'shield-check', 'url' => ['/attack/mitigation/index'], 'permission' => Rbac::PERM_VIEW, 'active' => ['attack/mitigation/']],
                     ['label' => 'IP Investigation', 'icon' => 'radar', 'url' => ['/intel/investigate/index'], 'permission' => Rbac::PERM_VIEW, 'active' => ['intel/investigate/']],

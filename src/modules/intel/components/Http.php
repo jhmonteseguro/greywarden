@@ -6,7 +6,8 @@ namespace app\modules\intel\components;
  * Parallel HTTP client (curl_multi) for intelligence lookups.
  *
  * Request:  ['url' => ..., 'method' => 'GET', 'headers' => ['Name: value'], 'body' => null, 'timeout' => 8]
- * Response: ['status' => int (0 = transport error), 'body' => string, 'error' => ?string, 'time' => float seconds]
+ *           optional: 'max_body' => bytes, 'follow' => false (do not follow redirects), 'resolve' => ['host:443:192.0.2.1'] (pin DNS)
+ * Response: ['status' => int (0 = transport error), 'body' => string, 'error' => ?string, 'time' => float seconds, 'redirect' => ?string where a redirect pointed]
  *
  * Tests replace the transport with Http::$fake = fn(array $request): array => [...].
  */
@@ -36,9 +37,10 @@ class Http
         foreach ($requests as $name => $request) {
             $handle = curl_init($request['url']);
             $headers = array_merge(['Accept: application/json, text/plain;q=0.9, */*;q=0.5'], $request['headers'] ?? []);
+            $maxBody = $request['max_body'] ?? self::MAX_BODY;
             curl_setopt_array($handle, [
                 CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_FOLLOWLOCATION => true,
+                CURLOPT_FOLLOWLOCATION => $request['follow'] ?? true,
                 CURLOPT_MAXREDIRS => 4,
                 CURLOPT_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS,
                 CURLOPT_REDIR_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS,
@@ -50,8 +52,11 @@ class Http
                 CURLOPT_SSL_VERIFYPEER => true,
                 CURLOPT_NOPROGRESS => false,
                 // Abort oversized bodies
-                CURLOPT_PROGRESSFUNCTION => static fn($h, $dlTotal, $dlNow) => $dlNow > self::MAX_BODY ? 1 : 0,
+                CURLOPT_PROGRESSFUNCTION => static fn($h, $dlTotal, $dlNow) => $dlNow > $maxBody ? 1 : 0,
             ]);
+            if (!empty($request['resolve'])) {
+                curl_setopt($handle, CURLOPT_RESOLVE, $request['resolve']);
+            }
             $method = strtoupper($request['method'] ?? 'GET');
             if ($method !== 'GET') {
                 curl_setopt($handle, CURLOPT_CUSTOMREQUEST, $method);
@@ -77,6 +82,7 @@ class Http
                 'body' => (string) curl_multi_getcontent($handle),
                 'error' => $error !== '' ? $error : null,
                 'time' => round((float) curl_getinfo($handle, CURLINFO_TOTAL_TIME), 3),
+                'redirect' => curl_getinfo($handle, CURLINFO_REDIRECT_URL) ?: null,
             ];
             curl_multi_remove_handle($multi, $handle);
             curl_close($handle);
