@@ -149,8 +149,10 @@ $config = [
                 'intel/blocklist/<id:\d+>/<action:[\w-]+>' => 'intel/blocklist/<action>',
                 'intel/blocklist/<action:[\w-]+>' => 'intel/blocklist/<action>',
 
-                // Threat Watch: /threat, /threat/12, /threat/watchlist, /threat/sources
+                // Threat Watch: /threat, /threat/12, /threat/watchlist, /threat/sources, /threat/actors, /threat/actors/G0016
                 'threat' => 'threat/story/index',
+                'threat/actors' => 'threat/actor/index',
+                'threat/actors/<id:[Gg]\d{4}>' => 'threat/actor/view',
                 'threat/<id:\d+>' => 'threat/story/view',
                 'threat/<id:\d+>/<action:(relevant|dismiss|reopen)>' => 'threat/story/<action>',
                 'threat/<action:(dismiss-low|bulk)>' => 'threat/story/<action>',

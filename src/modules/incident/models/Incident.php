@@ -14,6 +14,7 @@ use app\modules\incident\components\IncidentMetrics;
 use app\modules\inventory\models\Device;
 use app\modules\risk\models\Risk;
 use app\modules\supplier\models\Supplier;
+use app\modules\threat\models\ThreatTriage;
 use Yii;
 
 /**
@@ -55,6 +56,7 @@ use Yii;
  * @property-read Decision[] $decisions
  * @property-read AttackTechnique[] $techniques ATT&CK techniques observed
  * @property-read array<string,Control[]> $controlsByRole role => controls (see controlRoleOptions())
+ * @property-read ThreatTriage[] $threatStories Threat Watch stories it was raised from
  */
 class Incident extends DomainRecord
 {
@@ -393,6 +395,12 @@ class Incident extends DomainRecord
             }
         }
         return $out;
+    }
+
+    /** This organisation's Threat Watch stories it was raised from */
+    public function getThreatStories()
+    {
+        return $this->hasMany(ThreatTriage::class, ['id' => 'triage_id'])->viaTable('threat_triage_incident', ['incident_id' => 'id'])->forOrganisation();
     }
 
     public function getTechniques()

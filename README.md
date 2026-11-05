@@ -56,7 +56,8 @@ For real data, see [Production](#production); for the full setup, see [Developme
   paths for everyone with a suggested WAF rule, or block a network that keeps sending scanners
 * **Threat Watch**: security news, government alerts, vendor advisories and research from 28 public feeds in one
   triage queue. Articles about one event are grouped into a story, CVEs are enriched with CISA KEV, EPSS and CVSS, and
-  stories rank against a **watchlist** of what you run, kept up to date from your devices, cloud accounts and suppliers
+  stories rank against a **watchlist** of what you run, kept up to date from your devices, cloud accounts and suppliers.
+  **Threat actor** pages set each group's techniques against your controls, and a story can raise a risk or an incident
 * **Dashboard**: KPI tiles, residual heatmap, incident trend, device posture, a "needs attention" list, Threat Watch,
   control effectiveness with progress against each framework switched on, recent activity
 * **MITRE ATT&CK** (Enterprise v20, bundled for offline use): techniques observed on incidents, threat techniques on risks,
@@ -924,8 +925,21 @@ the feeds themselves are fetched, never the pages they link to.
   filter unless they are in KEV, are on your watchlist with a severe or likely exploited CVE, or a news source covers them.
 * **Triage**: mark stories *Relevant* or *Dismiss* them, one at a time or in bulk. A dismissed story comes back if it becomes
   critical or high. Decisions are in the audit log.
-* **Several organisations**: sources, articles, stories and CVEs are public facts stored once. The watchlist and triage
-  belong to an organisation, and everything reads the current one through `app\models\Organisation`. There is only one
+* **Raising records**: *Raise risk* and *Raise incident* on a story open the form filled in with its coverage, CVEs, actors and
+  matched products, and an incident takes the story's priority as its severity. You finish the form: nothing is created
+  until you save, and scores and category are yours to set. Saving links the record to the story both ways and marks the
+  story relevant. A story can raise several records.
+* **Threat Actors** (*Threat Intel › Threat Actors*): the groups in MITRE ATT&CK, with those in your news first. An actor's page
+  shows the stories naming it, its techniques by tactic, whether each has a mitigation planned or in place, and whether
+  you have seen it in an incident or open risk. **A gap means no control or approved decision records that mitigation**,
+  so record mitigations on your controls for this to reflect your defences.
+
+  Articles are matched on the names MITRE lists, as written. Names that are also everyday words or products (*Play*,
+  *Silence*, *Equation*) only count beside a word like "group" or "hackers", and roundups are skipped, so a mention can
+  be missed but a false one is unlikely. Groups MITRE does not track yet, which includes most new ones, have no page. After
+  an ATT&CK update the news is read again for the new names, and `make yii ARGS="threat/retag"` does this by hand.
+* **Several organisations**: sources, articles, stories, CVEs and threat groups are public facts stored once. The watchlist,
+  triage and what was raised from a story belong to an organisation, and everything reads the current one through `app\models\Organisation`. There is only one
   today, and the asset registers are not per-organisation yet, which `Watchlist::derived()` will need when they are.
 * **Security**: feed content is untrusted. It is reduced to plain text when read, links must be http(s), and documents with a
   DOCTYPE are refused. Custom feeds must use https on the standard port, must resolve only to public addresses, and are

@@ -3,6 +3,7 @@
 namespace app\controllers;
 
 use app\components\Rbac;
+use app\modules\attack\models\AttackGroup;
 use app\modules\attack\models\AttackMitigation;
 use app\modules\attack\models\AttackTechnique;
 use app\modules\cloud\models\CloudAccount;
@@ -28,7 +29,7 @@ use yii\web\Response;
 
 /**
  * Global search across all registers (reference, title, hostname, serial...)
- * the MITRE ATT&CK catalogue (T1566, M1032, technique / mitigation names) and the
+ * the MITRE ATT&CK catalogue (T1566, M1032, G0016, technique / mitigation / group names) and the
  * blocklist. An IP address or "AS<number>" also offers a threat intel investigation.
  */
 class SearchController extends Controller
@@ -53,7 +54,7 @@ class SearchController extends Controller
         $investigate = $q !== '' && !ctype_digit($q) ? Indicator::parse($q) : null;
         if ($q !== '') {
             // Exact reference / asset tag / ATT&CK id match: jump straight to the record
-            foreach ([Risk::class, Control::class, Decision::class, Incident::class, Device::class, CloudAsset::class, CloudAccount::class, Supplier::class, Report::class, BlocklistEntry::class, AttackTechnique::class, AttackMitigation::class, FrameworkRequirement::class] as $class) {
+            foreach ([Risk::class, Control::class, Decision::class, Incident::class, Device::class, CloudAsset::class, CloudAccount::class, Supplier::class, Report::class, BlocklistEntry::class, AttackTechnique::class, AttackMitigation::class, AttackGroup::class, FrameworkRequirement::class] as $class) {
                 $query = $class::find()->where([$class::referenceAttribute() => $q]);
                 if ($class === FrameworkRequirement::class) {
                     $query->andWhere(FrameworkCatalogue::scopeCondition());   // not frameworks switched off
@@ -106,6 +107,9 @@ class SearchController extends Controller
                 'mitigations' => ['label' => 'ATT&CK mitigations', 'icon' => 'shield-check', 'items' => AttackMitigation::find()
                     ->where(['or', ['like', 'external_id', $q], ['like', 'name', $q]])
                     ->orderBy(['is_deprecated' => SORT_ASC, 'external_id' => SORT_ASC])->limit(self::LIMIT)->all()],
+                'actors' => ['label' => 'Threat actors', 'icon' => 'people', 'items' => AttackGroup::find()
+                    ->where(['or', ['like', 'external_id', $q], ['like', 'name', $q], ['like', 'aliases', $q]])
+                    ->orderBy(['is_deprecated' => SORT_ASC, 'name' => SORT_ASC])->limit(self::LIMIT)->all()],
                 'blocklist' => ['label' => 'Blocklist', 'icon' => 'slash-circle', 'items' => $investigate && $investigate->isIp()
                     ? BlocklistEntry::findForIp($investigate->value)
                     : BlocklistEntry::find()->where(['or', ['like', 'reference', $q], ['like', 'value', $q], ['like', 'reason', $q]])

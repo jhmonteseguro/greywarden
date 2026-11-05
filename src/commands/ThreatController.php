@@ -4,6 +4,7 @@ namespace app\commands;
 
 use app\components\Actor;
 use app\models\User;
+use app\modules\threat\components\ActorTagger;
 use app\modules\threat\components\ThreatPuller;
 use app\modules\threat\components\ThreatSettings;
 use app\modules\threat\models\ThreatPull;
@@ -20,6 +21,7 @@ use yii\helpers\Console;
  *   php yii threat/pull --force=1     # read every enabled source now
  *   php yii threat/pull --user=jdoe   # record jdoe as the actor (default: system)
  *   php yii threat/status             # source health and recent pulls
+ *   php yii threat/retag              # read every article for threat group names again
  */
 class ThreatController extends Controller
 {
@@ -33,6 +35,12 @@ class ThreatController extends Controller
     public function options($actionID): array
     {
         return array_merge(parent::options($actionID), $actionID === 'pull' ? ['force', 'user'] : []);
+    }
+
+    public function actionRetag(): int
+    {
+        $this->stdout(sprintf("%d mentions of threat groups recorded.\n", ActorTagger::retag()), Console::FG_GREEN);
+        return ExitCode::OK;
     }
 
     public function actionPull(): int

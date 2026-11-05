@@ -18,6 +18,8 @@ class MitigationCoverage extends Widget
     /** @var int[] technique ids */
     public array $techniqueIds = [];
     public string $emptyText = 'Map ATT&CK techniques to see which mitigations address them.';
+    /** List at most this many techniques on a row, then "+N" (0 = all) */
+    public int $maxTechniques = 0;
 
     public function run(): string
     {
@@ -25,7 +27,7 @@ class MitigationCoverage extends Widget
         if (!$rows) {
             return Html::tag('p', Html::encode($this->techniqueIds ? 'MITRE lists no mitigations for these techniques.' : $this->emptyText), ['class' => 'gw-empty']);
         }
-        return $this->render('coverage', ['rows' => $rows, 'summary' => Coverage::summarise($rows)]);
+        return $this->render('coverage', ['rows' => $rows, 'summary' => Coverage::summarise($rows), 'maxTechniques' => $this->maxTechniques]);
     }
 
     /** Control and decision links for a coverage / adoption row */

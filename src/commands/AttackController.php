@@ -40,7 +40,8 @@ class AttackController extends Controller
             return ExitCode::OK;
         }
         $this->stdout(sprintf("%s v%s (released %s), imported %s\n", $release['domain'], $release['version'], $release['released_at'] ?? '?', $release['imported_at']), Console::FG_GREEN);
-        $this->stdout(sprintf("  %d tactics, %d techniques, %d mitigations\n", $release['tactic_count'], $release['technique_count'], $release['mitigation_count']));
+        $groups = (new Query())->from('attack_group')->where(['is_deprecated' => 0])->count();
+        $this->stdout(sprintf("  %d tactics, %d techniques, %d mitigations, %d threat groups\n", $release['tactic_count'], $release['technique_count'], $release['mitigation_count'], $groups));
         $links = [];
         foreach (['incident_attack_technique' => 'incident technique links', 'risk_attack_technique' => 'risk technique links', 'decision_attack_mitigation' => 'decision mitigation links'] as $table => $label) {
             $links[] = (new Query())->from($table)->count() . ' ' . $label;
@@ -103,9 +104,9 @@ class AttackController extends Controller
     {
         $before = (new Query())->from('attack_release')->orderBy(['id' => SORT_DESC])->select('version')->scalar();
         $stats = (new CatalogueImporter())->import($catalogue);
-        $this->stdout(sprintf("Imported ATT&CK %s v%s%s: %d tactics, %d techniques, %d mitigations, %d mitigation mappings",
+        $this->stdout(sprintf("Imported ATT&CK %s v%s%s: %d tactics, %d techniques, %d mitigations, %d mitigation mappings, %d threat groups",
             $catalogue['domain'] ?? '', $catalogue['version'] ?? '?', $before && $before !== ($catalogue['version'] ?? '') ? " (was v{$before})" : '',
-            $stats['tactics'], $stats['techniques'], $stats['mitigations'], $stats['mitigates']), Console::FG_GREEN);
+            $stats['tactics'], $stats['techniques'], $stats['mitigations'], $stats['mitigates'], $stats['groups']), Console::FG_GREEN);
         $this->stdout($stats['deprecated'] ? sprintf("; %d entries no longer in the release were flagged deprecated.\n", $stats['deprecated']) : ".\n");
         Yii::$app->cache?->flush();
         return ExitCode::OK;

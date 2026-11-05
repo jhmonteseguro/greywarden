@@ -15,8 +15,8 @@ use Yii;
 use yii\mutex\FileMutex;
 
 /**
- * One pull: reads the sources that are due, files new articles into stories, enriches their
- * CVEs, then ranks the stories for each organisation. A source that fails is recorded and
+ * One pull: reads the sources that are due, files new articles into stories, notes the threat
+ * groups they name, enriches their CVEs, then ranks the stories for each organisation. A source that fails is recorded and
  * skipped, so one bad feed never stops the others.
  *
  * Only the feed itself is fetched, never the pages it links to.
@@ -56,6 +56,7 @@ final class ThreatPuller
         try {
             ThreatCatalogue::sync();
             $failures = $this->readSources($pull);
+            ActorTagger::run();
 
             $enricher = new CveEnricher($this->now);
             $pull->cves_enriched = $enricher->run();

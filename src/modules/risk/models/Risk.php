@@ -14,6 +14,7 @@ use app\modules\decision\models\Decision;
 use app\modules\incident\models\Incident;
 use app\modules\inventory\models\Device;
 use app\modules\supplier\models\Supplier;
+use app\modules\threat\models\ThreatTriage;
 
 /**
  * Risk register entry.
@@ -55,6 +56,7 @@ use app\modules\supplier\models\Supplier;
  * @property-read Decision[] $decisions
  * @property-read AttackTechnique[] $techniques ATT&CK techniques that would realise the risk
  * @property-read Control[] $controls controls that mitigate the risk
+ * @property-read ThreatTriage[] $threatStories Threat Watch stories it was raised from
  */
 class Risk extends DomainRecord
 {
@@ -345,6 +347,12 @@ class Risk extends DomainRecord
     {
         return $this->hasMany(Control::class, ['id' => 'control_id'])->viaTable('risk_control', ['risk_id' => 'id'])
             ->orderBy(['control.reference' => SORT_ASC]);
+    }
+
+    /** This organisation's Threat Watch stories it was raised from */
+    public function getThreatStories()
+    {
+        return $this->hasMany(ThreatTriage::class, ['id' => 'triage_id'])->viaTable('threat_triage_risk', ['risk_id' => 'id'])->forOrganisation();
     }
 
     public function getTechniques()

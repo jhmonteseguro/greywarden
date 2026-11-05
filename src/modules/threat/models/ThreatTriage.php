@@ -5,6 +5,8 @@ namespace app\modules\threat\models;
 use app\components\Actor;
 use app\models\DomainRecord;
 use app\models\User;
+use app\modules\incident\models\Incident;
+use app\modules\risk\models\Risk;
 
 /**
  * What one organisation makes of a story: how it ranks against its watchlist (StoryScorer)
@@ -28,6 +30,8 @@ use app\models\User;
  *
  * @property-read ThreatStory $story
  * @property-read User|null $resolver
+ * @property-read Risk[] $risks raised from it
+ * @property-read Incident[] $incidents raised from it
  */
 class ThreatTriage extends DomainRecord
 {
@@ -136,6 +140,16 @@ class ThreatTriage extends DomainRecord
     public function getResolver()
     {
         return $this->hasOne(User::class, ['id' => 'resolved_by']);
+    }
+
+    public function getRisks()
+    {
+        return $this->hasMany(Risk::class, ['id' => 'risk_id'])->viaTable('threat_triage_risk', ['triage_id' => 'id']);
+    }
+
+    public function getIncidents()
+    {
+        return $this->hasMany(Incident::class, ['id' => 'incident_id'])->viaTable('threat_triage_incident', ['triage_id' => 'id']);
     }
 
     public function getIsOpen(): bool

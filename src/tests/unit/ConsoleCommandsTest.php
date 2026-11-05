@@ -17,6 +17,10 @@ use app\modules\intel\models\EdgeFinding;
 use app\modules\intel\models\EdgePull;
 use app\modules\inventory\models\Device;
 use app\modules\risk\models\Risk;
+use app\modules\threat\components\ThreatCatalogue;
+use app\modules\threat\models\ThreatArticle;
+use app\modules\threat\models\ThreatSource;
+use app\modules\threat\models\ThreatStory;
 use tests\DbTestCase;
 use tests\support\OutputCapture;
 use Yii;
@@ -323,6 +327,21 @@ class ConsoleCommandsTest extends DbTestCase
         }
         $this->expectExceptionMessage('is not a Greywarden ATT&CK snapshot');
         \app\modules\attack\components\CatalogueImporter::readSnapshot($this->tmpFile('{"hello": 1}', '.json'));
+    }
+
+    public function testThreatRetagReadsEveryArticleAgain(): void
+    {
+        ThreatCatalogue::sync();
+        $now = date('Y-m-d H:i:s');
+        $story = new ThreatStory(['title' => 'Volt Typhoon returns', 'first_seen_at' => $now, 'last_seen_at' => $now]);
+        $story->save(false);
+        (new ThreatArticle(['source_id' => ThreatSource::findOne(['key' => 'bleepingcomputer'])->id, 'story_id' => $story->id, 'guid_hash' => str_repeat('b', 64), 'title' => $story->title,
+            'url' => 'https://news.example.com/volt', 'published_at' => $now, 'fetched_at' => $now, 'actors_checked' => 1]))->save(false);
+
+        [$code, $out] = OutputCapture::run('threat/retag');
+        $this->assertSame(ExitCode::OK, $code);
+        $this->assertStringContainsString('1 mentions of threat groups recorded', $out);
+        $this->assertSame(['Volt Typhoon'], array_map(static fn($g) => $g->name, $story->getActors()));
     }
 
     public function testAttackStatusWithoutCatalogue(): void

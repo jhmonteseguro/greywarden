@@ -2,6 +2,7 @@
 
 namespace app\modules\threat\models;
 
+use app\modules\attack\models\AttackGroup;
 use yii\db\ActiveRecord;
 use yii\db\Expression;
 
@@ -51,6 +52,15 @@ class ThreatStory extends ActiveRecord
         }
         $this->source_count = (int) $articles->select(new Expression('COUNT(DISTINCT source_id)'))->scalar();
         $this->save(false);
+    }
+
+    /** @return AttackGroup[] the threat groups its articles name, by name */
+    public function getActors(): array
+    {
+        return AttackGroup::find()->alias('g')
+            ->innerJoin(['x' => 'threat_article_actor'], 'x.group_id = g.id')
+            ->innerJoin(['a' => 'threat_article'], 'a.id = x.article_id')
+            ->where(['a.story_id' => $this->id])->distinct()->orderBy(['g.name' => SORT_ASC])->all();
     }
 
     /** CVEs in KEV first, then highest CVSS */

@@ -8,6 +8,7 @@ use app\models\DomainRecord;
 use app\modules\risk\models\Risk;
 use app\modules\risk\models\RiskSearch;
 use app\modules\risk\widgets\RiskHeatmap;
+use app\modules\threat\components\StoryRaiser;
 use Yii;
 
 class RiskController extends CrudController
@@ -34,6 +35,14 @@ class RiskController extends CrudController
         $model->owner_id = Actor::id();
         $model->date_identified = date('Y-m-d');
         $model->next_review_date = date('Y-m-d', strtotime('+90 days'));
+        if ($story = StoryRaiser::requested()) {
+            StoryRaiser::fillRisk($model, $story);
+        }
+    }
+
+    protected function saveModel(DomainRecord $model): bool
+    {
+        return StoryRaiser::save($model);
     }
 
     public function actionHeatmap(string $heatmap = RiskHeatmap::MODE_RESIDUAL): string

@@ -3,6 +3,7 @@
  * @var yii\web\View $this
  * @var array $rows see Coverage::mitigationsFor()
  * @var array $summary total / addressed / gaps
+ * @var int $maxTechniques techniques to list on a row (0 = all)
  */
 
 use app\modules\attack\widgets\MitigationCoverage;
@@ -25,7 +26,8 @@ use yii\helpers\Html;
                     <td>
                         <?= Html::a('<span class="gw-attack-tag__id">' . Html::encode($m->external_id) . '</span> ' . Html::encode($m->name), $m->getViewUrl(), ['class' => 'gw-coverage__mitigation']) ?>
                     </td>
-                    <td class="gw-coverage__techniques"><span class="gw-mono"><?= Html::encode(implode(', ', $row['techniques'])) ?></span></td>
+                    <?php $shown = $maxTechniques ? array_slice($row['techniques'], 0, $maxTechniques) : $row['techniques']; $more = count($row['techniques']) - count($shown); ?>
+                    <td class="gw-coverage__techniques"><span class="gw-mono"<?= $more ? ' title="' . Html::encode(implode(', ', $row['techniques'])) . '"' : '' ?>><?= Html::encode(implode(', ', $shown)) ?><?= $more ? ' +' . $more : '' ?></span></td>
                     <td><?= MitigationCoverage::stateBadge($row['state']) ?></td>
                     <td><?= MitigationCoverage::recordLinks($row) ?></td>
                 </tr>

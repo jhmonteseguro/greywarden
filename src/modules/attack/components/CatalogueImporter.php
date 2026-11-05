@@ -10,10 +10,11 @@ use yii\db\Query;
 /**
  * Loads a parsed catalogue (see StixParser) into the attack_* tables.
  *
- * Tactics, techniques and mitigations are upserted by their ATT&CK id. Rows
- * missing from the new release are flagged deprecated rather than deleted, so
- * links from incidents, risks and decisions survive. The catalogue-internal
- * relations (technique -> tactic, mitigation -> technique) are rebuilt.
+ * Tactics, techniques, mitigations and groups are upserted by their ATT&CK id.
+ * Rows missing from the new release are flagged deprecated rather than deleted,
+ * so links from incidents, risks, decisions and news stories survive. The
+ * catalogue-internal relations (technique -> tactic, mitigation -> technique,
+ * group -> technique) are rebuilt.
  */
 final class CatalogueImporter
 {
@@ -55,7 +56,7 @@ final class CatalogueImporter
     }
 
     /**
-     * @return array{tactics:int, techniques:int, mitigations:int, mitigates:int, deprecated:int}
+     * @return array{tactics:int, techniques:int, mitigations:int, mitigates:int, deprecated:int, groups:int, uses:int}
      */
     public function import(array $catalogue): array
     {
@@ -133,6 +134,9 @@ final class CatalogueImporter
                 'imported_at' => Actor::now(),
             ])->execute();
 
+            // A fresh install runs this before the migration that adds the group tables; that one loads them
+            $groups = $this->db->getTableSchema('attack_group', true) !== null ? $this->importGroups($catalogue) : ['groups' => 0, 'uses' => 0];
+
             $tx->commit();
         } catch (\Throwable $e) {
             $tx->rollBack();
@@ -148,7 +152,46 @@ final class CatalogueImporter
             'mitigations' => count($mitigationIds),
             'mitigates' => count($rows),
             'deprecated' => $deprecated,
-        ];
+        ] + $groups;
+    }
+
+    /**
+     * Loads the catalogue's threat groups. A catalogue from before groups were kept (no
+     * `groups` key) leaves them alone rather than flagging them all as gone.
+     *
+     * News is checked for group names again afterwards, as the names may have changed.
+     *
+     * @return array{groups:int, uses:int}
+     */
+    public function importGroups(array $catalogue): array
+    {
+        if (!isset($catalogue['groups'])) {
+            return ['groups' => 0, 'uses' => 0];
+        }
+        $groupIds = $this->upsert('attack_group', array_map(static fn(array $g) => [
+            'external_id' => $g['id'],
+            'name' => $g['name'],
+            'aliases' => json_encode($g['aliases'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+            'description' => $g['description'] ?: null,
+            'is_deprecated' => $g['deprecated'] ? 1 : 0,
+            'revoked_by' => $g['revoked_by'] ?? null,
+            'modified_on' => $g['modified'] ?? null,
+        ], $catalogue['groups']));
+        $this->db->createCommand()->update('attack_group', ['is_deprecated' => 1],
+            ['and', ['is_deprecated' => 0], ['not in', 'external_id', array_keys($groupIds) ?: ['']]])->execute();
+
+        $techniqueIds = (new Query())->select(['id', 'external_id'])->from('attack_technique')->indexBy('external_id')->column($this->db);
+        $this->db->createCommand()->delete('attack_group_technique')->execute();
+        $rows = [];
+        foreach ($catalogue['group_uses'] ?? [] as [$g, $t]) {
+            if (isset($groupIds[$g], $techniqueIds[$t])) {
+                $rows[] = [$groupIds[$g], (int) $techniqueIds[$t]];
+            }
+        }
+        $this->batchInsert('attack_group_technique', ['group_id', 'technique_id'], $rows);
+
+        $this->db->createCommand()->update('threat_article', ['actors_checked' => 0])->execute();
+        return ['groups' => count($groupIds), 'uses' => count($rows)];
     }
 
     /**

@@ -9,6 +9,7 @@
 
 use app\components\Rbac;
 use app\helpers\Badge;
+use app\modules\threat\components\StoryRaiser;
 use app\modules\threat\components\StoryScorer;
 use app\modules\threat\models\ThreatTriage;
 use app\widgets\AuditHistory;
@@ -31,6 +32,8 @@ if ($canManage) {
     if ($model->status !== ThreatTriage::STATUS_DISMISSED) {
         $buttons[] = Html::a('<i class="bi bi-x-circle"></i> Dismiss', ['dismiss', 'id' => $model->id], ['class' => 'btn btn-outline-secondary gw-btn', 'data-method' => 'post']);
     }
+    $buttons[] = Html::a('<i class="bi bi-exclamation-triangle"></i> Raise risk', ['/risk/risk/create', StoryRaiser::PARAM => $model->id], ['class' => 'btn btn-outline-secondary gw-btn']);
+    $buttons[] = Html::a('<i class="bi bi-fire"></i> Raise incident', ['/incident/incident/create', StoryRaiser::PARAM => $model->id], ['class' => 'btn btn-outline-secondary gw-btn']);
     if ($model->status !== ThreatTriage::STATUS_RELEVANT) {
         $buttons[] = Html::a('<i class="bi bi-bookmark-check"></i> Relevant', ['relevant', 'id' => $model->id], ['class' => 'btn btn-primary gw-btn', 'data-method' => 'post']);
     }
@@ -39,6 +42,8 @@ $this->params['actions'] = implode("\n", $buttons);
 
 $fmt = Yii::$app->formatter;
 $signals = $model->getSignalList();
+$actors = $story->getActors();
+$raised = [...$model->risks, ...$model->incidents];
 $cves = $story->getSortedCves();
 $tone = static fn(int $weight) => match (true) {
     $weight >= 40 => 'critical',
@@ -128,6 +133,34 @@ $tone = static fn(int $weight) => match (true) {
                 <p class="gw-muted gw-threat-note">This is a roundup of several events, so its CVEs are listed but do not raise its priority.</p>
             <?php endif; ?>
         </section>
+
+        <?php if ($raised): ?>
+            <section class="gw-panel">
+                <h2 class="gw-panel__title"><i class="bi bi-link-45deg" aria-hidden="true"></i> Raised from this story <span class="gw-panel__count"><?= count($raised) ?></span></h2>
+                <ul class="gw-threat-brief">
+                    <?php foreach ($raised as $record): ?>
+                        <li class="gw-threat-brief__item">
+                            <?= Html::a(Html::encode($record->getReferenceValue()), $record->getViewUrl(), ['class' => 'gw-ref']) ?>
+                            <span class="gw-threat-brief__title"><?= Html::encode($record->getTitleValue()) ?></span>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
+            </section>
+        <?php endif; ?>
+
+        <?php if ($actors): ?>
+            <section class="gw-panel">
+                <h2 class="gw-panel__title"><i class="bi bi-people" aria-hidden="true"></i> Threat actors named <span class="gw-panel__count"><?= count($actors) ?></span></h2>
+                <ul class="gw-threat-brief">
+                    <?php foreach ($actors as $actor): ?>
+                        <li class="gw-threat-brief__item">
+                            <?= Html::a(Html::encode($actor->name), $actor->getViewUrl(), ['class' => 'gw-threat-brief__title']) ?>
+                            <span class="gw-muted gw-threat-brief__when"><?= Html::encode($actor->external_id) ?></span>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
+            </section>
+        <?php endif; ?>
 
         <?php if ($canManage && $model->status !== ThreatTriage::STATUS_DISMISSED): ?>
             <section class="gw-panel">

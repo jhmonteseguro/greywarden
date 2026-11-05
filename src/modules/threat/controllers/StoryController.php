@@ -149,7 +149,7 @@ class StoryController extends Controller
     /** Only this organisation's stories exist as far as a request is concerned */
     private function findModel(int $id): ThreatTriage
     {
-        $model = ThreatTriage::find()->forOrganisation()->andWhere(['threat_triage.id' => $id])->with(['story.cves', 'story.articles.source', 'resolver'])->one();
+        $model = ThreatTriage::find()->forOrganisation()->andWhere(['threat_triage.id' => $id])->with(['story.cves', 'story.articles.source', 'resolver', 'risks', 'incidents'])->one();
         if (!$model) {
             throw new NotFoundHttpException('Story not found.');
         }

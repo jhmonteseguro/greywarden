@@ -214,8 +214,10 @@ READ_PAGES=(
     # Threat Watch: the queue, its filters, a story, the watchlist and sources
     /threat "/threat?filter=urgent" "/threat?filter=exploited" "/threat?filter=matched" "/threat?filter=relevant" "/threat?filter=dismissed" "/threat?filter=background"
     "/threat?filter=all&q=CVE-2026-90001&sort=-last_seen_at&priority=critical" /threat/$TW1 /threat/$TW2 /threat/watchlist /threat/sources "/search?q=CVE-2026-90001"
+    # Threat actors: the list, its filters, a group in the news and one that is not
+    /threat/actors "/threat/actors?filter=named" "/threat/actors?q=Cozy" "/threat/actors?sort=-technique_count" /threat/actors/G0102 /threat/actors/G0016 "/search?q=Wizard"
 )
-WRITE_PAGES=(/risks/create /risks/$R1/update /controls/create /controls/$C1/update /controls/$C5/update /decisions/create /decisions/$D1/update /incidents/create /incidents/$I1/update /devices/create /devices/$V1/update
+WRITE_PAGES=(/risks/create "/risks/create?threat=$TW1" "/incidents/create?threat=$TW1" /risks/$R1/update /controls/create /controls/$C1/update /controls/$C5/update /decisions/create /decisions/$D1/update /incidents/create /incidents/$I1/update /devices/create /devices/$V1/update
     /cloud/assets/create "/cloud/assets/create?account=$ACC1" /cloud/assets/$CLD1/update /cloud/accounts/create /cloud/accounts/$ACC1/update
     /suppliers/create /suppliers/$SUP1/update /reports/create /reports/$RPT2/update
     /intel/blocklist/create "/intel/blocklist/create?value=192.0.2.99" /intel/blocklist/$B1/update)
@@ -702,6 +704,31 @@ post admin /threat/sources "/threat/sources/$SRC1/toggle" 302
 post admin /threat/sources "/threat/sources/$SRC1/toggle" 302
 post admin /threat/sources /threat/sources/create 302 "ThreatSource[name]=Internal" "ThreatSource[url]=https://10.0.0.1/feed" "ThreatSource[category]=news"
 [ "$(sql "SELECT COUNT(*) FROM threat_source WHERE name = 'Internal'")" = 0 ] && ok || bad "a feed on a private address was added"
+# Threat actors: the one in the news leads, and its page sets its techniques against the controls
+check analyst "/threat/actors?filter=named" 200
+grep -q 'Wizard Spider' "$BODY" && ok || bad "actor in the news not listed"
+check analyst /threat/actors/G0102 200
+grep -q 'Mitigations against this actor' "$BODY" && grep -q 'Regional port operator' "$BODY" && grep -q 'attack.mitre.org/groups/G0102' "$BODY" && ok || bad "actor page incomplete"
+check analyst /threat/actors/G9999 404
+# Raising from a story: the form opens filled in, and saving links the record and marks the story relevant
+TW3=$(sql "SELECT t.id FROM threat_triage t JOIN threat_story s ON s.id = t.story_id WHERE s.title LIKE 'Regional port%' LIMIT 1")
+check analyst "/threat/$TW3" 200
+grep -q 'Threat actors named' "$BODY" && grep -q 'Raise risk' "$BODY" && ok || bad "story page missing its actors or raise buttons"
+check analyst "/risks/create?threat=$TW3" 200
+grep -q 'Filled in from' "$BODY" && grep -q 'Wizard Spider' "$BODY" && ok || bad "risk form not filled in from the story"
+post analyst "/risks/create?threat=$TW3" "/risks/create?threat=$TW3" 302 \
+    "Risk[title]=Smoke raised risk" "Risk[status]=identified" "Risk[category_id]=$RISK_CAT" "Risk[owner_id]=$ANALYST_ID" "Risk[date_identified]=$TODAY" \
+    "Risk[inherent_likelihood]=3" "Risk[inherent_impact]=3"
+post analyst "/incidents/create?threat=$TW3" "/incidents/create?threat=$TW3" 302 \
+    "Incident[title]=Smoke raised incident" "Incident[category_id]=$INC_CAT" "Incident[severity]=high" "Incident[status]=new" "Incident[detected_at]=$NOW"
+[ "$(sql "SELECT status FROM threat_triage WHERE id = $TW3")" = relevant ] && ok || bad "raising did not mark the story relevant"
+[ "$(sql "SELECT COUNT(*) FROM threat_triage_risk WHERE triage_id = $TW3")" = 1 ] && [ "$(sql "SELECT COUNT(*) FROM threat_triage_incident WHERE triage_id = $TW3")" = 1 ] && ok || bad "raised records not linked to the story"
+check analyst "/threat/$TW3" 200
+grep -q 'Raised from this story' "$BODY" && grep -q 'Smoke raised risk' "$BODY" && ok || bad "story does not list what was raised from it"
+check analyst "/risks/$(id_of risk title 'Smoke raised risk')" 200
+grep -q 'Raised from' "$BODY" && ok || bad "risk does not link back to its story"
+check analyst "/risks/create?threat=999999" 404
+post viewer "/risks/create?threat=$TW3" "/risks/create?threat=$TW3" 403 "Risk[title]=Nope"
 post viewer /threat /threat/bulk 403 do=dismiss "ids[]=$TW2"
 post viewer "/threat/$TW2" "/threat/$TW2/dismiss" 403
 post viewer /threat/watchlist /threat/watchlist/create 403 "ThreatWatchTerm[term]=Nope"

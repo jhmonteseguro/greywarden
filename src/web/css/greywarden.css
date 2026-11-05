@@ -2225,9 +2225,22 @@ a.gw-intel-flagchip:hover { color: var(--gw-text-strong); border-color: var(--gw
 .gw-threat-brief__when { font-size: var(--gw-fs-xs); white-space: nowrap; }
 .gw-threat-brief__more { margin: .6rem 0 0; font-size: var(--gw-fs-xs); }
 .gw-threat-when-inline { display: none; }
+.gw-threat-aliases { margin: 0; font-size: var(--gw-fs-sm); color: var(--gw-text-strong); overflow-wrap: anywhere; }
+.gw-threat-flush-note { padding: .75rem var(--gw-panel-px); margin: 0; }
+.gw-threat-techniques td { vertical-align: middle; }
+.gw-threat-tactic { border-top: 1px solid var(--gw-border-subtle); }
+.gw-threat-tactic__summary { display: flex; flex-wrap: wrap; align-items: baseline; gap: .15rem .75rem; padding: .6rem var(--gw-panel-px); cursor: pointer; }
+.gw-threat-tactic__summary::before { content: "\25B8"; color: var(--gw-text-muted); }
+.gw-threat-tactic[open] > .gw-threat-tactic__summary::before { content: "\25BE"; }
+.gw-threat-tactic__name { flex: 1 1 auto; font-weight: 550; color: var(--gw-text-strong); }
+.gw-threat-tactic__count { font-size: var(--gw-fs-xs); }
+.gw-threat-tactic__exposed { color: var(--gw-warning-text, inherit); font-weight: 600; }
 /* Phones: the story is what matters, so it gets the width; when it happened moves under the headline */
 @media (max-width: 767.98px) {
     .gw-threat-col-aux { display: none; }
+    .gw-grid__pager .pagination { flex-wrap: wrap; }
+    #actor-mitigations .gw-coverage__table th:nth-child(2), #actor-mitigations .gw-coverage__table td:nth-child(2) { display: none; }
+    #actor-mitigations .gw-coverage__table td, #actor-mitigations .gw-coverage__table th { white-space: normal; overflow-wrap: anywhere; }
     .gw-threat-when-inline { display: inline; }
     .gw-threat-col-story { white-space: normal; min-width: 0; width: 100%; }
     .gw-threat-row, .gw-threat-row .gw-intel-when, .gw-threat-sources td { white-space: normal; overflow-wrap: anywhere; }

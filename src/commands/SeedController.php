@@ -26,6 +26,7 @@ use app\modules\intel\models\BlocklistEntry;
 use app\modules\intel\models\EdgeFinding;
 use app\modules\intel\models\EdgePull;
 use app\models\Organisation;
+use app\modules\threat\components\ActorTagger;
 use app\modules\threat\components\StoryScorer;
 use app\modules\threat\components\ThreatPuller;
 use app\modules\threat\components\Watchlist;
@@ -860,7 +861,7 @@ class SeedController extends Controller
             ],
             'the-record' => [
                 $item('northgate-record', 'Northgate VPN customers urged to patch as attacks spread', 'Government agencies warned that exploitation of Northgate VPN gateways has widened since last week.', 5, ['CVE-2026-90001']),
-                $item('harbour-breach', 'Regional port operator confirms data breach after ransomware attack', 'The operator said staff records were taken. Shipping was not affected.', 54),
+                $item('harbour-breach', 'Regional port operator confirms data breach after ransomware attack', 'The operator blamed the Wizard Spider group and said staff records were taken. Shipping was not affected.', 54),
             ],
             'securityweek' => [
                 $item('larkspur-patch', 'Larkspur Mail patches critical remote code execution flaw', 'The update fixes a pre-authentication bug in the webmail component. There is no sign of attacks so far.', 20, ['CVE-2026-90003']),
@@ -894,6 +895,7 @@ class SeedController extends Controller
         }
         (new ThreatPull(['started_at' => $read, 'finished_at' => $read, 'status' => ThreatPull::STATUS_OK, 'sources_read' => count($feeds)]))->save(false);
 
+        ActorTagger::run();
         Watchlist::sync(Organisation::DEFAULT_ID);
         StoryScorer::run(Organisation::DEFAULT_ID, $now);
         $story = static fn(string $like) => ThreatTriage::find()->forOrganisation()->joinWith('story')->andWhere(['like', 'threat_story.title', $like])->one();

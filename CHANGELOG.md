@@ -21,6 +21,14 @@ releases).
   and adding any public RSS or Atom feed. The scheduler reads them every `THREAT_PULL_INTERVAL` minutes (default 15, `0` =
   off); `make threat-pull` and `make threat-status` do the same by hand. An optional free `NVD_API_KEY` makes CVSS scores arrive
   faster.
+- **Threat Actors** (*Threat Intel › Threat Actors*): the groups MITRE ATT&CK tracks, with their aliases and the ones in your
+  news first. Each actor's page lists the stories naming it, its techniques by tactic, and the mitigations MITRE recommends
+  against it set against your controls and decisions, so you can see where you are exposed and which of its techniques
+  you have already met in incidents and risks. Stories show the actors they name, and actors are in the global search.
+  `make yii ARGS="threat/retag"` reads stored articles for group names again.
+- **Raise a risk or incident from a story**: *Raise risk* and *Raise incident* open the form filled in from the story, with its
+  coverage, CVEs, actors and matched products. Saving links the two and marks the story relevant.
+- The bundled ATT&CK snapshot now includes threat groups, their aliases and the techniques they use.
 - An `organisation` table. Threat Watch keeps shared public facts apart from each organisation's watchlist and triage, ready
   for Greywarden to serve several organisations later. Nothing changes while there is one.
 

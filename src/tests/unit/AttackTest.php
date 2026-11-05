@@ -9,6 +9,7 @@ use app\modules\attack\components\CatalogueImporter;
 use app\modules\attack\components\Coverage;
 use app\modules\attack\components\DeviceAttack;
 use app\modules\attack\components\StixParser;
+use app\modules\attack\models\AttackGroup;
 use app\modules\attack\models\AttackMitigation;
 use app\modules\attack\models\AttackTechnique;
 use app\modules\control\models\Control;
@@ -16,6 +17,7 @@ use app\modules\control\models\ControlTest;
 use app\modules\decision\models\Decision;
 use app\modules\incident\models\Incident;
 use tests\DbTestCase;
+use Yii;
 use yii\db\Query;
 
 class AttackTest extends DbTestCase
@@ -49,7 +51,14 @@ class AttackTest extends DbTestCase
             ['type' => 'course-of-action', 'id' => 'course-of-action--m', 'name' => 'Test Training', 'external_references' => self::ref('M9001', 'mitigations')],
             ['type' => 'course-of-action', 'id' => 'course-of-action--legacy', 'name' => 'Legacy', 'external_references' => self::ref('T9001', 'techniques')],
             ['type' => 'relationship', 'id' => 'relationship--m', 'relationship_type' => 'mitigates', 'source_ref' => 'course-of-action--m', 'target_ref' => 'attack-pattern--s'],
+            ['type' => 'intrusion-set', 'id' => 'intrusion-set--x', 'name' => 'Test Group', 'aliases' => ['Test Group', 'Other Name', 'Other Name'],
+                'description' => 'Busy (Citation: Someone 2021).', 'external_references' => self::ref('G9001', 'groups'), 'modified' => '2026-08-01T00:00:00Z'],
+            ['type' => 'intrusion-set', 'id' => 'intrusion-set--old', 'name' => 'Old Group', 'revoked' => true, 'external_references' => self::ref('G9002', 'groups')],
+            ['type' => 'intrusion-set', 'id' => 'intrusion-set--noid', 'name' => 'No Id'],
+            ['type' => 'relationship', 'id' => 'relationship--g', 'relationship_type' => 'revoked-by', 'source_ref' => 'intrusion-set--old', 'target_ref' => 'intrusion-set--x'],
             ['type' => 'relationship', 'id' => 'relationship--u', 'relationship_type' => 'uses', 'source_ref' => 'intrusion-set--x', 'target_ref' => 'attack-pattern--p'],
+            ['type' => 'relationship', 'id' => 'relationship--u2', 'relationship_type' => 'uses', 'source_ref' => 'intrusion-set--x', 'target_ref' => 'attack-pattern--s', 'revoked' => true],
+            ['type' => 'relationship', 'id' => 'relationship--u3', 'relationship_type' => 'uses', 'source_ref' => 'intrusion-set--x', 'target_ref' => 'malware--z'],
         ]];
     }
 
@@ -70,6 +79,74 @@ class AttackTest extends DbTestCase
         // Only M-ids are mitigations; only "mitigates" relationships are kept
         $this->assertSame(['M9001'], array_column($c['mitigations'], 'id'));
         $this->assertSame([['M9001', 'T9001.001']], $c['mitigates']);
+    }
+
+    public function testStixParserKeepsGroupsAndWhatTheyUse(): void
+    {
+        $c = StixParser::parse(self::bundle(), 'test');
+        $byId = array_column($c['groups'], null, 'id');
+        $this->assertSame(['G9001', 'G9002'], array_keys($byId));
+        // Its own name is not an alias, and an alias is listed once
+        $this->assertSame(['Other Name'], $byId['G9001']['aliases']);
+        $this->assertSame('Busy.', $byId['G9001']['description']);
+        $this->assertSame('2026-08-01', $byId['G9001']['modified']);
+        $this->assertFalse($byId['G9001']['deprecated']);
+        $this->assertTrue($byId['G9002']['deprecated']);
+        $this->assertSame('G9001', $byId['G9002']['revoked_by']);
+        // Revoked relationships and targets that are not techniques are left out
+        $this->assertSame([['G9001', 'T9001']], $c['group_uses']);
+    }
+
+    public function testImporterLoadsGroupsAndKeepsThemAcrossReleases(): void
+    {
+        $importer = new CatalogueImporter();
+        $catalogue = StixParser::parse(self::bundle(), 'test');
+        $stats = $importer->import($catalogue);
+        $this->assertSame(2, $stats['groups']);
+        $this->assertSame(1, $stats['uses']);
+
+        $group = AttackGroup::findByExternalId('g9001');
+        $this->assertSame('Test Group', $group->getTitleValue());
+        $this->assertSame(['Other Name'], $group->getAliasList());
+        $this->assertSame(['T9001'], array_map(static fn($t) => $t->external_id, $group->techniques));
+        $this->assertSame('https://attack.mitre.org/groups/G9001/', $group->getMitreUrl());
+        $this->assertSame(['/threat/actor/view', 'id' => 'G9001'], $group->getViewUrl());
+        // The bundled groups are not in this release: kept, but no longer current
+        $this->assertTrue((bool) AttackGroup::findByExternalId('G0016')->is_deprecated);
+
+        // A group leaving the catalogue keeps its row, so what the news said about it survives
+        $id = $group->id;
+        $catalogue['groups'] = array_values(array_filter($catalogue['groups'], static fn($g) => $g['id'] !== 'G9001'));
+        $catalogue['group_uses'] = [];
+        $importer->import($catalogue);
+        $group = AttackGroup::findByExternalId('G9001');
+        $this->assertSame($id, $group->id);
+        $this->assertTrue((bool) $group->is_deprecated);
+        $this->assertSame([], $group->techniques);
+    }
+
+    public function testACatalogueFromBeforeGroupsLeavesThemAlone(): void
+    {
+        $catalogue = StixParser::parse(self::bundle(), 'test');
+        unset($catalogue['groups'], $catalogue['group_uses']);
+        $stats = (new CatalogueImporter())->import($catalogue);
+        $this->assertSame(0, $stats['groups']);
+        $this->assertFalse((bool) AttackGroup::findByExternalId('G0016')->is_deprecated);
+        $this->assertNotEmpty(AttackGroup::findByExternalId('G0016')->techniques);
+    }
+
+    public function testNewNamesMeanTheNewsIsReadAgain(): void
+    {
+        $now = date('Y-m-d H:i:s');
+        $db = Yii::$app->db;
+        $db->createCommand()->insert('threat_story', ['title' => 'A story', 'first_seen_at' => $now, 'last_seen_at' => $now])->execute();
+        $story = (int) $db->getLastInsertID();
+        $db->createCommand()->insert('threat_source', ['key' => 'attack-test', 'name' => 'Test', 'category' => 'news', 'url' => 'https://news.example.com/rss', 'created_at' => $now, 'updated_at' => $now])->execute();
+        $source = (int) $db->getLastInsertID();
+        $db->createCommand()->insert('threat_article', ['source_id' => $source, 'story_id' => $story, 'guid_hash' => str_repeat('a', 64), 'title' => 'A story', 'url' => 'https://news.example.com/a',
+            'published_at' => $now, 'fetched_at' => $now, 'actors_checked' => 1])->execute();
+        (new CatalogueImporter())->importGroups(CatalogueImporter::readSnapshot());
+        $this->assertSame('0', (string) (new Query())->select('actors_checked')->from('threat_article')->where(['story_id' => $story])->scalar());
     }
 
     public function testAttackTextEscapesHtmlButKeepsCode(): void
@@ -116,6 +193,12 @@ class AttackTest extends DbTestCase
         $this->assertGreaterThan(10, count($snapshot['tactics']));
         $this->assertNotNull(AttackTechnique::findByExternalId('T1566.001'), 'migration should load the bundled catalogue');
         $this->assertNotNull(AttackMitigation::findByExternalId('M1032'));
+        $this->assertGreaterThan(100, count($snapshot['groups']));
+        $this->assertGreaterThan(1000, count($snapshot['group_uses']));
+        $group = AttackGroup::findByExternalId('G0016');
+        $this->assertSame('APT29', $group->name, 'migration should load the bundled groups');
+        $this->assertContains('Cozy Bear', $group->getAliasList());
+        $this->assertNotEmpty($group->techniques);
     }
 
     public function testIdsMatchingIncludesSubTechniques(): void

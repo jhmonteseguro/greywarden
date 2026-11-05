@@ -76,6 +76,7 @@ ob_start(); ?>
                     'scope',
                     'date_identified:date',
                     ['label' => 'ATT&CK techniques', 'format' => 'raw', 'value' => TechniqueTags::widget(['items' => $techniques, 'compact' => true, 'emptyText' => 'None mapped'])],
+                    ...($model->threatStories ? [['label' => 'Raised from', 'format' => 'raw', 'value' => implode(' ', array_map(static fn($s) => Html::a(Html::encode($s->getReferenceValue()), $s->getViewUrl(), ['class' => 'gw-ref', 'title' => $s->getTitleValue()]), $model->threatStories))]] : []),
                 ],
             ]) ?>
             <?= $this->render('@app/views/partials/_text-block', ['label' => 'Description', 'text' => $model->description]) ?>

@@ -12,6 +12,8 @@ namespace app\modules\attack\components;
  *   techniques[]  {id, name, description, tactics[], platforms[], subtechnique, deprecated, revoked_by, modified}
  *   mitigations[] {id, name, description, deprecated}
  *   mitigates[]   [mitigationId, techniqueId]
+ *   groups[]      {id, name, aliases[], description, deprecated, revoked_by, modified}
+ *   group_uses[]  [groupId, techniqueId]
  */
 final class StixParser
 {
@@ -113,6 +115,42 @@ final class StixParser
         }
         ksort($mitigates, SORT_NATURAL);
 
+        $groups = [];
+        $groupIds = [];
+        foreach ($objects as $stixId => $o) {
+            if ($o['type'] !== 'intrusion-set' || ($id = self::externalId($o)) === null) {
+                continue;
+            }
+            $name = (string) $o['name'];
+            $replacement = isset($revokedBy[$stixId], $objects[$revokedBy[$stixId]]) ? self::externalId($objects[$revokedBy[$stixId]]) : null;
+            $groups[$id] = [
+                'id' => $id,
+                'name' => $name,
+                // MITRE lists the group's own name first
+                'aliases' => array_values(array_unique(array_diff(array_map('strval', $o['aliases'] ?? []), [$name]))),
+                'description' => self::cleanText($o['description'] ?? ''),
+                'deprecated' => !empty($o['revoked']) || !empty($o['x_mitre_deprecated']),
+                'revoked_by' => $replacement,
+                'modified' => isset($o['modified']) ? substr((string) $o['modified'], 0, 10) : null,
+            ];
+            $groupIds[$stixId] = $id;
+        }
+        ksort($groups, SORT_NATURAL);
+
+        $groupUses = [];
+        foreach ($objects as $o) {
+            if ($o['type'] !== 'relationship' || ($o['relationship_type'] ?? '') !== 'uses'
+                || !empty($o['revoked']) || !empty($o['x_mitre_deprecated'])) {
+                continue;
+            }
+            $g = $groupIds[$o['source_ref']] ?? null;
+            $t = $techniqueIds[$o['target_ref']] ?? null;
+            if ($g !== null && $t !== null) {
+                $groupUses[$g . '|' . $t] = [$g, $t];
+            }
+        }
+        ksort($groupUses, SORT_NATURAL);
+
         return [
             'domain' => self::externalId($matrix) ?? 'enterprise-attack',
             'version' => (string) ($collection['x_mitre_version'] ?? ''),
@@ -122,10 +160,12 @@ final class StixParser
             'techniques' => array_values($techniques),
             'mitigations' => array_values($mitigations),
             'mitigates' => array_values($mitigates),
+            'groups' => array_values($groups),
+            'group_uses' => array_values($groupUses),
         ];
     }
 
-    /** The ATT&CK id (TA0001, T1566.001, M1017...) from external_references. */
+    /** The ATT&CK id (TA0001, T1566.001, M1017, G0016...) from external_references. */
     public static function externalId(array $object): ?string
     {
         foreach ($object['external_references'] ?? [] as $ref) {

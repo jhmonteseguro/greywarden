@@ -9,6 +9,7 @@ use app\models\DomainRecord;
 use app\modules\incident\models\Incident;
 use app\modules\incident\models\IncidentSearch;
 use app\modules\incident\models\IncidentTimeline;
+use app\modules\threat\components\StoryRaiser;
 use Yii;
 use yii\web\Response;
 use yii\web\UploadedFile;
@@ -50,6 +51,14 @@ class IncidentController extends CrudController
         $model->detected_at = Actor::now();
         $model->reported_at = Actor::now();
         $model->assigned_to_id = Actor::id();
+        if ($story = StoryRaiser::requested()) {
+            StoryRaiser::fillIncident($model, $story);
+        }
+    }
+
+    protected function saveModel(DomainRecord $model): bool
+    {
+        return StoryRaiser::save($model);
     }
 
     public function actionView(int $id): string

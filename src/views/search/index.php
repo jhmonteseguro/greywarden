@@ -8,6 +8,7 @@
 
 use app\helpers\Badge;
 use app\modules\attack\components\AttackText;
+use app\modules\attack\models\AttackGroup;
 use app\modules\attack\models\AttackMitigation;
 use app\modules\attack\models\AttackTechnique;
 use app\modules\cloud\models\CloudAccount;
@@ -60,7 +61,7 @@ $this->params['subtitle'] = $q === '' ? 'Enter a reference, title, hostname, ser
                         <?= Html::a(Html::encode($item->getReferenceValue()), $item->getViewUrl(), ['class' => 'gw-ref']) ?>
                         <span class="gw-search-result__title"><?= Html::encode($item->getTitleValue()) ?></span>
                         <?php
-                        if ($item instanceof AttackTechnique || $item instanceof AttackMitigation) {
+                        if ($item instanceof AttackTechnique || $item instanceof AttackMitigation || $item instanceof AttackGroup) {
                             echo '<span class="gw-muted">' . Html::encode(AttackText::summary($item->description, 120)) . '</span>';
                             if ($item->is_deprecated) {
                                 echo ' ' . Badge::flag('deprecated', 'Deprecated');
