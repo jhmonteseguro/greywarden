@@ -78,7 +78,7 @@ class m261020_000003_move_device_posture_to_controls extends Migration
         $controlIds = [];
         foreach ($this->definitions() as $column => $def) {
             $this->insert('control', [
-                'reference' => ReferenceGenerator::next('control', 'reference', 'CTL', 4, $this->db),
+                'reference' => ReferenceGenerator::nextUnsequenced('control', 'reference', 'CTL', 4, $this->db),
                 'title' => $def['title'],
                 'description' => $def['description'],
                 'implementation' => 'Created from the fixed device posture check it replaced. Checked on each device in the Device Inventory.',

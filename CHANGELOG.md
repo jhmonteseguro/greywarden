@@ -6,6 +6,12 @@ releases).
 
 ## [Unreleased]
 
+### Fixed
+
+- A reference number (RSK-0012, INC-0007...) is never handed out twice. Before, hard-deleting the newest record freed its
+  number for the next one, and two records saved at the same moment could get the same number. Each prefix now has its
+  own counter (migration `m261109_000001`).
+
 ### Changed
 
 - The README describes Greywarden as security management with threat intelligence, and says it is not a SIEM.

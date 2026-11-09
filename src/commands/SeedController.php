@@ -229,6 +229,8 @@ class SeedController extends Controller
         foreach (['report', 'edge_finding', 'edge_pull', 'intel_blocklist', 'intel_note', 'intel_indicator', 'risk', 'incident', 'decision', 'device', 'cloud_asset', 'cloud_account', 'supplier', 'control'] as $t) {
             $db->createCommand()->delete($t)->execute();
         }
+        // Every table with references was emptied, so the demo numbering starts again at 0001
+        $db->createCommand()->delete('reference_sequence')->execute();
         $db->createCommand()->update('framework_requirement', ['applicable' => 1, 'justification' => null, 'updated_at' => null, 'updated_by' => null])->execute();
         $db->createCommand()->delete('audit_log', ['entity_type' => ['risk', 'incident', 'decision', 'device', 'cloud_account', 'cloud_asset', 'supplier', 'blocklist', 'indicator', 'control', 'requirement', 'edge-finding', 'report', 'threat-story', 'threat-term', 'threat-source']])->execute();
         DeviceChecks::reset();

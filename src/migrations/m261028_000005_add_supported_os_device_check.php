@@ -20,7 +20,7 @@ class m261028_000005_add_supported_os_device_check extends Migration
         }
         $now = date('Y-m-d H:i:s');
         $this->insert('control', [
-            'reference' => ReferenceGenerator::next('control', 'reference', 'CTL', 4, $this->db),
+            'reference' => ReferenceGenerator::nextUnsequenced('control', 'reference', 'CTL', 4, $this->db),
             'title' => self::TITLE,
             'description' => 'Devices run an operating system that still receives security updates from its vendor. Unsupported systems are upgraded, replaced or moved out of scope.',
             'implementation' => 'Checked automatically against each device\'s operating system and version in the Device Inventory.',

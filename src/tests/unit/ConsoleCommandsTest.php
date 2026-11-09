@@ -159,6 +159,7 @@ class ConsoleCommandsTest extends DbTestCase
         $this->assertSame(0, (int) RecordNote::find()->count());
         $this->assertSame(0, (int) Attachment::find()->count());
         $this->assertFileDoesNotExist($file->getPath());
+        $this->assertNotNull(Risk::findOne(['reference' => 'RSK-0001']), 'the reset restarts the reference numbering');
         @unlink($tmp);
         FileHelper::removeDirectory(Yii::$app->params['attachments.path']);
         Yii::$app->params['attachments.path'] = $storage;
