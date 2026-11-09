@@ -6,6 +6,8 @@ releases).
 
 ## [Unreleased]
 
+## [0.18.1-alpha] - 2026-11-09
+
 ### Fixed
 
 - *Admin › Settings › Backups* rejected every ordinary path as containing control characters: the check in the browser
@@ -436,7 +438,8 @@ First public release.
 - Repository safeguards: git hooks with a leak check and signed-push rules, and CI with all test suites, a secret
   scan and a production image build.
 
-[Unreleased]: https://github.com/jhmonteseguro/greywarden/compare/v0.18.0-alpha...HEAD
+[Unreleased]: https://github.com/jhmonteseguro/greywarden/compare/v0.18.1-alpha...HEAD
+[0.18.1-alpha]: https://github.com/jhmonteseguro/greywarden/compare/v0.18.0-alpha...v0.18.1-alpha
 [0.18.0-alpha]: https://github.com/jhmonteseguro/greywarden/compare/v0.17.0-alpha...v0.18.0-alpha
 [0.17.0-alpha]: https://github.com/jhmonteseguro/greywarden/compare/v0.16.0-alpha...v0.17.0-alpha
 [0.16.0-alpha]: https://github.com/jhmonteseguro/greywarden/compare/v0.15.0-alpha...v0.16.0-alpha
