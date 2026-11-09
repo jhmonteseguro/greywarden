@@ -8,7 +8,8 @@ $secureCookies = gw_env_bool('COOKIE_SECURE', false);
 $config = [
     'id' => 'greywarden',
     // Branding: display name etc. from Admin › Settings (components/Branding)
-    'bootstrap' => ['log', app\components\Branding::class],
+    // csp: the Content-Security-Policy header, with a nonce for inline scripts (components/Csp)
+    'bootstrap' => ['log', app\components\Branding::class, 'csp'],
     'defaultRoute' => 'dashboard/default/index',
     'as passwordGuard' => app\components\PasswordChangeGuard::class,
     'modules' => [
@@ -27,6 +28,8 @@ $config = [
         'admin' => ['class' => app\modules\admin\Module::class],
     ],
     'components' => [
+        'csp' => ['class' => app\components\Csp::class],
+        'view' => ['class' => app\components\View::class],
         'request' => [
             'cookieValidationKey' => gw_cookie_key(dirname(__DIR__) . '/runtime'),
             'enableCsrfValidation' => true,

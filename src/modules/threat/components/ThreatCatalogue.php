@@ -29,7 +29,7 @@ final class ThreatCatalogue
         'zdi-published' => ['Zero Day Initiative: published', ThreatSource::CATEGORY_ADVISORY, 'https://www.zerodayinitiative.com/rss/published/', self::RESEARCH, ['quiet' => true]],
         'zdi-upcoming' => ['Zero Day Initiative: upcoming', ThreatSource::CATEGORY_ADVISORY, 'https://www.zerodayinitiative.com/rss/upcoming/', self::RESEARCH, ['quiet' => true]],
 
-        'cisa-advisories' => ['CISA Advisories', ThreatSource::CATEGORY_GOVERNMENT, 'https://www.cisa.gov/cybersecurity-advisories/all.xml', self::OFFICIAL, ['off' => true]],
+        'cisa-advisories' => ['CISA Advisories', ThreatSource::CATEGORY_GOVERNMENT, 'https://www.cisa.gov/cybersecurity-advisories/all.xml', self::OFFICIAL, []],
         'ncsc-uk' => ['NCSC UK', ThreatSource::CATEGORY_GOVERNMENT, 'https://www.ncsc.gov.uk/api/1/services/v1/all-rss-feed.xml', self::OFFICIAL, []],
         'cert-eu' => ['CERT-EU', ThreatSource::CATEGORY_GOVERNMENT, 'https://cert.europa.eu/publications/security-advisories-rss', self::OFFICIAL, []],
 

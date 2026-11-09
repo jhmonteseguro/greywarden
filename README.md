@@ -58,7 +58,7 @@ For real data, see [Production](#production); for the full setup, see [Developme
   secrets and admin pages, enumerate paths, send attack payloads or use scanner tools (scored and explained), and
   recommends what to do: raise an incident when a sensitive path answered 200, block for a few days, block the probe
   paths for everyone with a suggested WAF rule, or block a network that keeps sending scanners
-* **Threat Watch**: security news, government alerts, vendor advisories and research from 28 public feeds in one
+* **Threat Watch**: security news, government alerts, vendor advisories and research from 29 public feeds in one
   triage queue. Articles about one event are grouped into a story, CVEs are enriched with CISA KEV, EPSS and CVSS, and
   stories rank against a **watchlist** of what you run, kept up to date from your devices, cloud accounts and suppliers.
   **Threat actor** pages set each group's techniques against your controls, and a story can raise a risk or an incident
@@ -177,7 +177,7 @@ More screenshots, including Cyber Essentials, branding settings and the mobile v
 
 | Service | Image | Purpose | Host port |
 |---|---|---|---|
-| `nginx` | nginx:1.27-alpine | Web server, static assets, security headers | `127.0.0.1:8080` |
+| `nginx` | nginx:1.30-alpine | Web server, static assets, security headers | `127.0.0.1:8080` |
 | `php` | built from `docker/php` (php:8.3-fpm + pdo_mysql, intl, gd, zip, opcache, bcmath, exif + Composer) | Yii app, runs as uid/gid `APP_UID`/`APP_GID` (1000) | none |
 | `db` | mariadb:11.4 | Database (named volume `db-data`, health-checked) | `127.0.0.1:3307` |
 
@@ -347,7 +347,9 @@ greywarden/
   * login rate limiting and lockout (`login_attempt` table; admins can clear a lockout)
   * forced password change for admin-set passwords
   * disabled users are signed out immediately
-  * nginx sends CSP, X-Frame-Options and nosniff headers
+  * a Content-Security-Policy with a new nonce on every page: only the inline scripts Greywarden renders run, never
+    injected ones (`components/Csp`); nginx adds X-Frame-Options and nosniff, and a policy with no inline scripts
+    at all for the files it serves itself
 
 ### Control Register and frameworks
 
@@ -911,8 +913,7 @@ the feeds themselves are fetched, never the pages they link to.
   CERT-EU, vendor threat research, exploit research and security news. Each source has its own pace, from 30 minutes for
   news to 3 hours for research. The page shows which are working. Admins can switch sources off and add any RSS or
   Atom feed on the public internet. Greywarden stores the headline, a short extract and the link, and the article stays with its
-  publisher. **CISA Advisories** starts switched off: cisa.gov refuses that feed from the PHP container (KEV is not
-  affected), and it can be switched on to try again.
+  publisher.
 * **Stories**: articles naming the same CVEs, or with near-identical headlines, become one story. Roundups (weekly
   bulletins, Patch Tuesday) stay on their own so they cannot glue unrelated events together, and they rank low: they
   mention events rather than being about them, and those events rank on their own. A story citing CVEs from three or more

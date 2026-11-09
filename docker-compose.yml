@@ -2,7 +2,7 @@ name: ${COMPOSE_PROJECT_NAME:-greywarden}
 
 services:
   nginx:
-    image: nginx:1.27-alpine
+    image: nginx:1.30-alpine
     restart: unless-stopped
     depends_on:
       - php

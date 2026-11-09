@@ -31,7 +31,7 @@ $route = Yii::$app->controller->route;
 <html lang="<?= Yii::$app->language ?>" class="h-100" data-bs-theme="dark">
 <head>
     <?php /* Apply the remembered collapsed-sidebar state before first paint (see greywarden.js). */ ?>
-    <script>try{if(localStorage.getItem('gw.sidebar')==='collapsed'){document.documentElement.classList.add('gw-sidebar-collapsed');}}catch(e){}</script>
+    <script nonce="<?= Html::encode(Yii::$app->csp->nonce()) ?>">try{if(localStorage.getItem('gw.sidebar')==='collapsed'){document.documentElement.classList.add('gw-sidebar-collapsed');}}catch(e){}</script>
     <title><?= Html::encode($this->title ? $this->title . ' · ' . Yii::$app->name : Yii::$app->name) ?></title>
     <?php $this->head() ?>
 </head>

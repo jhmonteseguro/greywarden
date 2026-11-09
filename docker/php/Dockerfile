@@ -4,7 +4,7 @@
 #               and Composer installs the dependencies into it on first start.
 #   target prod (docker-compose.prod.yml): the source and its --no-dev dependencies
 #               are built into the image; opcache never re-checks files.
-FROM php:8.3-fpm-bookworm AS base
+FROM php:8.3-fpm-trixie AS base
 
 ARG UID=1000
 ARG GID=1000

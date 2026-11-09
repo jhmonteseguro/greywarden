@@ -148,6 +148,18 @@ check guest / 302
 check guest /risks 302
 check guest /login 200
 
+# Content-Security-Policy: inline scripts need the response's nonce, and every inline script has it
+csp_check() {
+    local headers="$WORK/headers.txt" nonce
+    curl -s -D "$headers" -o "$WORK/body.html" "$BASE/login"
+    nonce=$(grep -i '^content-security-policy:' "$headers" | sed -n "s/.*'nonce-\([^']*\)'.*/\1/p")
+    if [[ -z "$nonce" ]]; then bad "/login: no CSP nonce in $(grep -i '^content-security-policy:' "$headers")"; return; fi
+    if grep -i '^content-security-policy:' "$headers" | grep -q "script-src[^;]*unsafe-inline"; then bad "/login: script-src allows unsafe-inline"; return; fi
+    if grep -o '<script[^>]*>' "$WORK/body.html" | grep -v 'src=' | grep -vq "nonce=\"$nonce\""; then bad "/login: an inline script has no nonce"; return; fi
+    ok
+}
+csp_check
+
 # ---------------------------------------------------------------- admin: forced password change
 echo "-- admin (forced password change)"
 login admin "$ADMIN_USERNAME" "$ADMIN_PASSWORD"

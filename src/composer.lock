@@ -430,10 +430,11 @@
         },
         {
             "name": "npm-asset/bootstrap-icons",
-            "version": "1.13.1",
+            "version": "1.13.2",
             "dist": {
                 "type": "tar",
-                "url": "https://registry.npmjs.org/bootstrap-icons/-/bootstrap-icons-1.13.1.tgz"
+                "url": "https://registry.npmjs.org/bootstrap-icons/-/bootstrap-icons-1.13.2.tgz",
+                "shasum": "5f77e89f4bc80940185a3f1dab1b4878b9119b9c"
             },
             "type": "npm-asset",
             "license": [
@@ -442,10 +443,11 @@
         },
         {
             "name": "npm-asset/chart.js",
-            "version": "4.5.1",
+            "version": "4.6.1",
             "dist": {
                 "type": "tar",
-                "url": "https://registry.npmjs.org/chart.js/-/chart.js-4.5.1.tgz"
+                "url": "https://registry.npmjs.org/chart.js/-/chart.js-4.6.1.tgz",
+                "shasum": "40a924bc0b92544ed66fa3f4873981152fc62c52"
             },
             "require": {
                 "npm-asset/kurkle--color": ">=0.3.0,<0.4.0"
@@ -460,7 +462,8 @@
             "version": "0.3.4",
             "dist": {
                 "type": "tar",
-                "url": "https://registry.npmjs.org/@kurkle/color/-/color-0.3.4.tgz"
+                "url": "https://registry.npmjs.org/@kurkle/color/-/color-0.3.4.tgz",
+                "shasum": "4d4ff677e1609214fc71c580125ddddd86abcabf"
             },
             "type": "npm-asset",
             "license": [
@@ -718,29 +721,32 @@
         },
         {
             "name": "yiisoft/yii2-bootstrap5",
-            "version": "2.0.51",
+            "version": "2.0.52",
             "source": {
                 "type": "git",
                 "url": "https://github.com/yiisoft/yii2-bootstrap5.git",
-                "reference": "23675f617ee3c86cf3e65a31a6afbc75e13028cb"
+                "reference": "e3619e85659ea5b00211075997670cdce03b7ecd"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/yiisoft/yii2-bootstrap5/zipball/23675f617ee3c86cf3e65a31a6afbc75e13028cb",
-                "reference": "23675f617ee3c86cf3e65a31a6afbc75e13028cb",
+                "url": "https://api.github.com/repos/yiisoft/yii2-bootstrap5/zipball/e3619e85659ea5b00211075997670cdce03b7ecd",
+                "reference": "e3619e85659ea5b00211075997670cdce03b7ecd",
                 "shasum": ""
             },
             "require": {
                 "ext-json": "*",
-                "php": ">=7.3",
+                "php": ">=7.4",
                 "twbs/bootstrap": "^5.2.3",
-                "yiisoft/yii2": "^2.0.42"
+                "yiisoft/yii2": "^2.0.54"
             },
             "require-dev": {
+                "friendsofphp/php-cs-fixer": "^3.95",
+                "mspirkov/yii2-rector": "^0.2",
+                "phpstan/phpstan": "^2.1",
+                "phpstan/phpstan-phpunit": "^2.0",
                 "phpunit/phpunit": "^9.6",
-                "symplify/easy-coding-standard": "^12.1",
-                "twbs/bootstrap-icons": "^1.7.2",
-                "yiisoft/yii2-coding-standards": "~2.0"
+                "rector/rector": "^2.6",
+                "twbs/bootstrap-icons": "^1.7.2"
             },
             "suggest": {
                 "twbs/bootstrap-icons": "Add this package to the `require` section of your `composer.json` if you'd like to use the bootstrap icon asset."
@@ -796,7 +802,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2025-12-03T13:29:11+00:00"
+            "time": "2026-11-07T08:25:45+00:00"
         },
         {
             "name": "yiisoft/yii2-composer",

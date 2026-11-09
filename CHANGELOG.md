@@ -6,6 +6,16 @@ releases).
 
 ## [Unreleased]
 
+### Security
+
+- The Content-Security-Policy no longer allows any inline script. Each page gets a new random nonce, and only the
+  scripts Greywarden renders carry it, so a script injected into a page does not run. PHP now sends the policy; nginx
+  sends a stricter one (no inline scripts) for the files it serves itself.
+- The PHP image is built on Debian 13 (trixie) instead of 12 (bookworm): PHP 8.3.36, curl 8.14 and OpenSSL 3.5.
+  nginx is 1.30 (was 1.27, no longer supported). Rebuild with `scripts/up.sh --build`; `scripts/deploy.sh` rebuilds
+  production on its own.
+- Updated chart.js to 4.6.1, Bootstrap Icons to 1.13.2 and yii2-bootstrap5 to 2.0.52.
+
 ### Fixed
 
 - A reference number (RSK-0012, INC-0007...) is never handed out twice. Before, hard-deleting the newest record freed its
@@ -14,6 +24,8 @@ releases).
 
 ### Changed
 
+- **CISA Advisories** is switched on for new installations. cisa.gov refused the old image's connections and accepts the
+  new one. On an existing installation, switch it on in *Threat Intel › News Sources*.
 - The README describes Greywarden as security management with threat intelligence, and says it is not a SIEM.
 
 ## [0.18.1-alpha] - 2026-11-09

@@ -339,7 +339,7 @@ class ThreatPipelineTest extends DbTestCase
         $this->pull(false);
         $first = count($this->requested);
         $this->assertGreaterThan(20, $first);
-        $this->assertEmpty(array_filter($this->requested, static fn($u) => str_contains($u, 'cybersecurity-advisories')), 'CISA Advisories starts switched off');
+        $this->assertNotEmpty(array_filter($this->requested, static fn($u) => str_contains($u, 'cybersecurity-advisories')), 'CISA Advisories is read like the others');
 
         $this->requested = [];
         $this->pull(false);
@@ -349,6 +349,13 @@ class ThreatPipelineTest extends DbTestCase
         $this->pull(false);
         $this->assertContains($this->source()->url, $this->requested, 'news is due after 30 minutes');
         $this->assertNotContains($this->source('talos')->url, $this->requested, 'research is not');
+
+        ThreatSource::updateAll(['is_enabled' => 0], ['key' => 'cisa-advisories']);
+        $this->requested = [];
+        $this->now += 86400;
+        $this->pull(false);
+        $this->assertNotEmpty($this->requested, 'a day later everything else is due');
+        $this->assertEmpty(array_filter($this->requested, static fn($u) => str_contains($u, 'cybersecurity-advisories')), 'a source switched off is not read');
     }
 
     public function testAnUnchangedFeedIsNotParsedAgain(): void
@@ -410,7 +417,7 @@ class ThreatPipelineTest extends DbTestCase
         $this->assertSame(1, (int) $this->source('talos')->is_enabled, 'new sources arrive');
         $this->assertSame(0, (int) $this->source('retired')->is_enabled, 'dropped sources stop');
         $this->assertSame(1, (int) $this->source('custom-1')->is_enabled, 'custom feeds are not touched');
-        $this->assertSame(0, (int) $this->source('cisa-advisories')->is_enabled);
+        $this->assertSame(1, (int) $this->source('cisa-advisories')->is_enabled, 'every built-in source starts switched on');
         $this->assertContains('msrc', ThreatCatalogue::keys());
         $this->assertSame(1, (int) $this->source('msrc')->is_quiet);
         $this->assertSame('kev', $this->source('cisa-kev')->format);
