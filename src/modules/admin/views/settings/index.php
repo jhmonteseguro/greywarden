@@ -1,17 +1,19 @@
 <?php
 /**
  * Admin › Settings: branding, the compliance frameworks switched on, the
- * wording of incident PDF reports, management reports and edge monitoring
- * (separate forms, so each saves on its own).
+ * wording of incident PDF reports, management reports, edge monitoring and
+ * the backup directory (separate forms, so each saves on its own).
  * @var yii\web\View $this
  * @var app\modules\admin\models\BrandingForm $model
  * @var app\modules\admin\models\ComplianceForm $compliance
  * @var app\modules\admin\models\IncidentReportForm $incidentReport
  * @var app\modules\admin\models\ReportForm $report
  * @var app\modules\admin\models\EdgeForm $edge
+ * @var app\modules\admin\models\BackupForm $backup
  */
 
 use app\components\Branding;
+use app\modules\admin\models\BackupForm;
 use app\modules\admin\models\ComplianceForm;
 use app\modules\admin\models\IncidentReportForm;
 use app\modules\admin\models\ReportForm;
@@ -143,5 +145,20 @@ $check = static fn(string $class) => static fn($index, $label, $name, $checked, 
 
 <div class="gw-form__actions">
     <?= Html::submitButton('Save edge monitoring', ['class' => 'btn btn-primary gw-btn']) ?>
+</div>
+<?php ActiveForm::end(); ?>
+
+<?php $form = ActiveForm::begin(['id' => 'backup-form', 'options' => ['class' => 'gw-form gw-form--settings']]); ?>
+<?= $form->errorSummary($backup, ['class' => 'alert alert-danger gw-error-summary']) ?>
+
+<fieldset class="gw-fieldset" id="backups">
+    <legend class="gw-fieldset__title">Backups</legend>
+    <div class="row">
+        <div class="col-md-8"><?= $form->field($backup, 'backup_path')->textInput(['maxlength' => BackupForm::MAX_LENGTH, 'placeholder' => BackupForm::DEFAULT_PATH, 'spellcheck' => 'false', 'autocomplete' => 'off']) ?></div>
+    </div>
+</fieldset>
+
+<div class="gw-form__actions">
+    <?= Html::submitButton('Save backup settings', ['class' => 'btn btn-primary gw-btn']) ?>
 </div>
 <?php ActiveForm::end(); ?>

@@ -777,6 +777,14 @@ post admin /admin/settings /admin/settings 302 \
     "BrandingForm[app_name]=" "BrandingForm[organisation]=" "BrandingForm[tagline]=Security operations console" \
     "BrandingForm[login_notice]=Restricted system · all access is monitored and audited" "BrandingForm[pdf_classification]=Confidential"
 
+# Admin: backup directory with spaces (restored to the default afterwards)
+post admin /admin/settings /admin/settings 302 "BackupForm[backup_path]=/srv/Greywarden backups/nightly"
+[[ "$(sql "SELECT value FROM setting WHERE name='backup.path'")" == "/srv/Greywarden backups/nightly" ]] && ok || bad "backup directory not saved"
+check admin /admin/settings 200
+grep -q 'value="/srv/Greywarden backups/nightly"' "$BODY" && ok || bad "backup directory not shown"
+post admin /admin/settings /admin/settings 302 "BackupForm[backup_path]="
+[[ -z "$(sql "SELECT value FROM setting WHERE name='backup.path'")" ]] && ok || bad "backup directory not reset to the default"
+
 # Admin: incident report wording (restored to the default afterwards)
 post admin /admin/settings /admin/settings 302 "IncidentReportForm[status_closed]=Smoke wording for closed incidents"
 check admin /admin/settings 200

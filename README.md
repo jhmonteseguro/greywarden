@@ -795,11 +795,20 @@ make restore FILE=backups/greywarden-20261009-120000.sql.gz
 tar -xzf backups/attachments-20261009-120000.tar.gz   # restore uploaded files (run from the project root)
 ```
 
+Backups go to `backups/` in the checkout unless *Admin › Settings › Backups* names another directory: an absolute path
+(spaces are fine, e.g. `/mnt/nas/Greywarden backups`), `~/…` for the home of the user running the script, or a path
+relative to the checkout. It is a path on the host, created if missing. `BACKUP_DIR` set when the script runs takes
+precedence (`BACKUP_DIR="/mnt/usb/gw backups" make backup`), and `scripts/deploy.sh` uses the same directory. The script
+prints the full path of each file and the restore command; quote paths with spaces:
+`make restore FILE="/mnt/nas/Greywarden backups/greywarden-20261009-120000.sql.gz"` and
+`tar -xzf "/mnt/nas/Greywarden backups/attachments-20261009-120000.tar.gz"`.
+
 Restore the database and files from the same timestamp so rows and files match.
 
 Backups are consistent dumps (`--single-transaction`) taken through the `db` container. `scripts/backup.sh` starts
 the `db` container first if it isn't running (and leaves it running). Dump files are created owner-only (`0600`)
-because they contain password hashes and the audit log, and `backups/` is excluded from git. To copy the raw volume
+because they contain password hashes and the audit log, and `backups/` is excluded from git (a directory set in the
+settings should be outside the checkout or likewise kept out of git). To copy the raw volume
 instead, stop the stack and archive the Docker volume `greywarden_db-data`.
 
 ### Threat intel (IP / ASN investigation)

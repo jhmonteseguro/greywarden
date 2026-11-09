@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# Fake docker for scripts/tests/backup-test.sh. Answers the calls scripts/backup.sh
+# makes: `docker info`, `docker compose ps|up`, and `docker compose exec -T db sh -c <cmd>`
+# (a mariadb-dump writes "FAKE DUMP"; the setting query prints $FAKE_BACKUP_SETTING,
+# or fails when FAKE_BACKUP_SETTING_FAIL=1). Every call is logged to $FAKE_DOCKER_LOG.
+printf '%s\n' "$*" >>"${FAKE_DOCKER_LOG:-/dev/null}"
+[ "$1" = info ] && exit 0
+[ "$1" = compose ] || { echo "fake docker: unexpected '$*'" >&2; exit 1; }
+case "$2" in
+    ps) echo fakecontainerid ;;
+    up) ;;
+    exec)
+        cmd="${*: -1}"
+        if [[ "$cmd" == *mariadb-dump* ]]; then
+            echo "FAKE DUMP"
+        elif [[ "$cmd" == *mariadb* ]]; then
+            printf 'QUERY %s\n' "$(cat)" >>"${FAKE_DOCKER_LOG:-/dev/null}"
+            [ "${FAKE_BACKUP_SETTING_FAIL:-0}" = 1 ] && { echo "ERROR 1146 (42S02): Table 'greywarden.setting' doesn't exist" >&2; exit 1; }
+            [ -n "${FAKE_BACKUP_SETTING+x}" ] && printf '%s\r\n' "$FAKE_BACKUP_SETTING"
+        else
+            echo "fake docker: unexpected exec '$*'" >&2; exit 1
+        fi ;;
+    *) echo "fake docker: unexpected '$*'" >&2; exit 1 ;;
+esac

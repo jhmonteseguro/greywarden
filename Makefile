@@ -8,7 +8,6 @@ PHP     := $(DC) exec php
 PHP_T   := $(DC) exec -T php
 DB_NAME ?= greywarden
 DB_TEST_NAME ?= greywarden_test
-BACKUP_DIR ?= backups
 # AS= is the import actor (import-devices, import-cloud, sync-cloudflare, suppliers-from-cloud, edge-pull, threat-pull); drop make's built-in AS (the assembler, "as")
 ifeq ($(origin AS),default)
 AS :=
@@ -153,10 +152,10 @@ db-shell: ## Open a MariaDB client shell
 deploy: ## PRODUCTION checkout only: deploy a signed release tag (make deploy REF=v0.2.0-alpha)
 	./scripts/deploy.sh $(REF)
 
-backup: ## Dump the database to backups/<db>-<timestamp>.sql.gz (starts db if needed)
-	BACKUP_DIR="$(BACKUP_DIR)" ./scripts/backup.sh
+backup: ## Dump the database + files to the backup directory (Admin > Settings > Backups, default backups/; BACKUP_DIR= overrides)
+	./scripts/backup.sh
 
-restore: ## Restore a dump: make restore FILE=backups/greywarden-....sql.gz
+restore: ## Restore a dump: make restore FILE="backups/greywarden-....sql.gz" (quote paths with spaces)
 	@test -n "$(FILE)" || (echo "Usage: make restore FILE=backups/xxx.sql.gz" && exit 1)
 	@gunzip -c "$(FILE)" | $(DB_ROOT) 'mariadb -uroot -p"$$MARIADB_ROOT_PASSWORD" "$$MARIADB_DATABASE"'
 	@$(PHP_T) sh -c 'rm -rf runtime/cache/*'

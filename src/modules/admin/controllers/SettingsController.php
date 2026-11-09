@@ -3,6 +3,7 @@
 namespace app\modules\admin\controllers;
 
 use app\components\Rbac;
+use app\modules\admin\models\BackupForm;
 use app\modules\admin\models\BrandingForm;
 use app\modules\admin\models\ComplianceForm;
 use app\modules\admin\models\EdgeForm;
@@ -16,8 +17,8 @@ use yii\web\Response;
 /**
  * Instance settings: branding (display name, organisation, logo, sign-in text,
  * PDF marking), the compliance frameworks switched on, the wording of
- * incident PDF reports, management reports and edge monitoring. Each has its
- * own form.
+ * incident PDF reports, management reports, edge monitoring and the backup
+ * directory. Each has its own form.
  */
 class SettingsController extends Controller
 {
@@ -39,6 +40,7 @@ class SettingsController extends Controller
         $incidentReport = IncidentReportForm::current();
         $edge = EdgeForm::current();
         $report = ReportForm::current();
+        $backup = BackupForm::current();
         if ($compliance->load($post)) {
             if ($compliance->save()) {
                 Yii::$app->session->setFlash('success', 'Compliance frameworks saved.');
@@ -59,10 +61,15 @@ class SettingsController extends Controller
                 Yii::$app->session->setFlash('success', 'Edge monitoring settings saved.');
                 return $this->redirect(['index', '#' => 'edge']);
             }
+        } elseif ($backup->load($post)) {
+            if ($backup->save()) {
+                Yii::$app->session->setFlash('success', 'Backup settings saved.');
+                return $this->redirect(['index', '#' => 'backups']);
+            }
         } elseif ($model->load($post) && $model->save()) {
             Yii::$app->session->setFlash('success', 'Branding saved.');
             return $this->redirect(['index']);
         }
-        return $this->render('index', ['model' => $model, 'compliance' => $compliance, 'incidentReport' => $incidentReport, 'report' => $report, 'edge' => $edge]);
+        return $this->render('index', ['model' => $model, 'compliance' => $compliance, 'incidentReport' => $incidentReport, 'report' => $report, 'edge' => $edge, 'backup' => $backup]);
     }
 }

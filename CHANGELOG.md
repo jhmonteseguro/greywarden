@@ -6,6 +6,12 @@ releases).
 
 ## [Unreleased]
 
+### Added
+
+- **Backup directory** (*Admin › Settings › Backups*): choose where `scripts/backup.sh`, `make backup` and `scripts/deploy.sh`
+  write backups: an absolute path (spaces are fine), `~/…` or a path relative to the checkout. Empty keeps the default,
+  `backups/`, and `BACKUP_DIR` still overrides it. The script now prints the full path of each backup and the restore command.
+
 ## [0.17.0-alpha] - 2026-11-05
 
 ### Added
