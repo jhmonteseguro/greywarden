@@ -34,6 +34,10 @@ class BackupSettingsTest extends FunctionalTestCase
         $this->assertSee('<legend class="gw-fieldset__title">Backups</legend>');
         $this->assertSee('name="BackupForm[backup_path]" value="" maxlength="1024" placeholder="backups"');
         $this->assertSee('Leave empty for the default, backups/.');
+        // Browser-side validation gets a working JS regex: Yii turns \x00 into \u00, which JS reads as the
+        // characters "u00" (so the class spanned "0"-"u" and rejected every ordinary path); \x{0000} becomes \u0000
+        $this->assertSee('/[\u0000-\u001f\u007f]/');
+        $this->assertNotSee('\u00-');
     }
 
     public function testPathWithSpacesIsStoredAndAudited(): void

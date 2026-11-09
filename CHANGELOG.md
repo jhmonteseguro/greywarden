@@ -6,6 +6,11 @@ releases).
 
 ## [Unreleased]
 
+### Fixed
+
+- *Admin › Settings › Backups* rejected every ordinary path as containing control characters: the check in the browser
+  matched digits and letters. The check on the server was always right.
+
 ## [0.18.0-alpha] - 2026-11-09
 
 ### Added

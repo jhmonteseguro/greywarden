@@ -42,7 +42,7 @@ class BackupForm extends Model
             ['backup_path', 'filter', 'filter' => static fn($v) => trim((string) $v)],
             ['backup_path', 'string', 'max' => self::MAX_LENGTH],
             // Control characters (newlines, tabs, NUL) never belong in a path and would not survive the script reading it
-            ['backup_path', 'match', 'not' => true, 'pattern' => '/[\x00-\x1f\x7f]/', 'message' => '{attribute} cannot contain control characters such as tabs or line breaks.'],
+            ['backup_path', 'match', 'not' => true, 'pattern' => '/[\x{0000}-\x{001f}\x{007f}]/', 'message' => '{attribute} cannot contain control characters such as tabs or line breaks.'],
             ['backup_path', 'match', 'pattern' => '/[^\/]/', 'message' => '{attribute} cannot be the root directory.'],
         ];
     }
