@@ -6,6 +6,8 @@ releases).
 
 ## [Unreleased]
 
+## [0.18.0-alpha] - 2026-11-09
+
 ### Added
 
 - **Backup directory** (*Admin › Settings › Backups*): choose where `scripts/backup.sh`, `make backup` and `scripts/deploy.sh`
@@ -429,7 +431,8 @@ First public release.
 - Repository safeguards: git hooks with a leak check and signed-push rules, and CI with all test suites, a secret
   scan and a production image build.
 
-[Unreleased]: https://github.com/jhmonteseguro/greywarden/compare/v0.17.0-alpha...HEAD
+[Unreleased]: https://github.com/jhmonteseguro/greywarden/compare/v0.18.0-alpha...HEAD
+[0.18.0-alpha]: https://github.com/jhmonteseguro/greywarden/compare/v0.17.0-alpha...v0.18.0-alpha
 [0.17.0-alpha]: https://github.com/jhmonteseguro/greywarden/compare/v0.16.0-alpha...v0.17.0-alpha
 [0.16.0-alpha]: https://github.com/jhmonteseguro/greywarden/compare/v0.15.0-alpha...v0.16.0-alpha
 [0.15.0-alpha]: https://github.com/jhmonteseguro/greywarden/compare/v0.14.1-alpha...v0.15.0-alpha
