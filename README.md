@@ -1,7 +1,11 @@
 # Greywarden
 
-Self-hosted security-management system that replaces the risk / decision / incident / asset spreadsheets,
-built to grow into a security-operations dashboard.
+Self-hosted security management with threat intelligence. Greywarden replaces the risk, control, decision,
+incident, asset and supplier spreadsheets with linked registers. It measures them against ISO 27001, Cyber Essentials,
+SOC 2, NIST CSF and NCSC CAF, and produces management reports. It also watches what is happening outside:
+security news and advisories, threat actors, Cloudflare edge traffic and IP reputation.
+
+Greywarden is not a SIEM: it does not collect logs or raise detection alerts.
 
 > **Alpha.** Greywarden is used in production by its author, but the schema and features still change between
 > releases. Take a backup before every upgrade (`scripts/deploy.sh` does). See [CHANGELOG.md](CHANGELOG.md),

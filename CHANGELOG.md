@@ -6,6 +6,10 @@ releases).
 
 ## [Unreleased]
 
+### Changed
+
+- The README describes Greywarden as security management with threat intelligence, and says it is not a SIEM.
+
 ## [0.18.1-alpha] - 2026-11-09
 
 ### Fixed
