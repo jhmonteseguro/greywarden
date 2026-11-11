@@ -14,6 +14,7 @@ use app\modules\inventory\components\DevicePosture;
 use app\modules\inventory\components\OsLifecycle;
 use app\modules\inventory\models\Device;
 use app\modules\risk\models\Risk;
+use app\widgets\ActionList;
 use app\widgets\AuditHistory;
 use app\widgets\DetailView;
 use app\widgets\LinkedRecords;
@@ -199,6 +200,7 @@ ob_start(); ?>
     'items' => [
         ['label' => 'Details', 'content' => $details, 'options' => ['id' => 'tab-details']],
         ['label' => 'Risks & incidents (' . (count($risks) + count($incidents)) . ')', 'content' => $links, 'options' => ['id' => 'tab-links']],
+        ['label' => ActionList::label($actionItems = ActionList::listFor($model)), 'content' => ActionList::widget(['model' => $model, 'actions' => $actionItems]), 'options' => ['id' => 'tab-actions']],
         ['label' => 'History', 'content' => AuditHistory::widget(['entityType' => 'device', 'entityId' => $model->id]), 'options' => ['id' => 'tab-history']],
     ],
 ]) ?>

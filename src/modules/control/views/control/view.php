@@ -23,6 +23,7 @@ use app\modules\inventory\models\Device;
 use app\modules\risk\models\Risk;
 use app\modules\supplier\components\SupplierChecks;
 use app\modules\supplier\models\Supplier;
+use app\widgets\ActionList;
 use app\widgets\Attachments;
 use app\widgets\AuditHistory;
 use app\widgets\DetailView;
@@ -381,6 +382,7 @@ ob_start(); ?>
         ['label' => 'Links (' . (count($risks) + count($decisions) + count($suppliers) + $incidentCount) . ')', 'content' => $links, 'options' => ['id' => 'tab-links']],
         ['label' => 'Frameworks & ATT&CK (' . ($requirementCount + count($mitigations)) . ')', 'content' => $frameworks, 'options' => ['id' => 'tab-frameworks']],
         ['label' => 'Files (' . count($attachments) . ')', 'content' => Attachments::widget(['model' => $model, 'attachments' => $attachments]), 'options' => ['id' => 'tab-files']],
+        ['label' => ActionList::label($actionItems = ActionList::listFor($model)), 'content' => ActionList::widget(['model' => $model, 'actions' => $actionItems]), 'options' => ['id' => 'tab-actions']],
         ['label' => 'History', 'content' => AuditHistory::widget(['entityType' => 'control', 'entityId' => $model->id]), 'options' => ['id' => 'tab-history']],
     ])),
 ]) ?>

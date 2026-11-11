@@ -8,6 +8,16 @@ releases).
 
 ### Added
 
+- **Actions** (*Operations › Actions*): remediation actions (`ACT-0001`…) with an owner, a due date, a priority and a
+  status. Raise one from any risk, control, decision, incident, device, cloud asset or account, supplier or edge
+  finding with *Raise an action* on the record's new **Actions** tab, or on its own for an audit or pen test finding.
+  Closing an action needs its outcome (what was done and where the evidence is), and records who closed it and when.
+  Actions have Notes, Files and History, appear in search, and overdue ones appear in the dashboard's *Needs
+  attention*. If the record an action came from is deleted, the action shows it as deleted (*Risk #12 (deleted)*) and
+  can still be edited and closed. Migration `m261109_200001`.
+- **My work** (*Operations › My Work*): what you have to do, in one place: your overdue and upcoming actions, open
+  incidents assigned to you, and the overdue reviews, treatments and control tests of the risks, controls and
+  suppliers you own.
 - **Two-step sign-in** (*Account › Sign-in security*, in the account menu). Each user can add an **authenticator app**
   (6-digit codes; any TOTP app) and **passkeys** (on a computer, a phone or a security key), and gets ten one-time
   **recovery codes**. After the password, Greywarden asks for a code, a recovery code or a passkey. Wrong codes count

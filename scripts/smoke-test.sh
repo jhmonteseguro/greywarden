@@ -179,7 +179,8 @@ login analyst analyst "$DEMO_PASSWORD"
 login viewer viewer "$DEMO_PASSWORD"
 
 READ_PAGES=(
-    / /search?q=RSK /search?q=LT- /search?q=phishing /account/profile /account/password /account/security
+    / /search?q=RSK /search?q=LT- /search?q=phishing /account/profile /account/password /account/security /my-work
+    /actions "/actions?filter=mine" "/actions?filter=overdue" "/actions?filter=due-soon" "/actions?filter=closed" "/actions?filter=archived"
     /risks "/risks?filter=all" "/risks?filter=mine" "/risks?filter=review-overdue" "/risks?filter=treatment-overdue" "/risks?filter=archived"
     "/risks?filter=all&sort=-residual_rating&status=in_treatment&q=a" "/risks?filter=open&residual_likelihood=2&residual_impact=4"
     /risks/heatmap "/risks/heatmap?heatmap=inherent" /risks/$R1 /risks/$R2 /risks/$R5 /risks/$R13
@@ -351,6 +352,20 @@ post analyst "/risks/$RID" "/reviews/record?entity=risk&id=$RID" 302 "RecordRevi
 check viewer "/risks/$RID" 200
 grep -q 'Smoke review: still valid' "$BODY" && grep -q 'id="tab-reviews"' "$BODY" && ! grep -q 'id="review-form"' "$BODY" && ok || bad "review not shown to viewers (or form shown)"
 post viewer "/risks/$RID" "/reviews/record?entity=risk&id=$RID" 403 "RecordReview[reviewed_on]=$TODAY" "RecordReview[outcome]=Viewer review"
+
+# Action raised from the smoke risk, then closed (analyst); viewers cannot close it
+check analyst "/actions/create?record_type=risk&record_id=$RID" 200
+grep -q "value=\"risk:$RID\" selected" "$BODY" && ok || bad "action form not pre-filled from the risk"
+post analyst "/actions/create?record_type=risk&record_id=$RID" /actions/create 302 \
+    "Action[title]=Smoke test action" "Action[owner_id]=$(sql "SELECT id FROM user WHERE username='analyst'")" "Action[due_date]=$TODAY" \
+    "Action[priority]=high" "Action[status]=open" "Action[recordKey]=risk:$RID"
+AID=$(last_id action)
+check viewer "/risks/$RID" 200
+grep -q 'Smoke test action' "$BODY" && grep -q 'id="tab-actions"' "$BODY" && ok || bad "action not on the risk's Actions tab"
+post viewer "/actions/$AID" "/actions/$AID/close" 403 "status=done" "outcome=Viewer"
+post analyst "/actions/$AID" "/actions/$AID/close" 302 "status=done" "outcome=Smoke outcome: fixed"
+[[ "$(sql "SELECT status FROM action WHERE id=$AID")" == "done" ]] && ok || bad "action not closed"
+check analyst /my-work 200
 
 # Decision create/update (analyst)
 post analyst /decisions/create /decisions/create 302 \

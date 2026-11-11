@@ -13,6 +13,7 @@ use app\modules\intel\components\edge\EdgeCatalogue;
 use app\modules\intel\components\edge\EdgeSettings;
 use app\modules\intel\components\edge\EdgeBlocker;
 use app\modules\intel\models\EdgeFinding;
+use app\widgets\ActionList;
 use app\widgets\AuditHistory;
 use app\widgets\DetailView;
 use yii\bootstrap5\Tabs;
@@ -238,6 +239,7 @@ ob_start(); ?>
     'tabContentOptions' => ['class' => 'gw-tab-content'],
     'items' => [
         ['label' => 'Details', 'content' => $details, 'options' => ['id' => 'tab-details']],
+        ['label' => ActionList::label($actionItems = ActionList::listFor($model)), 'content' => ActionList::widget(['model' => $model, 'actions' => $actionItems]), 'options' => ['id' => 'tab-actions']],
         ['label' => 'History', 'content' => AuditHistory::widget(['entityType' => EdgeFinding::entityType(), 'entityId' => $model->id]), 'options' => ['id' => 'tab-history']],
     ],
 ]) ?>

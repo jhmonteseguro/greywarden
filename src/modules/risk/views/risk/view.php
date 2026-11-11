@@ -18,6 +18,7 @@ use app\modules\incident\models\Incident;
 use app\modules\inventory\models\Device;
 use app\modules\risk\models\Risk;
 use app\modules\supplier\models\Supplier;
+use app\widgets\ActionList;
 use app\widgets\Attachments;
 use app\widgets\AuditHistory;
 use app\widgets\DetailView;
@@ -220,6 +221,7 @@ $notes = RecordNote::listFor($model); ?>
         ['label' => 'Notes (' . count($notes) . ')', 'content' => Notes::widget(['model' => $model, 'notes' => $notes, 'attachments' => $attachments]), 'options' => ['id' => 'tab-notes']],
         ['label' => 'Links (' . (count($devices) + count($cloudAssets) + count($suppliers) + count($incidents) + count($decisions)) . ')', 'content' => $links, 'options' => ['id' => 'tab-links']],
         ['label' => 'Files (' . count($attachments) . ')', 'content' => Attachments::widget(['model' => $model, 'attachments' => $attachments]), 'options' => ['id' => 'tab-files']],
+        ['label' => ActionList::label($actionItems = ActionList::listFor($model)), 'content' => ActionList::widget(['model' => $model, 'actions' => $actionItems]), 'options' => ['id' => 'tab-actions']],
         ['label' => 'History', 'content' => AuditHistory::widget(['entityType' => 'risk', 'entityId' => $model->id]), 'options' => ['id' => 'tab-history']],
     ],
 ]) ?>

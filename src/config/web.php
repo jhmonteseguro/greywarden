@@ -24,6 +24,7 @@ $config = [
         'cloud' => ['class' => app\modules\cloud\Module::class],
         'supplier' => ['class' => app\modules\supplier\Module::class],
         'report' => ['class' => app\modules\report\Module::class],
+        'action' => ['class' => app\modules\action\Module::class],
         'attack' => ['class' => app\modules\attack\Module::class],
         'intel' => ['class' => app\modules\intel\Module::class],
         'threat' => ['class' => app\modules\threat\Module::class],
@@ -115,6 +116,12 @@ $config = [
                 'cloud/accounts/<id:\d+>' => 'cloud/account/view',
                 'cloud/accounts/<id:\d+>/<action:[\w-]+>' => 'cloud/account/<action>',
                 'cloud/accounts/<action:[\w-]+>' => 'cloud/account/<action>',
+                // Actions: /actions, /actions/4, /actions/4/close ...; My work
+                'actions' => 'action/action/index',
+                'actions/<id:\d+>' => 'action/action/view',
+                'actions/<id:\d+>/<action:[\w-]+>' => 'action/action/<action>',
+                'actions/<action:[\w-]+>' => 'action/action/<action>',
+                'my-work' => 'work/index',
                 // Supplier Register: /suppliers, /suppliers/4, /suppliers/4/update ...
                 'suppliers' => 'supplier/supplier/index',
                 'suppliers/<id:\d+>' => 'supplier/supplier/view',

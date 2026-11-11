@@ -8,6 +8,7 @@ use app\models\Attachment;
 use app\models\Lookup;
 use app\models\RecordReview;
 use app\models\User;
+use app\modules\action\models\Action;
 use app\modules\attack\models\AttackMitigation;
 use app\modules\attack\models\AttackTechnique;
 use app\modules\cloud\components\CloudCatalogue;
@@ -183,6 +184,7 @@ class SeedController extends Controller
             $findings = $this->seedEdge();
             $reports = $this->seedReports();
             $stories = $this->seedThreatWatch();
+            $actions = $this->seedActions();
             $tx->commit();
         } catch (\Throwable $e) {
             $tx->rollBack();
@@ -196,8 +198,8 @@ class SeedController extends Controller
         Actor::override(null);
         Yii::$app->cache->flush();
 
-        $this->stdout(sprintf("Seeded %d risks, %d controls, %d decisions, %d incidents, %d devices, %d cloud accounts, %d cloud assets, %d suppliers, %d blocklist entries, %d edge findings, %d reports, %d threat stories.\n",
-            count($risks), $controls + $cloudControls + $supplierControls, count($decisions), count($incidents), count($devices), $accounts, $assets, $suppliers, $blocks, $findings, $reports, $stories), Console::FG_GREEN);
+        $this->stdout(sprintf("Seeded %d risks, %d controls, %d decisions, %d incidents, %d devices, %d cloud accounts, %d cloud assets, %d suppliers, %d blocklist entries, %d edge findings, %d reports, %d threat stories, %d actions.\n",
+            count($risks), $controls + $cloudControls + $supplierControls, count($decisions), count($incidents), count($devices), $accounts, $assets, $suppliers, $blocks, $findings, $reports, $stories, $actions), Console::FG_GREEN);
         $this->stdout(sprintf("Demo users (password from DEMO_PASSWORD): analyst, jpatel (analysts), viewer (read-only).\n"));
         return ExitCode::OK;
     }
@@ -226,13 +228,13 @@ class SeedController extends Controller
             $db->createCommand()->delete($t)->execute();
         }
         $db->createCommand()->delete('threat_watch_term', ['origin' => [ThreatWatchTerm::ORIGIN_MANUAL, ...ThreatWatchTerm::DERIVED_ORIGINS]])->execute();
-        foreach (['report', 'edge_finding', 'edge_pull', 'intel_blocklist', 'intel_note', 'intel_indicator', 'risk', 'incident', 'decision', 'device', 'cloud_asset', 'cloud_account', 'supplier', 'control'] as $t) {
+        foreach (['action', 'report', 'edge_finding', 'edge_pull', 'intel_blocklist', 'intel_note', 'intel_indicator', 'risk', 'incident', 'decision', 'device', 'cloud_asset', 'cloud_account', 'supplier', 'control'] as $t) {
             $db->createCommand()->delete($t)->execute();
         }
         // Every table with references was emptied, so the demo numbering starts again at 0001
         $db->createCommand()->delete('reference_sequence')->execute();
         $db->createCommand()->update('framework_requirement', ['applicable' => 1, 'justification' => null, 'updated_at' => null, 'updated_by' => null])->execute();
-        $db->createCommand()->delete('audit_log', ['entity_type' => ['risk', 'incident', 'decision', 'device', 'cloud_account', 'cloud_asset', 'supplier', 'blocklist', 'indicator', 'control', 'requirement', 'edge-finding', 'report', 'threat-story', 'threat-term', 'threat-source']])->execute();
+        $db->createCommand()->delete('audit_log', ['entity_type' => ['action', 'risk', 'incident', 'decision', 'device', 'cloud_account', 'cloud_asset', 'supplier', 'blocklist', 'indicator', 'control', 'requirement', 'edge-finding', 'report', 'threat-story', 'threat-term', 'threat-source']])->execute();
         DeviceChecks::reset();
         CloudChecks::reset();
         SupplierChecks::reset();
@@ -244,7 +246,7 @@ class SeedController extends Controller
     {
         $db = Yii::$app->db;
         if ($db->driverName === 'mysql') {
-            foreach (['risk', 'incident', 'decision', 'device', 'cloud_account', 'cloud_asset', 'supplier', 'supplier_assurance', 'incident_timeline', 'intel_blocklist', 'intel_note', 'intel_indicator', 'control', 'control_test', 'record_review', 'record_note', 'attachment', 'edge_finding', 'edge_pull', 'report', 'threat_triage', 'threat_article', 'threat_story', 'threat_pull'] as $t) {
+            foreach (['action', 'risk', 'incident', 'decision', 'device', 'cloud_account', 'cloud_asset', 'supplier', 'supplier_assurance', 'incident_timeline', 'intel_blocklist', 'intel_note', 'intel_indicator', 'control', 'control_test', 'record_review', 'record_note', 'attachment', 'edge_finding', 'edge_pull', 'report', 'threat_triage', 'threat_article', 'threat_story', 'threat_pull'] as $t) {
                 $db->createCommand("ALTER TABLE {{{$t}}} AUTO_INCREMENT = 1")->execute();
             }
         }
@@ -1232,6 +1234,61 @@ class SeedController extends Controller
             // The review answered the date due then ($early days later; negative = reviewed late)
             RecordReview::updateAll(['due_on' => self::d(-$ago + $early), 'created_at' => self::d(-$ago) . ' 11:00:00'], ['id' => $review->id]);
         }
+    }
+
+    // ---- Actions ------------------------------------------------------------
+
+    /**
+     * Remediation actions raised from the demo records (and two from a pen test), open, due
+     * soon, overdue, done and cancelled, so the Actions register and My work have content.
+     *
+     * @return int number of actions
+     */
+    private function seedActions(): int
+    {
+        $find = static fn(string $class, string $like) => $class::find()->where(['like', $class::titleAttribute(), $like])->orderBy(['id' => SORT_ASC])->one()
+            ?? $class::find()->orderBy(['id' => SORT_ASC])->one();
+        $plan = [
+            // title, description, record, owner, due (days from today), priority, status, outcome
+            ['Turn on MFA for the four remaining admin accounts', 'Four break-glass and service admin accounts still sign in with a password only.',
+                $find(Risk::class, 'phishing'), 'jpatel', -6, Action::PRIORITY_HIGH, Action::STATUS_IN_PROGRESS, null],
+            ['Move backups to an immutable vault', 'Use object lock on the backup bucket so ransomware cannot delete or encrypt backups.',
+                $find(Risk::class, 'ransomware'), 'analyst', 9, Action::PRIORITY_HIGH, Action::STATUS_OPEN, null],
+            ['Re-run the restore test after fixing the job', 'The last restore test failed on the file server share.',
+                $find(Control::class, 'backup'), 'analyst', 4, Action::PRIORITY_MEDIUM, Action::STATUS_OPEN, null],
+            ['Block legacy authentication in the identity provider', 'Lessons learned from the incident: the attacker used IMAP basic auth.',
+                $find(Incident::class, 'phish'), 'jpatel', -20, Action::PRIORITY_CRITICAL, Action::STATUS_DONE,
+                'Conditional access policy "Block legacy auth" enforced for all users on ' . self::d(-24) . '. Sign-in logs show no legacy sign-ins since.'],
+            ['Get the supplier\'s current SOC 2 report', 'The report on file expired; ask the account manager for the latest Type II.',
+                $find(Supplier::class, ''), 'analyst', 21, Action::PRIORITY_LOW, Action::STATUS_OPEN, null],
+            ['Close the public S3 bucket', 'Found by the configuration review: the bucket allows public reads.',
+                $find(CloudAsset::class, 'bucket'), 'jpatel', -2, Action::PRIORITY_HIGH, Action::STATUS_OPEN, null],
+            ['Patch the VPN appliance to the fixed release', 'Pen test finding PT-3: the VPN runs a version with a known exploited CVE.',
+                null, 'jpatel', 3, Action::PRIORITY_CRITICAL, Action::STATUS_IN_PROGRESS, null],
+            ['Remove the default SNMP community from the core switches', 'Pen test finding PT-7.',
+                null, 'analyst', 45, Action::PRIORITY_MEDIUM, Action::STATUS_OPEN, null],
+            ['Replace the unsupported NAS', 'The NAS is end of life, but it is due to be retired with the office move anyway.',
+                $find(Device::class, ''), 'analyst', -30, Action::PRIORITY_LOW, Action::STATUS_CANCELLED,
+                'Not needed: the NAS was retired early, in the office move.'],
+        ];
+        $count = 0;
+        foreach ($plan as [$title, $description, $record, $owner, $due, $priority, $status, $outcome]) {
+            $this->as($owner);
+            $action = new Action([
+                'title' => $title, 'description' => $description, 'owner_id' => $this->users[$owner],
+                'due_date' => self::d($due), 'priority' => $priority, 'status' => $status, 'outcome' => $outcome,
+            ]);
+            if ($record !== null) {
+                $action->raiseFrom($record);
+                $action->owner_id = $this->users[$owner];
+                $action->priority = $priority;
+            }
+            if (!$action->save()) {
+                throw new \RuntimeException('Action invalid: ' . json_encode($action->getErrors()));
+            }
+            $count++;
+        }
+        return $count;
     }
 
     // ---- Controls ----------------------------------------------------------

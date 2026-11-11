@@ -49,6 +49,10 @@ For real data, see [Production](#production); for the full setup, see [Developme
   the assurance they have given (ISO 27001, SOC 2, Cyber Essentials… with expiry dates), periodic reviews and posture
   against **supplier checks** from the Control Register; cloud accounts belong to a supplier, and risks, incidents,
   decisions and controls link to suppliers
+* **Actions and My work**: remediation actions with an owner, a due date, a priority and an outcome, raised from any
+  risk, control, decision, incident, device, cloud asset or account, supplier or edge finding (or on their own, for an
+  audit or pen test finding), shown on the record's **Actions** tab. **My work** lists what each person has to do:
+  their overdue and upcoming actions, and the reviews, tests and deadlines of the records they own
 * **Management reports**: a security posture report for a month, quarter, the year to date or any dates, for
   management: overall status (RAG) and summary, headline figures compared with the start of the period, then risk,
   incidents, controls and frameworks, decisions and risk acceptances, assets, suppliers and what falls due next. The
@@ -628,6 +632,23 @@ Greywarden sees the `https://` address. `WEBAUTHN_RP_ID` can set the name to a p
 `./storage/keys/mfa.key` (`MFA_KEY_PATH`), created on first use, so a copy of the database alone does not reveal
 them. Backups include the key (*Backup & restore*). Recovery codes are stored as SHA-256 hashes, passkeys as public
 keys only.
+
+### Actions and My work
+
+An **action** (`ACT-0001`…, *Operations › Actions*) is something someone has to do by a date to fix a weakness. Raise
+one from the record that found it with **Raise an action** on its **Actions** tab (risks, controls, decisions,
+incidents, devices, cloud assets and accounts, suppliers and edge findings): the form takes the record, and its owner
+(or an incident's assignee) as the action's owner, and an incident's severity as its priority. An action can also stand
+alone, for a finding from an audit, a pen test or a customer questionnaire.
+
+* **Fields**: owner, due date, priority (critical to low), status (open, in progress, done, cancelled), what needs
+  doing, and the **outcome**: what was done and where the evidence is. Closing an action, from its page or the form,
+  needs the outcome; who closed it and when are recorded. Actions have Notes, Files (for evidence) and History tabs.
+* **Register filters**: open, mine, overdue, due in 14 days, done or cancelled, and by priority, owner and the type
+  of record raised from (or standalone).
+* **My work** (*Operations › My Work*) shows what the signed-in user has to do: overdue actions, open incidents assigned
+  to them, actions due in the next 14 days, and overdue reviews, treatments, control tests and supplier reviews of the
+  records they own. The dashboard's *Needs attention* lists overdue actions for everyone.
 
 ### Device import (Google Workspace)
 

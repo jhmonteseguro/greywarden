@@ -58,6 +58,8 @@ final class Badge
         'assurance' => ['current' => 'success', 'expiring' => 'warning', 'expired' => 'danger'],
         'user-status' => ['10' => 'success', '0' => 'muted'],
         'mfa' => ['on' => 'success', 'off' => 'muted', 'missing' => 'danger'],
+        'action-status' => ['open' => 'warning', 'in_progress' => 'info', 'done' => 'success', 'cancelled' => 'muted'],
+        'action-priority' => ['critical' => 'critical', 'high' => 'high', 'medium' => 'medium', 'low' => 'low'],
         'role' => ['admin' => 'critical', 'analyst' => 'info', 'viewer' => 'neutral'],
         'compliance' => ['compliant' => 'success', 'non-compliant' => 'danger', 'not-assessed' => 'warning', 'n-a' => 'muted'],
         // Device check result (app\modules\inventory\components\DevicePosture)

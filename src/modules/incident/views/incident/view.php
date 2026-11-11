@@ -17,6 +17,7 @@ use app\modules\inventory\models\Device;
 use app\modules\risk\models\Risk;
 use app\modules\decision\models\Decision;
 use app\modules\supplier\models\Supplier;
+use app\widgets\ActionList;
 use app\widgets\Attachments;
 use app\widgets\AuditHistory;
 use app\widgets\DetailView;
@@ -142,6 +143,7 @@ ob_start(); ?>
         ]), 'options' => ['id' => 'tab-attack']],
         ['label' => 'Links (' . (count($devices) + count($cloudAssets) + count($suppliers) + count($risks) + count($decisions) + $controlCount) . ')', 'content' => $links, 'options' => ['id' => 'tab-links']],
         ['label' => 'Files (' . count($attachments) . ')', 'content' => Attachments::widget(['model' => $model, 'attachments' => $attachments]), 'options' => ['id' => 'tab-files']],
+        ['label' => ActionList::label($actionItems = ActionList::listFor($model)), 'content' => ActionList::widget(['model' => $model, 'actions' => $actionItems]), 'options' => ['id' => 'tab-actions']],
         ['label' => 'History', 'content' => AuditHistory::widget(['entityType' => 'incident', 'entityId' => $model->id]), 'options' => ['id' => 'tab-history']],
     ],
 ]) ?>

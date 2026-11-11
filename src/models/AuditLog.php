@@ -79,6 +79,7 @@ class AuditLog extends ActiveRecord
             'cloud_asset' => ['Cloud asset', \app\modules\cloud\models\CloudAsset::class, '/cloud/asset/view'],
             'supplier' => ['Supplier', \app\modules\supplier\models\Supplier::class, '/supplier/supplier/view'],
             'report' => ['Report', \app\modules\report\models\Report::class, '/report/report/view'],
+            'action' => ['Action', \app\modules\action\models\Action::class, '/action/action/view'],
             'user' => ['User', User::class, '/admin/user/view'],
             'lookup' => ['Lookup', Lookup::class, '/admin/lookup/update'],
             'setting' => ['Settings', \app\modules\admin\models\BrandingForm::class, '/admin/settings/index'],

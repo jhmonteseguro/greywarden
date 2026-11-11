@@ -20,6 +20,8 @@ final class Navigation
                 'label' => 'Operations',
                 'items' => [
                     ['label' => 'Dashboard', 'icon' => 'speedometer2', 'url' => ['/dashboard/default/index'], 'permission' => Rbac::PERM_VIEW, 'active' => ['dashboard/']],
+                    ['label' => 'My Work', 'icon' => 'person-check', 'url' => ['/work/index'], 'permission' => Rbac::PERM_VIEW, 'active' => ['work/']],
+                    ['label' => 'Actions', 'icon' => 'list-check', 'url' => ['/action/action/index'], 'permission' => Rbac::PERM_VIEW, 'active' => ['action/']],
                     ['label' => 'Risk Register', 'icon' => 'exclamation-triangle', 'url' => ['/risk/risk/index'], 'permission' => Rbac::PERM_VIEW, 'active' => ['risk/']],
                     ['label' => 'Control Register', 'icon' => 'shield-shaded', 'url' => ['/control/control/index'], 'permission' => Rbac::PERM_VIEW, 'active' => ['control/control/']],
                     ['label' => 'Decision Log', 'icon' => 'journal-check', 'url' => ['/decision/decision/index'], 'permission' => Rbac::PERM_VIEW, 'active' => ['decision/']],

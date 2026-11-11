@@ -3,6 +3,7 @@
 namespace app\controllers;
 
 use app\components\Rbac;
+use app\modules\action\models\Action;
 use app\modules\attack\models\AttackGroup;
 use app\modules\attack\models\AttackMitigation;
 use app\modules\attack\models\AttackTechnique;
@@ -54,7 +55,7 @@ class SearchController extends Controller
         $investigate = $q !== '' && !ctype_digit($q) ? Indicator::parse($q) : null;
         if ($q !== '') {
             // Exact reference / asset tag / ATT&CK id match: jump straight to the record
-            foreach ([Risk::class, Control::class, Decision::class, Incident::class, Device::class, CloudAsset::class, CloudAccount::class, Supplier::class, Report::class, BlocklistEntry::class, AttackTechnique::class, AttackMitigation::class, AttackGroup::class, FrameworkRequirement::class] as $class) {
+            foreach ([Action::class, Risk::class, Control::class, Decision::class, Incident::class, Device::class, CloudAsset::class, CloudAccount::class, Supplier::class, Report::class, BlocklistEntry::class, AttackTechnique::class, AttackMitigation::class, AttackGroup::class, FrameworkRequirement::class] as $class) {
                 $query = $class::find()->where([$class::referenceAttribute() => $q]);
                 if ($class === FrameworkRequirement::class) {
                     $query->andWhere(FrameworkCatalogue::scopeCondition());   // not frameworks switched off
@@ -66,6 +67,9 @@ class SearchController extends Controller
             }
 
             $results = [
+                'actions' => ['label' => 'Actions', 'icon' => 'list-check', 'items' => Action::find()
+                    ->where(['or', ['like', 'reference', $q], ['like', 'title', $q], ['like', 'description', $q]])
+                    ->orderBy(['archived_at' => SORT_ASC, 'id' => SORT_DESC])->limit(self::LIMIT)->all()],
                 'risks' => ['label' => 'Risks', 'icon' => 'exclamation-triangle', 'items' => Risk::find()
                     ->where(['or', ['like', 'reference', $q], ['like', 'title', $q], ['like', 'scope', $q]])
                     ->orderBy(['archived_at' => SORT_ASC, 'id' => SORT_DESC])->limit(self::LIMIT)->all()],

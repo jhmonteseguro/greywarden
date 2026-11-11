@@ -127,7 +127,7 @@ class RecordNoteTest extends DbTestCase
 
     public function testRisksControlsDecisionsCloudRecordsAndSuppliersTakeNotes(): void
     {
-        $this->assertSame(['risk', 'control', 'decision', 'cloud_account', 'cloud_asset', 'supplier'], RecordNote::ENTITY_TYPES);
+        $this->assertSame(['risk', 'control', 'decision', 'cloud_account', 'cloud_asset', 'supplier', 'action'], RecordNote::ENTITY_TYPES);
         $this->assertFalse(RecordNote::takesNotes('incident'), 'incidents keep their timeline');
         foreach ($this->owners() as $type => $owner) {
             /** @var DomainRecord $owner */

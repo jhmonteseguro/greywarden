@@ -3,6 +3,7 @@
 namespace app\modules\dashboard\widgets;
 
 use app\helpers\RiskMatrix;
+use app\modules\action\models\Action;
 use app\modules\cloud\models\CloudAccount;
 use app\modules\cloud\models\CloudAsset;
 use app\modules\control\models\Control;
@@ -61,6 +62,14 @@ class NeedsAttentionPanel extends PanelWidget
                 'query' => EdgeFinding::find()->where(['status' => EdgeFinding::STATUS_NEW, 'priority' => 'high'])->orderBy(['exposure' => SORT_DESC, 'score' => SORT_DESC]),
                 'url' => ['/intel/edge/index', 'filter' => 'high'],
                 'meta' => static fn(EdgeFinding $f) => $f->headline,
+            ],
+            [
+                'key' => 'actions-overdue',
+                'label' => 'Overdue actions',
+                'icon' => 'list-check',
+                'query' => Action::find()->active()->overdue($today)->with('owner')->byUrgency(),
+                'url' => ['/action/action/index', 'filter' => 'overdue'],
+                'meta' => static fn(Action $a) => 'Due ' . Yii::$app->formatter->asDate($a->due_date) . ' · ' . ($a->owner->full_name ?? 'no owner'),
             ],
             [
                 'key' => 'risk-review',
