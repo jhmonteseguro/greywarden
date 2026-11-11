@@ -6,6 +6,8 @@ releases).
 
 ## [Unreleased]
 
+## [0.19.0-alpha] - 2026-11-11
+
 ### Added
 
 - **Actions** (*Operations › Actions*): remediation actions (`ACT-0001`…) with an owner, a due date, a priority and a
@@ -490,7 +492,8 @@ First public release.
 - Repository safeguards: git hooks with a leak check and signed-push rules, and CI with all test suites, a secret
   scan and a production image build.
 
-[Unreleased]: https://github.com/jhmonteseguro/greywarden/compare/v0.18.1-alpha...HEAD
+[Unreleased]: https://github.com/jhmonteseguro/greywarden/compare/v0.19.0-alpha...HEAD
+[0.19.0-alpha]: https://github.com/jhmonteseguro/greywarden/compare/v0.18.1-alpha...v0.19.0-alpha
 [0.18.1-alpha]: https://github.com/jhmonteseguro/greywarden/compare/v0.18.0-alpha...v0.18.1-alpha
 [0.18.0-alpha]: https://github.com/jhmonteseguro/greywarden/compare/v0.17.0-alpha...v0.18.0-alpha
 [0.17.0-alpha]: https://github.com/jhmonteseguro/greywarden/compare/v0.16.0-alpha...v0.17.0-alpha
