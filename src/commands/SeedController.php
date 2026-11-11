@@ -13,6 +13,7 @@ use app\modules\attack\models\AttackMitigation;
 use app\modules\attack\models\AttackTechnique;
 use app\modules\cloud\components\CloudCatalogue;
 use app\modules\cloud\components\CloudChecks;
+use app\modules\cloud\components\CloudflareConfig;
 use app\modules\cloud\models\CloudAccount;
 use app\modules\cloud\models\CloudAsset;
 use app\modules\control\models\Control;
@@ -1599,6 +1600,10 @@ class SeedController extends Controller
                 'versioning' => 'Off', 'mfa_delete' => false]],
             'dev-sandbox-01' => ['ec2:instance', ['state' => 'stopped', 'instance_type' => 't3.large', 'platform' => 'Windows', 'imds' => 'optional',
                 'ssm_managed' => false]],
+            // Cloudflare zone sync (CloudflareZones): a legacy record left DNS only
+            'example.com' => ['zone', ['paused' => false, 'ssl' => 'strict', 'min_tls' => '1.2', 'always_use_https' => true, 'hsts' => true,
+                'security_level' => 'medium', 'dnssec' => 'active', 'dns_records' => 9,
+                'proxied' => ['example.com (A)', 'portal.example.com (CNAME)', 'www.example.com (CNAME)'], 'dns_only' => ['legacy.example.com (A)']]],
         ];
         $this->as('jpatel');
         $assets = [];
@@ -1618,6 +1623,11 @@ class SeedController extends Controller
             $this->backdate($asset, self::d(-200) . ' 09:00:00');
             $assets[$name] = $asset;
         }
+        // What the scheduled sync wrote when the legacy record was switched to DNS only
+        $zone = $assets['example.com'];
+        Yii::$app->db->createCommand()->insert('audit_log', ['entity_type' => 'cloud_asset', 'entity_id' => $zone->id, 'entity_label' => $zone->getAuditLabel(),
+            'action' => 'config_change', 'changes' => json_encode(['legacy.example.com (A)' => [CloudflareConfig::PROXIED, CloudflareConfig::DNS_ONLY]]),
+            'username' => 'console', 'created_at' => self::d(-3) . ' 08:15:00'])->execute();
 
         // Links (recorded on the risk / incident / decision side; inserted directly so their histories stay as seeded)
         $db = Yii::$app->db;

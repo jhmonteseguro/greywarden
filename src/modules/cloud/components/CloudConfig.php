@@ -2,10 +2,13 @@
 
 namespace app\modules\cloud\components;
 
+use app\modules\intel\components\edge\EdgeSettings;
+
 /**
  * The configuration an inventory export carries for an asset or an account,
- * read per provider (only AWS so far, see AwsConfig): the provider's type
- * label, the settings to show, the asset fields they answer and the findings.
+ * read per provider (AWS, see AwsConfig; Cloudflare zones, see
+ * CloudflareConfig): the provider's type label, the settings to show, the
+ * asset fields they answer, the findings and, for Cloudflare, what changed.
  */
 final class CloudConfig
 {
@@ -19,6 +22,7 @@ final class CloudConfig
     {
         return match ($provider) {
             'aws' => AwsConfig::typeLabel($providerType),
+            'cloudflare' => CloudflareConfig::typeLabel($providerType),
             default => $providerType !== null && $providerType !== '' ? $providerType : null,
         };
     }
@@ -28,6 +32,7 @@ final class CloudConfig
     {
         return match ($provider) {
             'aws' => AwsConfig::facts($properties),
+            'cloudflare' => CloudflareConfig::facts($properties),
             default => array_map(static fn($k, $v) => [ucfirst(str_replace('_', ' ', (string) $k)), is_scalar($v) ? (string) $v : json_encode($v)],
                 array_keys($properties), $properties),
         };
@@ -46,10 +51,24 @@ final class CloudConfig
      */
     public static function findings(?string $provider, string $providerType, array $properties, ?string $today = null, string $account = ''): array
     {
-        $findings = $provider === 'aws' ? AwsConfig::findings($providerType, $properties, $today ?? date('Y-m-d'), $account) : [];
+        $findings = match ($provider) {
+            'aws' => AwsConfig::findings($providerType, $properties, $today ?? date('Y-m-d'), $account),
+            'cloudflare' => CloudflareConfig::findings($providerType, $properties, EdgeSettings::dnsOnly()),
+            default => [],
+        };
         $rank = array_flip(array_keys(self::SEVERITIES));
         usort($findings, static fn($a, $b) => ($rank[$a['severity']] ?? 9) <=> ($rank[$b['severity']] ?? 9));
         return $findings;
+    }
+
+    /**
+     * What changed in the settings between two imports, for the History: label => [old, new].
+     * Only Cloudflare zones so far: AWS settings such as "last used" move on every import.
+     * @return array<string, array{0: ?string, 1: ?string}>
+     */
+    public static function changes(?string $provider, string $providerType, array $old, array $new): array
+    {
+        return $provider === 'cloudflare' ? CloudflareConfig::changes($providerType, $old, $new) : [];
     }
 
     /** The worst severity among the findings, or null */

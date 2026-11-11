@@ -163,6 +163,16 @@ class NeedsAttentionPanel extends PanelWidget
                 'meta' => static fn(CloudAsset $a) => implode(', ', array_slice($a->getPosture()['failures'], 0, 2)),
             ],
             [
+                'key' => 'cloudflare-findings',
+                'label' => 'Cloudflare zones with high findings',
+                'icon' => 'shield-exclamation',
+                'query' => CloudAsset::find()->active()->inService()->joinWith('account a', false)->andWhere(['a.provider' => 'cloudflare'])
+                    ->withFindings('high')->orderBy(['cloud_asset.reference' => SORT_ASC]),
+                'url' => ['/cloud/asset/index', 'filter' => 'findings', 'provider' => 'cloudflare', 'finding_severity' => 'high'],
+                'meta' => static fn(CloudAsset $a) => implode('; ', array_slice(array_column(array_filter($a->getFindings(),
+                    static fn(array $f) => in_array($f['severity'], ['critical', 'high'], true)), 'title'), 0, 2)),
+            ],
+            [
                 'key' => 'cloud-non-compliant',
                 'label' => 'Non-compliant cloud assets',
                 'icon' => 'cloud-slash',

@@ -6,14 +6,17 @@ use app\modules\intel\components\Cloudflare;
 use app\modules\intel\components\Http;
 
 /**
- * An in-memory Cloudflare API for tests (installed as Http::$fake): the zone, its
- * custom-rules entrypoint ruleset, account IP lists with paged items and bulk
- * operations, and an optional GraphQL handler. Every request is recorded in $sent.
+ * An in-memory Cloudflare API for tests (installed as Http::$fake): the zone (in the
+ * zone list, with its settings, DNS records and DNSSEC), its custom-rules entrypoint
+ * ruleset, account IP lists with paged items and bulk operations, and an optional
+ * GraphQL handler. Every request is recorded in $sent.
  */
 final class FakeCloudflare
 {
     public const ZONE = 'zone1';
     public const ACCOUNT = 'acc1';
+    /** The owning account as the zone list reports it (the importer wants a real 32-hex account ID) */
+    public const ZONE_ACCOUNT = '0123456789abcdef0123456789abcdef';
 
     /** @var array[]|null custom rules; null = the zone has no custom-rules ruleset yet */
     public ?array $rules;
@@ -31,6 +34,24 @@ final class FakeCloudflare
     public int $pageSize = 500;
     /** @var callable|null fn(array $decodedBody): array response for /graphql */
     public $graphql = null;
+
+    // Zone configuration (GET /zones, settings, DNS records, DNSSEC) for the Cloudflare zone sync
+    public bool $paused = false;
+    /** @var array<string, mixed> zone setting id => value */
+    public array $settings = [
+        'ssl' => 'strict', 'min_tls_version' => '1.2', 'always_use_https' => 'on', 'security_level' => 'medium',
+        'security_header' => ['strict_transport_security' => ['enabled' => true, 'max_age' => 31536000]],
+    ];
+    /** @var array[] DNS records [name, type, proxied, proxiable?] */
+    public array $dnsRecords = [
+        ['name' => 'example.com', 'type' => 'A', 'proxied' => true, 'proxiable' => true],
+        ['name' => 'www.example.com', 'type' => 'CNAME', 'proxied' => true, 'proxiable' => true],
+        ['name' => 'mail.example.com', 'type' => 'A', 'proxied' => false, 'proxiable' => true],
+        ['name' => 'example.com', 'type' => 'MX', 'proxied' => false, 'proxiable' => false],
+    ];
+    public string $dnssec = 'active';
+    /** @var array<string, array> path fragment (settings | dns_records | dnssec | zones) => response returned instead */
+    public array $failZoneWith = [];
     private int $seq = 0;
 
     public function __construct(?array $rules = null, bool $withRule = true)
@@ -114,6 +135,28 @@ final class FakeCloudflare
         $route = $parts['path'];
         parse_str($parts['query'] ?? '', $query);
 
+        foreach ($this->failZoneWith as $fragment => $response) {
+            if ($r['method'] === 'GET' && ($route === "$zone/$fragment" || ($fragment === 'zones' && $route === '/zones'))) {
+                return $response;
+            }
+        }
+        if ($r['method'] === 'GET' && $route === '/zones') {
+            return self::ok([['id' => self::ZONE, 'name' => 'example.com', 'status' => 'active', 'paused' => $this->paused,
+                'account' => ['id' => self::ZONE_ACCOUNT, 'name' => 'Example'], 'created_on' => '2024-01-02T03:04:05Z']],
+                ['result_info' => ['page' => 1, 'per_page' => 50, 'total_pages' => 1]]);
+        }
+        if ($r['method'] === 'GET' && $route === "$zone/settings") {
+            return self::ok(array_map(static fn($id, $value) => ['id' => $id, 'value' => $value], array_keys($this->settings), $this->settings));
+        }
+        if ($r['method'] === 'GET' && $route === "$zone/dnssec") {
+            return self::ok(['status' => $this->dnssec]);
+        }
+        if ($r['method'] === 'GET' && $route === "$zone/dns_records") {
+            $perPage = (int) ($query['per_page'] ?? 100);
+            $page = max(1, (int) ($query['page'] ?? 1));
+            return self::ok(array_slice($this->dnsRecords, ($page - 1) * $perPage, $perPage),
+                ['result_info' => ['page' => $page, 'per_page' => $perPage, 'total_pages' => max(1, (int) ceil(count($this->dnsRecords) / $perPage))]]);
+        }
         if ($r['method'] === 'GET' && $route === $zone) {
             return self::ok(['id' => self::ZONE, 'name' => 'example.com', 'account' => ['id' => self::ACCOUNT, 'name' => 'Example']]);
         }

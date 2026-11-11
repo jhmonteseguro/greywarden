@@ -42,6 +42,7 @@ class AuditLog extends ActiveRecord
         'assurance_remove' => 'Assurance removed',
         'export' => 'Exported to PDF',
         'regenerate' => 'Figures regenerated',
+        'config_change' => 'Configuration changed',
         'approve' => 'Approved',
         'approval_withdraw' => 'Approval withdrawn',
         'login' => 'Signed in',
@@ -158,7 +159,8 @@ class AuditLog extends ActiveRecord
     public function getFormattedChanges(): array
     {
         $class = self::entities()[$this->entity_type][1] ?? null;
-        $prototype = $class && class_exists($class) ? new $class() : null;
+        // A configuration change is keyed by the provider's own setting labels (and DNS record names), not attributes
+        $prototype = $class && class_exists($class) && $this->action !== 'config_change' ? new $class() : null;
         $rows = [];
         foreach ($this->getChangesArray() as $field => $pair) {
             [$old, $new] = is_array($pair) && count($pair) === 2 ? array_values($pair) : [null, $pair];

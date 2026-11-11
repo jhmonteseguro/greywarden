@@ -4,6 +4,7 @@ namespace app\modules\admin\models;
 
 use app\models\AuditLog;
 use app\models\Setting;
+use app\modules\cloud\components\CloudflareZones;
 use app\modules\intel\components\edge\EdgeSettings;
 use yii\base\Model;
 
@@ -20,6 +21,7 @@ class EdgeForm extends Model
     public $min_score;
     public $block_days;
     public $volume_rpm;
+    public $dns_only = '';
 
     public static function current(): self
     {
@@ -33,14 +35,15 @@ class EdgeForm extends Model
     public function rules(): array
     {
         return [
-            [['ignore_paths', 'allowlist'], 'trim'],
-            [['ignore_paths', 'allowlist'], 'string', 'max' => self::MAX_LIST],
+            [['ignore_paths', 'allowlist', 'dns_only'], 'trim'],
+            [['ignore_paths', 'allowlist', 'dns_only'], 'string', 'max' => self::MAX_LIST],
             [['min_score', 'block_days', 'volume_rpm'], 'required'],
             ['min_score', 'integer', 'min' => 1, 'max' => 99],
             ['block_days', 'integer', 'min' => 1, 'max' => 365],
             ['volume_rpm', 'integer', 'min' => 1, 'max' => 100000],
             ['allowlist', 'validateAllowlist'],
             ['ignore_paths', 'validatePaths'],
+            ['dns_only', 'validateHostnames'],
         ];
     }
 
@@ -52,6 +55,7 @@ class EdgeForm extends Model
             'min_score' => 'Open a finding from score',
             'block_days' => 'Default block length (days)',
             'volume_rpm' => 'Flood threshold (requests a minute)',
+            'dns_only' => 'DNS only on purpose',
         ];
     }
 
@@ -63,6 +67,8 @@ class EdgeForm extends Model
             'min_score' => 'Lower opens more findings. 30 catches a single request for a known attack path.',
             'block_days' => 'Offered first when blocking from a finding. Expired blocks are taken out of Cloudflare on the next pull.',
             'volume_rpm' => 'Requests a minute from one address, after what Cloudflare stopped, that count as a flood.',
+            'dns_only' => 'One hostname per line that is not proxied on purpose, e.g. a mail server; *.example.com covers its subdomains. '
+                . 'The Cloudflare zone sync flags every other DNS-only record.',
         ];
     }
 
@@ -79,6 +85,15 @@ class EdgeForm extends Model
         $bad = array_filter(EdgeSettings::lines((string) $this->$attribute), static fn(string $line) => !str_starts_with($line, '/') || preg_match('/\s/', $line));
         if ($bad) {
             $this->addError($attribute, 'Each line must be a path starting with "/": ' . implode(', ', array_slice($bad, 0, 5)) . '.');
+        }
+    }
+
+    public function validateHostnames(string $attribute): void
+    {
+        $bad = array_filter(EdgeSettings::lines((string) $this->$attribute),
+            static fn(string $line) => !preg_match('/^(\*\.)?([a-z0-9_]([a-z0-9_-]*[a-z0-9_])?\.)*[a-z0-9]([a-z0-9-]*[a-z0-9])?\.?$/i', $line));
+        if ($bad) {
+            $this->addError($attribute, 'Not a hostname: ' . implode(', ', array_slice($bad, 0, 5)) . '.');
         }
     }
 
@@ -100,6 +115,9 @@ class EdgeForm extends Model
         if ($values) {
             Setting::put($values);
             AuditLog::record('setting', null, 'Edge monitoring', 'update', $changes);
+        }
+        if (isset($changes['dns_only'])) {
+            CloudflareZones::refreshFindings();
         }
         return true;
     }

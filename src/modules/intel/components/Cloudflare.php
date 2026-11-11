@@ -190,6 +190,18 @@ class Cloudflare
     }
 
     /**
+     * Whether the "Greywarden Blocklist" rule is on, for the zone configuration sync.
+     * @return string enabled | disabled | missing
+     * @throws RuntimeException
+     */
+    public static function ruleState(): string
+    {
+        self::requireConfigured();
+        $rule = self::ruleIn(self::entrypoint());
+        return $rule === null ? 'missing' : (($rule['enabled'] ?? true) ? 'enabled' : 'disabled');
+    }
+
+    /**
      * Takes Greywarden's conditions out of another rule (the one "Add to Cloudflare" used
      * before the IP list). The rule is left alone when nothing else would remain.
      *

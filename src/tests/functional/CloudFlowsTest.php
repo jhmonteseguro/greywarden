@@ -129,6 +129,28 @@ class CloudFlowsTest extends FunctionalTestCase
         $this->assertSame(['s3:bucket', 4, 'critical', 'high'], [$legacy->provider_type, (int) $legacy->finding_count, $legacy->finding_severity, $legacy->criticality]);
     }
 
+    public function testCloudflareZoneConfiguration(): void
+    {
+        $this->loginAs('viewer');
+        $zone = $this->asset('example.com');
+        $this->get("/cloud/assets/{$zone->id}");
+        $this->assertOk();
+        foreach (['Cloudflare zone', '1 finding', 'legacy.example.com (A) is DNS only: its traffic skips Cloudflare', 'SSL/TLS encryption mode', 'Full (strict)',
+                     'DNS-only records (could be proxied)', 'Configuration changed', 'legacy.example.com (A)', 'Proxied', 'DNS only'] as $text) {
+            $this->assertSee($text);
+        }
+        // The Needs attention link lands on the zone
+        $this->get('/cloud/assets?filter=findings&provider=cloudflare&finding_severity=high');
+        $this->assertSee('example.com');
+        $this->assertNotSee('legacy-reports');
+        $this->get('/admin/audit?action=config_change');
+        $this->assertStatus(403);
+        $this->loginAs('admin');
+        $this->get('/admin/audit?action=config_change');
+        $this->assertOk();
+        $this->assertSee('Configuration changed');
+    }
+
     public function testDemoDataPages(): void
     {
         $this->loginAs('viewer');
@@ -400,7 +422,7 @@ class CloudFlowsTest extends FunctionalTestCase
         $this->assertOk();
         foreach (['Cloud assets', 'Cloud compliance', 'gw-dashboard-panel--cloud-posture', 'gw-attention__group--cloud-exposed',
                      'gw-attention__group--cloud-non-compliant', 'gw-attention__group--cloud-accounts', 'gw-attention__group--cloud-unsupported-os',
-                     'gw-attention__group--stale-cloud'] as $text) {
+                     'gw-attention__group--stale-cloud', 'gw-attention__group--cloudflare-findings', 'legacy.example.com (A) is DNS only'] as $text) {
             $this->assertSee($text);
         }
 

@@ -81,7 +81,7 @@ import-cloud: ## Import a cloud inventory export: make import-cloud FILE=resourc
 	@test -n "$(FILE)" -a -n "$(PROVIDER)" || (echo "Usage: make import-cloud FILE=resources.json PROVIDER=aws|azure|gcp AS=<username> [ACCOUNT=ACC-0003] [DRY_RUN=1]" && exit 1)
 	$(PHP_T) php yii cloud/import - --provider=$(PROVIDER) $(if $(ACCOUNT),--account=$(ACCOUNT)) $(if $(AS),--user=$(AS)) $(if $(DRY_RUN),--dry-run=1) < "$(FILE)"
 
-sync-cloudflare: ## Sync Cloudflare zones into the Cloud Inventory (CLOUDFLARE_API_TOKEN, Zone Read): make sync-cloudflare AS=jdoe [DRY_RUN=1]
+sync-cloudflare: ## Sync Cloudflare zones and their configuration into the Cloud Inventory (the scheduler does it every CLOUDFLARE_SYNC_INTERVAL min): make sync-cloudflare AS=jdoe [DRY_RUN=1]
 	$(PHP_T) php yii cloud/sync-cloudflare $(if $(AS),--user=$(AS)) $(if $(DRY_RUN),--dry-run=1)
 
 suppliers-from-cloud: ## Add one supplier per cloud provider in use (accounts are not linked): make suppliers-from-cloud AS=jdoe [DRY_RUN=1]

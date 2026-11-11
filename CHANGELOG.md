@@ -6,6 +6,25 @@ releases).
 
 ## [Unreleased]
 
+### Added
+
+- **Cloudflare zone configuration and change detection**: the Cloudflare sync now reads each zone's DNS records
+  (proxied or DNS only), SSL/TLS mode, minimum TLS version, Always Use HTTPS, HSTS, security level, DNSSEC, whether
+  the zone is paused and whether the **Greywarden Blocklist** rule is enabled. Weak settings become findings (a
+  DNS-only record, a paused zone or a disabled blocklist rule are high), zones with high findings appear under
+  *Needs attention*, and each change between two syncs is written to the zone's History as *Configuration changed*
+  (for example `www.example.com (CNAME)`: *Proxied* → *DNS only*). The scheduler container runs the sync every
+  `CLOUDFLARE_SYNC_INTERVAL` minutes (default 15, `0` = off) when `CLOUDFLARE_API_TOKEN` is set. The token also
+  needs **Zone Settings Read**, **DNS Read** and **Zone WAF Read**; a part it cannot read shows as a finding.
+- **Admin › Settings › Edge monitoring › DNS only on purpose**: hostnames that are not proxied on purpose (such as
+  a mail server) raise no finding; `*.example.com` covers its subdomains.
+
+### Changed
+
+- Cloud assets: a re-import or sync that only moves the *last seen* time counts as unchanged and no longer writes a
+  History entry.
+- Cloudflare zones synced before this release are relabelled *Cloudflare zone* on their next sync.
+
 ## [0.20.0-alpha] - 2026-11-11
 
 ### Added

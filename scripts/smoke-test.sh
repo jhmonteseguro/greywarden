@@ -271,6 +271,17 @@ check viewer "/cloud/assets/$CLD10" 200
 grep -q 'id="configuration"' "$BODY" && grep -q 'Public through the bucket policy' "$BODY" && ok || bad "imported configuration / findings missing on a cloud asset"
 check viewer "/cloud/accounts/$ACC2" 200
 grep -q 'Root user has no MFA' "$BODY" && ok || bad "account settings findings missing on a cloud account"
+# Cloudflare zone configuration: the DNS-only record finding, on the dashboard and in the zone's History
+ZONE=$(sql "SELECT id FROM cloud_asset WHERE provider_type='zone' LIMIT 1")
+check viewer / 200
+grep -q 'gw-attention__group--cloudflare-findings' "$BODY" && ok || bad "Cloudflare zone findings missing from Needs attention"
+check viewer "/cloud/assets/$ZONE" 200
+grep -q 'legacy.example.com (A) is DNS only' "$BODY" && grep -q 'Configuration changed' "$BODY" && ok || bad "Cloudflare zone finding / configuration change missing"
+check viewer "/cloud/assets?filter=findings&provider=cloudflare&finding_severity=high" 200
+check admin "/admin/audit?action=config_change" 200
+grep -q 'Configuration changed' "$BODY" && ok || bad "configuration change missing from the audit log"
+check admin /admin/settings 200
+grep -q 'name="EdgeForm\[dns_only\]"' "$BODY" && ok || bad "DNS only on purpose missing from the edge monitoring settings"
 check viewer "/cloud/assets?filter=stale" 200
 grep -q 'legacy-reports' "$BODY" && ok || bad "stale cloud asset missing from the Not seen recently filter"
 check viewer /intel/ip/203.0.113.10 200

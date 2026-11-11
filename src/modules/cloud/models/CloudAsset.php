@@ -258,7 +258,8 @@ class CloudAsset extends DomainRecord
     public function behaviors(): array
     {
         $behaviors = parent::behaviors();
-        $behaviors['audit']['ignored'] = $this->configAuditIgnored();
+        // last_seen_at moves on every import and scheduled Cloudflare sync: shown on the record, not logged
+        $behaviors['audit']['ignored'] = array_merge($this->configAuditIgnored(), ['last_seen_at']);
         return $behaviors;
     }
 

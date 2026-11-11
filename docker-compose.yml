@@ -39,7 +39,7 @@ services:
       - composer-cache:/home/app/.composer/cache
 
   # Scheduled jobs (edge pulls from Cloudflare every EDGE_PULL_INTERVAL minutes, expired
-  # blocks out of Cloudflare), so no host crontab is needed: `php yii schedule/run` in the
+  # blocks out of Cloudflare, Threat Watch, Cloudflare zone syncs), so no host crontab is needed: `php yii schedule/run` in the
   # same image as php, sharing its code, storage and runtime. Logs: make logs s=scheduler
   scheduler:
     <<: *php

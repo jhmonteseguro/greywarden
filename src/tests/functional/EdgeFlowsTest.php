@@ -462,6 +462,8 @@ class EdgeFlowsTest extends FunctionalTestCase
         $this->assertSee('id="edge-form"');
         $this->assertSee('Edge monitoring');
         $this->assertSee('name="EdgeForm[allowlist]"');
+        $this->assertSee('name="EdgeForm[dns_only]"');
+        $this->assertSee('DNS only on purpose');
 
         $form = ['EdgeForm' => ['ignore_paths' => "/wp-admin\n/api/", 'allowlist' => "203.0.113.10 # office\nAS64500", 'min_score' => '40', 'block_days' => '7', 'volume_rpm' => '120']];
         $this->post('/admin/settings', $form);
@@ -480,6 +482,16 @@ class EdgeFlowsTest extends FunctionalTestCase
         $count = AuditLog::find()->where(['entity_label' => 'Edge monitoring'])->count();
         $this->post('/admin/settings', $form);
         $this->assertSame($count, AuditLog::find()->where(['entity_label' => 'Edge monitoring'])->count());
+
+        // Records that are DNS only on purpose
+        $this->post('/admin/settings', ['EdgeForm' => ['dns_only' => "mail.example.com # MX
+*.lab.example.com"] + $form['EdgeForm']]);
+        $this->assertRedirect('/admin/settings#edge');
+        Setting::reset();
+        $this->assertSame(['mail.example.com', '*.lab.example.com'], EdgeSettings::dnsOnly());
+        $this->post('/admin/settings', ['EdgeForm' => ['dns_only' => 'not a host'] + $form['EdgeForm']]);
+        $this->assertOk();
+        $this->assertSee('Not a hostname: not a host.');
 
         // Validation
         $bad = ['EdgeForm' => ['ignore_paths' => "wp-admin\n/ok", 'allowlist' => "not-an-ip\n203.0.113.10", 'min_score' => '0', 'block_days' => '400', 'volume_rpm' => 'x']];

@@ -158,6 +158,9 @@ $check = static fn(string $class) => static fn($index, $label, $name, $checked, 
         <div class="col-md-4"><?= $form->field($edge, 'block_days')->input('number', ['min' => 1, 'max' => 365]) ?></div>
         <div class="col-md-4"><?= $form->field($edge, 'volume_rpm')->input('number', ['min' => 1]) ?></div>
     </div>
+    <div class="row">
+        <div class="col-md-6"><?= $form->field($edge, 'dns_only')->textarea(['rows' => 3, 'placeholder' => "mail.example.com   # MX target\n*.internal.example.com"]) ?></div>
+    </div>
 </fieldset>
 
 <div class="gw-form__actions">

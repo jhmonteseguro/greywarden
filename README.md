@@ -43,7 +43,9 @@ For real data, see [Production](#production); for the full setup, see [Developme
   risks, incidents and decisions; imported from AWS, Azure and Google Cloud inventory exports and synced from Cloudflare.
   AWS accounts imported with `scripts/aws-inventory.sh` also bring each resource's **configuration** (public access,
   encryption, open ports, MFA, key age, TLS...) and the account's own settings (root MFA, CloudTrail, GuardDuty...),
-  with **findings** graded critical to low
+  with **findings** graded critical to low. Cloudflare zones are re-synced every 15 minutes with their configuration
+  (proxied vs DNS-only records, SSL/TLS, HSTS, DNSSEC, the blocklist rule): weak settings become findings and every
+  change is recorded in the zone's History
 * **Supplier Register**: the third parties you rely on, what they provide, the data and access they have, a **tier**
   worked out from those, the security terms of the contract (DPA, breach notification, right to audit, notice period),
   the assurance they have given (ISO 27001, SOC 2, Cyber Essentials… with expiry dates), periodic reviews and posture
@@ -210,7 +212,7 @@ Composer, Gii or the runtime create are owned by you. Uploaded files are stored 
 | `make attack-status` / `make attack-update` | show the loaded MITRE ATT&CK release / download the latest release from MITRE, refresh the bundled snapshot and import it |
 | `make import-devices FILE=devices.csv AS=<user> [DRY_RUN=1]` | import a Google Workspace device export (see [Device import](#device-import-google-workspace)) |
 | `make import-cloud FILE=resources.json PROVIDER=aws\|azure\|gcp AS=<user> [ACCOUNT=ACC-0003] [DRY_RUN=1]` | import an AWS, Azure or Google Cloud inventory export (see [Importing cloud assets](#importing-cloud-assets)) |
-| `make sync-cloudflare AS=<user> [DRY_RUN=1]` | add / refresh the Cloudflare zones as cloud assets, using `CLOUDFLARE_API_TOKEN` |
+| `make sync-cloudflare AS=<user> [DRY_RUN=1]` | add / refresh the Cloudflare zones and their configuration as cloud assets, using `CLOUDFLARE_API_TOKEN` (the scheduler container also does this every `CLOUDFLARE_SYNC_INTERVAL` minutes; see [Cloudflare zone configuration](#cloudflare-zone-configuration)) |
 | `make suppliers-from-cloud AS=<user> [DRY_RUN=1]` | add one supplier per cloud provider in use, without linking the accounts (see [Supplier Register](#supplier-register)) |
 | `make edge-pull [AS=<user>] [MINUTES=60] [DRY_RUN=1]` / `make edge-status` | read the Cloudflare traffic since the last pull and update the edge findings now (the scheduler container also does this every `EDGE_PULL_INTERVAL` minutes) / show the zone's analytics limits and recent pulls (see [Edge findings](#edge-findings-cloudflare-traffic)) |
 | `make threat-pull [AS=<user>] [FORCE=1]` / `make threat-status` | read the Threat Watch sources that are due, or all of them with `FORCE=1` (the scheduler container does this every `THREAT_PULL_INTERVAL` minutes) / show source health and recent reads (see [Threat Watch](#threat-watch)) |
@@ -241,6 +243,8 @@ All configuration comes from `.env`, which docker compose passes to the PHP and 
 * `EDGE_PULL_INTERVAL` (default `15`, `0` = off): minutes between the scheduler container's Cloudflare edge pulls
   (see [Edge findings](#edge-findings-cloudflare-traffic)). The **scheduler** service (`php yii schedule/run`, same
   image as php) runs Greywarden's scheduled jobs, so no host crontab is needed; `make logs s=scheduler` shows them.
+* `CLOUDFLARE_SYNC_INTERVAL` (default `15`, `0` = off): minutes between the scheduler container's Cloudflare zone
+  syncs (see [Cloudflare zone configuration](#cloudflare-zone-configuration)); on whenever `CLOUDFLARE_API_TOKEN` is set.
 * `THREAT_PULL_INTERVAL` (default `15`, `0` = off): minutes between the scheduler container's checks for
   [Threat Watch](#threat-watch) sources that are due. `NVD_API_KEY` (optional, free) makes CVSS scores arrive ten times faster.
 * `APP_NAME` (default `Greywarden`): the product name, used when no display name is set in **Admin › Settings**.
@@ -263,7 +267,9 @@ keys: it recreates the php container with the new `.env` (`make restart` does no
 *Add to Cloudflare* on the blocklist needs `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ZONE_ID`. The token needs
 **Zone › Zone WAF › Edit** (the rule), **Account › Account Filter Lists › Edit** (the IP list) and **Zone › Zone › Read**
 (to find the zone's account; or set `CLOUDFLARE_ACCOUNT_ID`). `CLOUDFLARE_LIST_NAME` renames the IP list (default
-`greywarden_blocklist`). `make sync-cloudflare` reuses the token to list zones (**Zone › Zone › Read**, no zone ID needed).
+`greywarden_blocklist`). `make sync-cloudflare` reuses the token to list zones (**Zone › Zone › Read**, no zone ID needed)
+and to read their configuration (**Zone › Zone Settings › Read**, **Zone › DNS › Read**, **Zone › Zone WAF › Read**;
+a part the token cannot read shows as a finding on the zone).
 Edge findings (`make edge-pull`) read the zone's traffic analytics with the same token and zone ID, which needs
 **Zone › Analytics › Read**.
 
@@ -802,8 +808,33 @@ How the import works:
 * Public IPs come from AWS Config (`configuration.publicIpAddress` / `publicIp`), Azure public IP resources and Google
   address resources; private addresses are dropped. Azure virtual machines bring their OS (checked against the
   end-of-support catalogue).
-* The Cloudflare sync adds one *DNS zone* asset per zone, in the Cloudflare account that owns it, internet-facing when
-  created. Paused, moved or pending zones are flagged in the output.
+* The Cloudflare sync adds one *Cloudflare zone* asset per zone, in the Cloudflare account that owns it, internet-facing
+  when created. Paused, moved or pending zones are flagged in the output.
+
+### Cloudflare zone configuration
+
+Cloudflare has no alert for a record being switched from proxied to DNS only, so Greywarden watches for it. Every
+`CLOUDFLARE_SYNC_INTERVAL` minutes (default 15) the **scheduler** syncs the zones, as `make sync-cloudflare` does, and
+reads each zone's configuration into the asset's *Configuration* panel:
+
+* **Records**: which A / AAAA / CNAME records are proxied and which are DNS only (their traffic skips the WAF, the
+  blocklist and DDoS protection).
+* **Settings**: SSL/TLS encryption mode, minimum TLS version, Always Use HTTPS, HSTS, security level, DNSSEC, whether
+  the zone is paused, and for the `CLOUDFLARE_ZONE_ID` zone whether the **Greywarden Blocklist** rule is enabled
+  (once anything has been added to Cloudflare from the blocklist).
+
+Findings: **high** for a DNS-only record, a paused zone, the blocklist rule disabled or missing, SSL/TLS off or
+*Flexible*; **medium** for *Full* (not strict), TLS below 1.2, Always Use HTTPS off and a part the token could not
+read; **low** for HSTS off and DNSSEC not active. Zones with high findings appear under *Needs attention* on the
+dashboard. Records that are DNS only on purpose (a mail server, say) go in **Admin › Settings › Edge monitoring ›
+DNS only on purpose**, one hostname per line (`*.example.com` covers its subdomains); saving the list refreshes the
+findings at once.
+
+When something changes between two syncs, the zone's **History** gets a *Configuration changed* entry listing each
+change (`www.example.com (CNAME)`: *Proxied* → *DNS only*, *SSL/TLS encryption mode*: *Full (strict)* →
+*Flexible*), and the scheduler log (`make logs s=scheduler`) says so too. The first sync is the baseline. A part the
+token stops being able to read is not reported as a change, and a failing read (not a permissions error) leaves the
+zone's configuration as it was.
 
 ## Working in VS Code
 

@@ -2,6 +2,8 @@
 
 namespace app\commands;
 
+use app\modules\cloud\components\CloudflareZones;
+use app\modules\cloud\components\CloudImporter;
 use app\modules\intel\components\Cloudflare;
 use app\modules\intel\components\edge\EdgePuller;
 use app\modules\intel\components\edge\EdgeSettings;
@@ -21,6 +23,8 @@ use yii\console\ExitCode;
  *                   (each pull also takes expired blocks out of Cloudflare)
  *   expire-blocks   hourly, only when edge pulls are off: expired blocks out of Cloudflare
  *   threat-pull     every THREAT_PULL_INTERVAL minutes (default 15, 0 = off): news sources that are due → Threat Watch
+ *   cloudflare-sync every CLOUDFLARE_SYNC_INTERVAL minutes (default 15, 0 = off): Cloudflare zones and their
+ *                   configuration → Cloud Inventory (findings, and "Configuration changed" in the zone's History)
  *
  * Jobs that need Cloudflare are skipped while it is not configured. Each job runs on
  * its own; a failure is logged and the loop carries on.
@@ -52,10 +56,13 @@ class ScheduleController extends Controller
         $edge = EdgeSettings::pullInterval();
         $cloudflare = Cloudflare::isConfigured() ? null : 'Cloudflare is not configured';
         $threat = ThreatSettings::pullInterval();
+        $zones = CloudflareZones::syncInterval();
         return [
             'edge-pull' => ['interval' => $edge, 'off' => $cloudflare ?? ($edge === 0 ? 'EDGE_PULL_INTERVAL=0' : null), 'run' => fn() => $this->edgePull()],
             'expire-blocks' => ['interval' => 60, 'off' => $cloudflare ?? ($edge > 0 ? 'every edge pull does it' : null), 'run' => fn() => $this->expireBlocks()],
             'threat-pull' => ['interval' => $threat, 'off' => $threat === 0 ? 'THREAT_PULL_INTERVAL=0' : null, 'run' => fn() => $this->threatPull()],
+            'cloudflare-sync' => ['interval' => $zones, 'off' => !Cloudflare::hasToken() ? 'no CLOUDFLARE_API_TOKEN' : ($zones === 0 ? 'CLOUDFLARE_SYNC_INTERVAL=0' : null),
+                'run' => fn() => $this->cloudflareSync()],
         ];
     }
 
@@ -135,6 +142,45 @@ class ScheduleController extends Controller
         }
         $this->log(trim(sprintf('threat-pull %s: %d sources read, %d failed, %d new articles, %d new stories, %d CVEs enriched. %s',
             $pull->status, $pull->sources_read, $pull->sources_failed, $pull->articles_new, $pull->stories_new, $pull->cves_enriched, (string) $pull->message)));
+    }
+
+    private function cloudflareSync(): void
+    {
+        try {
+            $records = CloudflareZones::records();
+        } catch (RuntimeException $e) {
+            $this->log('cloudflare-sync skipped: ' . $e->getMessage());
+            return;
+        }
+        $importer = new CloudImporter(date('Y-m-d H:i:s'));
+        $tx = Yii::$app->db->beginTransaction();
+        try {
+            $results = $importer->import($records, sprintf('Synced from Cloudflare on %s.', date('Y-m-d')));
+            $tx->commit();
+        } catch (\Throwable $e) {
+            $tx->rollBack();
+            throw $e;
+        }
+        $counts = array_count_values(array_column($results, 'action'));
+        $changes = [];
+        foreach ($results as $r) {
+            foreach ($r['config_changes'] ?? [] as $setting => [$old, $new]) {
+                $changes[] = sprintf('%s %s: %s → %s', $r['asset']->name, $setting, $old ?? '(none)', $new ?? '(removed)');
+            }
+        }
+        if (($counts[CloudImporter::CREATED] ?? 0) + ($counts[CloudImporter::UPDATED] ?? 0) > 0) {
+            Yii::$app->cache->flush();
+        }
+        // Quiet when nothing changed: the job runs every few minutes
+        $failed = array_filter($results, static fn($r) => $r['action'] === CloudImporter::FAILED);
+        if (!$changes && !$failed && !CloudflareZones::$warnings && !($counts[CloudImporter::CREATED] ?? 0) && !($counts[CloudImporter::UPDATED] ?? 0)) {
+            return;
+        }
+        $this->log(trim(sprintf('cloudflare-sync: %d zone(s), %d new, %d updated, %d failed.%s%s%s', count($results), $counts[CloudImporter::CREATED] ?? 0,
+            $counts[CloudImporter::UPDATED] ?? 0, count($failed),
+            $changes ? ' Changed: ' . implode('; ', $changes) . '.' : '',
+            $failed ? ' Failed: ' . implode('; ', array_merge(...array_column($failed, 'errors'))) . '.' : '',
+            CloudflareZones::$warnings ? ' ' . implode(' ', CloudflareZones::$warnings) : '')));
     }
 
     private function expireBlocks(): void

@@ -4,6 +4,9 @@ namespace tests\unit;
 
 use app\commands\ScheduleController;
 use app\components\Actor;
+use app\models\AuditLog;
+use app\modules\cloud\components\CloudflareZones;
+use app\modules\cloud\models\CloudAsset;
 use app\modules\intel\components\edge\CloudflareTraffic;
 use app\modules\intel\components\edge\EdgePuller;
 use app\modules\intel\components\edge\EdgeSettings;
@@ -28,6 +31,8 @@ class ScheduleControllerTest extends DbTestCase
     {
         parent::setUp();
         Yii::$app->cache->flush();
+        // The zone sync has its own test (testCloudflareSync); off elsewhere so the other jobs run alone
+        putenv('CLOUDFLARE_SYNC_INTERVAL=0');
         $this->cf = (new FakeCloudflare())->install();
         $this->cf->graphql = static function (array $request): array {
             if (str_contains($request['query'], 'EdgeSettings')) {
@@ -44,6 +49,7 @@ class ScheduleControllerTest extends DbTestCase
     {
         FakeCloudflare::uninstall();
         putenv('EDGE_PULL_INTERVAL');
+        putenv('CLOUDFLARE_SYNC_INTERVAL');
         Yii::$app->cache->flush();
         Actor::override(null);
         parent::tearDown();
@@ -81,7 +87,7 @@ class ScheduleControllerTest extends DbTestCase
     {
         [$code, $out] = OutputCapture::run('schedule/status');
         $this->assertSame(ExitCode::OK, $code);
-        $this->assertSame("Jobs: edge-pull every 15 min; expire-blocks off (every edge pull does it); threat-pull off (THREAT_PULL_INTERVAL=0).\n", $out);
+        $this->assertSame("Jobs: edge-pull every 15 min; expire-blocks off (every edge pull does it); threat-pull off (THREAT_PULL_INTERVAL=0); cloudflare-sync off (CLOUDFLARE_SYNC_INTERVAL=0).\n", $out);
 
         [$code, $out] = OutputCapture::run('schedule/run', ['once' => 1]);
         $this->assertSame(ExitCode::OK, $code);
@@ -91,7 +97,7 @@ class ScheduleControllerTest extends DbTestCase
 
         FakeCloudflare::uninstall();
         [, $out] = OutputCapture::run('schedule/status');
-        $this->assertSame("Jobs: edge-pull off (Cloudflare is not configured); expire-blocks off (Cloudflare is not configured); threat-pull off (THREAT_PULL_INTERVAL=0).\n", $out);
+        $this->assertSame("Jobs: edge-pull off (Cloudflare is not configured); expire-blocks off (Cloudflare is not configured); threat-pull off (THREAT_PULL_INTERVAL=0); cloudflare-sync off (no CLOUDFLARE_API_TOKEN).\n", $out);
         [, $out] = OutputCapture::run('schedule/run', ['once' => 1]);
         $this->assertSame(1, substr_count($out, "\n"), 'only the start line: nothing ran');
     }
@@ -134,6 +140,52 @@ class ScheduleControllerTest extends DbTestCase
         $this->cf->failWith = ['status' => 403, 'body' => json_encode(['success' => false, 'errors' => [['message' => 'Authentication error']]])];
         [, $out] = $this->tick($c, time() + 7200);
         $this->assertStringContainsString("expire-blocks: {$entry->reference}: Cloudflare: Authentication error", $out);
+    }
+
+    public function testCloudflareSync(): void
+    {
+        putenv('CLOUDFLARE_SYNC_INTERVAL');
+        putenv('EDGE_PULL_INTERVAL=0');
+        $this->assertSame(15, CloudflareZones::syncInterval());
+        foreach (['5' => 5, '0' => 0, '-1' => 0, '9999' => 1440] as $value => $minutes) {
+            putenv("CLOUDFLARE_SYNC_INTERVAL=$value");
+            $this->assertSame($minutes, CloudflareZones::syncInterval(), (string) $value);
+        }
+        putenv('CLOUDFLARE_SYNC_INTERVAL');
+
+        $c = $this->controller();
+        $now = 1793260800;
+        [$ran, $out] = $this->tick($c, $now);
+        $this->assertSame(['expire-blocks', 'cloudflare-sync'], $ran);
+        $this->assertStringContainsString('cloudflare-sync: 1 zone(s), 1 new, 0 updated, 0 failed.', $out);
+        $zone = CloudAsset::findOne(['source' => 'cloudflare', 'source_id' => FakeCloudflare::ZONE]);
+        $this->assertSame(['blocklist_rule' => 'enabled', 'dns_only' => ['mail.example.com (A)']],
+            array_intersect_key($zone->getProperties(), ['blocklist_rule' => 1, 'dns_only' => 1]));
+
+        // Nothing changed: quiet (only the seen time moves)
+        [$ran, $out] = $this->tick($c, $now + 15 * 60);
+        $this->assertSame(['cloudflare-sync'], $ran);
+        $this->assertSame('', $out);
+
+        // A record switched to DNS only and the blocklist rule disabled: logged, and in the zone's History
+        $this->cf->dnsRecords[1]['proxied'] = false;
+        $this->cf->rules[1]['enabled'] = false;
+        [, $out] = $this->tick($c, $now + 30 * 60);
+        $this->assertStringContainsString('cloudflare-sync: 1 zone(s), 0 new, 1 updated, 0 failed. Changed: example.com Greywarden Blocklist rule: Enabled → Disabled; '
+            . 'example.com www.example.com (CNAME): Proxied → DNS only.', $out);
+        $log = AuditLog::find()->where(['entity_type' => 'cloud_asset', 'entity_id' => $zone->id, 'action' => 'config_change'])->one();
+        $this->assertSame([null, 'console'], [$log->user_id, $log->username], 'the scheduler, not a person');
+
+        // A zone list failure is logged, not thrown
+        $this->cf->failZoneWith = ['zones' => ['status' => 500, 'body' => json_encode(['success' => false, 'errors' => [['code' => 1000, 'message' => 'Internal']]])]];
+        [, $out] = $this->tick($c, $now + 45 * 60);
+        $this->assertStringContainsString('cloudflare-sync skipped: Cloudflare: Internal (1000)', $out);
+
+        // A configuration read that fails (not for permissions) keeps the zone as it was, with a warning
+        $this->cf->failZoneWith = ['dnssec' => ['status' => 500, 'body' => json_encode(['success' => false, 'errors' => [['code' => 1000, 'message' => 'Internal']]])]];
+        [, $out] = $this->tick($c, $now + 60 * 60);
+        $this->assertStringContainsString('example.com: DNSSEC not read: Cloudflare: Internal (1000)', $out);
+        $this->assertSame(['mail.example.com (A)', 'www.example.com (CNAME)'], CloudAsset::findOne($zone->id)->getProperties()['dns_only']);
     }
 
     public function testFailuresAreLoggedAndTheLoopCarriesOn(): void

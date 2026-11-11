@@ -97,6 +97,9 @@ class CloudController extends Controller
             $this->stderr($e->getMessage() . "\n", Console::FG_RED);
             return ExitCode::UNAVAILABLE;
         }
+        foreach (CloudflareZones::$warnings as $warning) {
+            $this->stdout("Warning: $warning\n", Console::FG_YELLOW);
+        }
         return $this->importRecords($records, sprintf('Synced from Cloudflare on %s.', date('Y-m-d')), null);
     }
 
@@ -148,6 +151,9 @@ class CloudController extends Controller
             }
             $this->stdout(sprintf("  row %-4d %-9s %-9s %-40s %s\n", $r['line'], $r['action'], $a->reference ?? '-',
                 mb_strimwidth($a->name ?? $r['type'], 0, 40, '…'), $detail), $colour[$r['action']] ?? null);
+            foreach ($r['config_changes'] ?? [] as $setting => [$old, $new]) {
+                $this->stdout(sprintf("           %s: %s → %s\n", $setting, $old ?? '(none)', $new ?? '(removed)'), Console::FG_YELLOW);
+            }
         }
         foreach ($importer->createdAccounts as $acc) {
             $this->stdout(sprintf("New account %s %s (%s %s): set its environment (now %s), owner, criticality and data classification.\n",

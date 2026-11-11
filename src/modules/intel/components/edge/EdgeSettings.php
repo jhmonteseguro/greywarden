@@ -14,6 +14,8 @@ use app\modules\intel\components\IpAddress;
  *   edge.min_score     lowest score that opens a finding
  *   edge.block_days    default length of a block from a finding
  *   edge.volume_rpm    requests per minute from one address that count as a flood
+ *   edge.dns_only      hostnames that are DNS only (not proxied) on purpose, e.g. a mail server:
+ *                      the Cloudflare zone sync raises no finding for them
  *
  * and, from .env, EDGE_PULL_INTERVAL: minutes between the scheduler container's pulls.
  */
@@ -25,6 +27,7 @@ final class EdgeSettings
         'min_score' => '30',
         'block_days' => '7',
         'volume_rpm' => '120',
+        'dns_only' => '',
     ];
 
     public static function settingName(string $key): string
@@ -71,6 +74,12 @@ final class EdgeSettings
             }
         }
         return $out;
+    }
+
+    /** @return string[] lower-case hostnames that are DNS only on purpose ("*.example.com" covers its subdomains) */
+    public static function dnsOnly(): array
+    {
+        return array_map('strtolower', self::lines(self::get('dns_only')));
     }
 
     /** @return string[] lower-case path prefixes, each starting with "/" */

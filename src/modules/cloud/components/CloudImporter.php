@@ -3,6 +3,7 @@
 namespace app\modules\cloud\components;
 
 use app\behaviors\AuditBehavior;
+use app\models\AuditLog;
 use app\modules\cloud\models\CloudAccount;
 use app\modules\cloud\models\CloudAsset;
 
@@ -28,6 +29,12 @@ use app\modules\cloud\models\CloudAsset;
  * created (listed in $createdAccounts, to review) unless an account is forced.
  * A record with account_properties holds the account's own settings: they
  * replace the account's configuration.
+ *
+ * When a Cloudflare zone's configuration changes (a record switched to DNS
+ * only, the SSL/TLS mode, the blocklist rule...), the asset's History gets a
+ * "Configuration changed" entry listing each change (CloudConfig::changes),
+ * also returned as config_changes. A refresh of only the seen times counts as
+ * unchanged.
  */
 final class CloudImporter
 {
@@ -42,6 +49,9 @@ final class CloudImporter
 
     /** Refreshed from the source on every import (when the source has a value) */
     private const SYNCED = ['region', 'resource_id', 'provider_type', 'properties', 'encryption_at_rest', 'internet_facing'];
+
+    /** When the source last (first) saw the resource: refreshed without counting as a change */
+    private const SEEN = ['last_seen_at', 'first_seen_at'];
 
     /** Taken from the source only while still empty */
     private const FILL = ['os', 'os_version', 'public_ips', 'public_endpoints'];
@@ -82,7 +92,7 @@ final class CloudImporter
     /**
      * @param list<array> $records
      * @param string $importNote first line of the notes on created assets and accounts
-     * @return list<array{line: int, action: string, type: string, asset: CloudAsset|null, account: CloudAccount|null, changed: string[], errors: string[], state: string|null}>
+     * @return list<array{line: int, action: string, type: string, asset: CloudAsset|null, account: CloudAccount|null, changed: string[], errors: string[], state: string|null, config_changes?: array}>
      */
     public function import(array $records, string $importNote): array
     {
@@ -142,6 +152,7 @@ final class CloudImporter
             return self::result($saved ? self::CREATED : self::FAILED, $asset, [], $saved ? [] : $asset->getErrorSummary(true));
         }
 
+        $oldProperties = $asset->getProperties();
         // Adopted: an asset entered by hand becomes the synced copy of this resource
         $asset->source ??= $source['source'];
         $asset->source_id ??= $source['source_id'];
@@ -171,7 +182,15 @@ final class CloudImporter
             return self::result(self::UNCHANGED, $asset);
         }
         $asset->save(false);
-        return self::result(self::UPDATED, $asset, $changed);
+        // Only the seen times moved (every scheduled Cloudflare sync): kept, but nothing changed
+        if (!array_diff($changed, self::SEEN)) {
+            return self::result(self::UNCHANGED, $asset);
+        }
+        $configChanges = CloudConfig::changes($account->provider, (string) $asset->provider_type, $oldProperties, $asset->getProperties());
+        if ($configChanges) {
+            AuditLog::record('cloud_asset', $asset->id, $asset->getAuditLabel(), 'config_change', $configChanges);
+        }
+        return self::result(self::UPDATED, $asset, $changed) + ['config_changes' => $configChanges];
     }
 
     /** The account's own settings replace its configuration */
