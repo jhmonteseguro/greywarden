@@ -9,6 +9,7 @@ use app\modules\admin\models\ComplianceForm;
 use app\modules\admin\models\EdgeForm;
 use app\modules\admin\models\IncidentReportForm;
 use app\modules\admin\models\ReportForm;
+use app\modules\admin\models\SecurityForm;
 use Yii;
 use yii\filters\AccessControl;
 use yii\web\Controller;
@@ -17,8 +18,8 @@ use yii\web\Response;
 /**
  * Instance settings: branding (display name, organisation, logo, sign-in text,
  * PDF marking), the compliance frameworks switched on, the wording of
- * incident PDF reports, management reports, edge monitoring and the backup
- * directory. Each has its own form.
+ * incident PDF reports, management reports, edge monitoring, the backup
+ * directory and sign-in security. Each has its own form.
  */
 class SettingsController extends Controller
 {
@@ -41,7 +42,13 @@ class SettingsController extends Controller
         $edge = EdgeForm::current();
         $report = ReportForm::current();
         $backup = BackupForm::current();
-        if ($compliance->load($post)) {
+        $security = SecurityForm::current();
+        if ($security->load($post)) {
+            if ($security->save()) {
+                Yii::$app->session->setFlash('success', 'Sign-in security saved.');
+                return $this->redirect(['index', '#' => 'security']);
+            }
+        } elseif ($compliance->load($post)) {
             if ($compliance->save()) {
                 Yii::$app->session->setFlash('success', 'Compliance frameworks saved.');
                 return $this->redirect(['index', '#' => 'compliance']);
@@ -70,6 +77,6 @@ class SettingsController extends Controller
             Yii::$app->session->setFlash('success', 'Branding saved.');
             return $this->redirect(['index']);
         }
-        return $this->render('index', ['model' => $model, 'compliance' => $compliance, 'incidentReport' => $incidentReport, 'report' => $report, 'edge' => $edge, 'backup' => $backup]);
+        return $this->render('index', ['model' => $model, 'compliance' => $compliance, 'incidentReport' => $incidentReport, 'report' => $report, 'edge' => $edge, 'backup' => $backup, 'security' => $security]);
     }
 }

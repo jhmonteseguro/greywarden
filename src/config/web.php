@@ -12,6 +12,8 @@ $config = [
     'bootstrap' => ['log', app\components\Branding::class, 'csp'],
     'defaultRoute' => 'dashboard/default/index',
     'as passwordGuard' => app\components\PasswordChangeGuard::class,
+    // Sends users who must use two-step sign-in (Admin › Settings › Sign-in security) and have no method to set one up
+    'as mfaGuard' => app\components\MfaGuard::class,
     'modules' => [
         'dashboard' => ['class' => app\modules\dashboard\Module::class],
         'risk' => ['class' => app\modules\risk\Module::class],
@@ -35,6 +37,10 @@ $config = [
             'enableCsrfValidation' => true,
             'enableCookieValidation' => true,
             'csrfCookie' => ['httpOnly' => true, 'secure' => $secureCookies, 'sameSite' => yii\web\Cookie::SAME_SITE_LAX],
+            // Reverse proxies whose X-Forwarded-For / -Proto / -Host are believed (TRUSTED_PROXIES: addresses or
+            // CIDRs as nginx sees them, comma-separated). Sign-in lockouts and the audit log then see the real
+            // client address, and passkeys the https:// origin.
+            'trustedHosts' => array_values(array_filter(array_map('trim', explode(',', (string) gw_env('TRUSTED_PROXIES', ''))))),
         ],
         'session' => [
             'name' => 'GWSESSID',

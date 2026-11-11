@@ -39,6 +39,7 @@ $web = (static fn() => require __DIR__ . '/../config/web.php')();
 $config['components']['urlManager'] = $web['components']['urlManager'] + ['scriptUrl' => '/index.php', 'baseUrl' => '', 'hostInfo' => 'http://localhost'];
 // Attachments and logos never land in (or are deleted from) the real storage folder
 $config['params']['attachments.path'] = sys_get_temp_dir() . '/gw-test-attachments';
+$config['params']['mfa.keyPath'] = sys_get_temp_dir() . '/gw-test-keys/mfa.key';
 $config['params']['branding.path'] = sys_get_temp_dir() . '/gw-test-branding';
 new yii\console\Application($config);
 

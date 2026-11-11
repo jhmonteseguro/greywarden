@@ -6,6 +6,24 @@ releases).
 
 ## [Unreleased]
 
+### Added
+
+- **Two-step sign-in** (*Account › Sign-in security*, in the account menu). Each user can add an **authenticator app**
+  (6-digit codes; any TOTP app) and **passkeys** (on a computer, a phone or a security key), and gets ten one-time
+  **recovery codes**. After the password, Greywarden asks for a code, a recovery code or a passkey. Wrong codes count
+  towards the sign-in lockout. Changing these methods asks for the password again unless you signed in in the last
+  15 minutes, and every change is in the audit log.
+- **Sign in with a passkey**: a passkey also signs in on its own, without a username or password (the device checks a
+  fingerprint, face or PIN). Passkeys need Greywarden to be opened by name (`http://localhost:8080`, or a name over
+  HTTPS), not on an IP address such as `127.0.0.1`. `WEBAUTHN_RP_ID` sets the name passkeys belong to.
+- *Admin › Settings › Sign-in security* makes two-step sign-in optional, required for administrators or required for
+  everyone. Users who must use it are sent to set it up first. *Admin › Users* shows who has it on, and an admin can
+  reset a user's methods if they lose them (`make yii ARGS="user/reset-mfa <username>"` for the only admin).
+- `TRUSTED_PROXIES`: the reverse proxy whose `X-Forwarded-*` headers Greywarden believes, so that behind an HTTPS
+  proxy lockouts and the audit log see the real client address.
+- Authenticator app secrets are encrypted with a key in `storage/keys/mfa.key`, which `scripts/backup.sh` now backs up
+  with the uploaded files. Migration `m261109_100001`.
+
 ### Security
 
 - The Content-Security-Policy no longer allows any inline script. Each page gets a new random nonce, and only the

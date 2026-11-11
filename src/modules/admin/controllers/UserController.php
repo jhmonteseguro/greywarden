@@ -3,6 +3,7 @@
 namespace app\modules\admin\controllers;
 
 use app\components\LoginThrottle;
+use app\components\Mfa;
 use app\components\Rbac;
 use app\models\AuditLog;
 use app\models\User;
@@ -27,7 +28,7 @@ class UserController extends Controller
             ],
             'verbs' => [
                 'class' => VerbFilter::class,
-                'actions' => ['toggle-status' => ['POST'], 'unlock' => ['POST']],
+                'actions' => ['toggle-status' => ['POST'], 'unlock' => ['POST'], 'reset-mfa' => ['POST']],
             ],
         ];
     }
@@ -99,6 +100,16 @@ class UserController extends Controller
         $n = (new LoginThrottle())->clear($user->username) + (new LoginThrottle())->clear($user->email);
         AuditLog::record('user', $user->id, $user->getAuditLabel(), 'unlock', ['failed_attempts_cleared' => [$n, 0]]);
         Yii::$app->session->setFlash('success', "Sign-in lockout cleared for {$user->username}.");
+        return $this->redirect(['view', 'id' => $id]);
+    }
+
+    /** For a user who lost their phone, passkeys and recovery codes: removes every two-step method */
+    public function actionResetMfa(int $id): Response
+    {
+        $user = $this->findUser($id);
+        Mfa::reset($user);
+        $message = "Two-step sign-in reset for {$user->username}: they now sign in with their password alone";
+        Yii::$app->session->setFlash('success', $message . (Mfa::isRequiredFor($user) ? ' and must set up a new method straight away.' : '.'));
         return $this->redirect(['view', 'id' => $id]);
     }
 

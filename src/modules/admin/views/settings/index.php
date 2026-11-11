@@ -10,9 +10,11 @@
  * @var app\modules\admin\models\ReportForm $report
  * @var app\modules\admin\models\EdgeForm $edge
  * @var app\modules\admin\models\BackupForm $backup
+ * @var app\modules\admin\models\SecurityForm $security
  */
 
 use app\components\Branding;
+use app\components\Mfa;
 use app\modules\admin\models\BackupForm;
 use app\modules\admin\models\ComplianceForm;
 use app\modules\admin\models\IncidentReportForm;
@@ -108,6 +110,21 @@ $check = static fn(string $class) => static fn($index, $label, $name, $checked, 
 
 <div class="gw-form__actions">
     <?= Html::submitButton('Save incident report wording', ['class' => 'btn btn-primary gw-btn']) ?>
+</div>
+<?php ActiveForm::end(); ?>
+
+<?php $form = ActiveForm::begin(['id' => 'security-form', 'options' => ['class' => 'gw-form gw-form--settings']]); ?>
+<?= $form->errorSummary($security, ['class' => 'alert alert-danger gw-error-summary']) ?>
+
+<fieldset class="gw-fieldset" id="security">
+    <legend class="gw-fieldset__title">Sign-in security</legend>
+    <div class="row">
+        <div class="col-md-6"><?= $form->field($security, 'mfa_required')->dropDownList(Mfa::requiredOptions()) ?></div>
+    </div>
+</fieldset>
+
+<div class="gw-form__actions">
+    <?= Html::submitButton('Save sign-in security', ['class' => 'btn btn-primary gw-btn']) ?>
 </div>
 <?php ActiveForm::end(); ?>
 

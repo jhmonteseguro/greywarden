@@ -54,6 +54,7 @@ $identity = Yii::$app->user->identity;
                 <li><hr class="dropdown-divider"></li>
                 <li><?= Html::a('<i class="bi bi-person-circle"></i> My profile', ['/account/profile'], ['class' => 'dropdown-item']) ?></li>
                 <li><?= Html::a('<i class="bi bi-key"></i> Change password', ['/account/password'], ['class' => 'dropdown-item']) ?></li>
+                <li><?= Html::a('<i class="bi bi-shield-lock"></i> Sign-in security', ['/account/security'], ['class' => 'dropdown-item']) ?></li>
                 <li><hr class="dropdown-divider"></li>
                 <li>
                     <?= Html::beginForm(['/site/logout'], 'post', ['class' => 'gw-logout-form']) ?>

@@ -6,6 +6,7 @@
  * @var int $locked seconds remaining on a lockout
  */
 
+use app\components\Mfa;
 use app\helpers\Badge;
 use app\models\AuditLog;
 use app\models\User;
@@ -24,6 +25,10 @@ $isSelf = (int) $user->id === (int) Yii::$app->user->id;
 $this->params['actions'] = Html::a('<i class="bi bi-pencil-square"></i> Edit', ['update', 'id' => $user->id], ['class' => 'btn btn-primary gw-btn'])
     . ' ' . Html::a('<i class="bi bi-key"></i> Reset password', ['reset-password', 'id' => $user->id], ['class' => 'btn btn-outline-warning gw-btn'])
     . ($locked > 0 ? ' ' . Html::a('<i class="bi bi-unlock"></i> Clear lockout', ['unlock', 'id' => $user->id], ['class' => 'btn btn-outline-info gw-btn', 'data-method' => 'post']) : '')
+    . (Mfa::isEnabled($user) ? ' ' . Html::a('<i class="bi bi-shield-x"></i> Reset two-step sign-in', ['reset-mfa', 'id' => $user->id], [
+        'class' => 'btn btn-outline-warning gw-btn', 'data-method' => 'post',
+        'data-confirm' => 'Remove this user\'s authenticator app, passkeys and recovery codes? Only do this once you are sure who is asking.',
+    ]) : '')
     . ($isSelf ? '' : ' ' . Html::a(
         $user->isActive() ? '<i class="bi bi-person-x"></i> Disable' : '<i class="bi bi-person-check"></i> Enable',
         ['toggle-status', 'id' => $user->id],
@@ -46,6 +51,13 @@ $entries = AuditLog::find()->where(['entity_type' => 'user', 'entity_id' => $use
                     'password_changed_at:datetime',
                     'last_login_at:datetime',
                     'last_login_ip',
+                    [
+                        'label' => 'Two-step sign-in',
+                        'format' => 'raw',
+                        'value' => Badge::render('mfa', Mfa::isEnabled($user) ? 'on' : (Mfa::isRequiredFor($user) ? 'missing' : 'off'), Mfa::summary($user))
+                            . (Mfa::isEnabled($user) ? ' <span class="gw-muted gw-small">' . Mfa::recoveryCodesLeft($user) . ' recovery codes left</span>' : '')
+                            . (!Mfa::isEnabled($user) && Mfa::isRequiredFor($user) ? ' <span class="gw-muted gw-small">required: set up at next sign-in</span>' : ''),
+                    ],
                     'created_at:datetime',
                 ],
             ]) ?>

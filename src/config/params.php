@@ -49,6 +49,12 @@ return [
     'attachments.path' => gw_env('ATTACHMENTS_PATH', '/var/www/storage/attachments'),
     'attachments.maxSizeMb' => 20,
 
+    // Two-step sign-in (components/Mfa): the key that encrypts authenticator app secrets, created on
+    // first use. Outside the database, and in ./storage so backups (scripts/backup.sh) include it.
+    'mfa.keyPath' => gw_env('MFA_KEY_PATH', '/var/www/storage/keys/mfa.key'),
+    // Passkeys (components/Passkeys): the site name passkeys belong to; empty = the host name in use
+    'webauthn.rpId' => gw_env('WEBAUTHN_RP_ID', ''),
+
     // Authentication hardening
     'auth.passwordMinLength' => 10,
     'auth.maxFailedAttempts' => 5,      // per username

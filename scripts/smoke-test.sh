@@ -147,6 +147,7 @@ reset_jar guest
 check guest / 302
 check guest /risks 302
 check guest /login 200
+check guest /site/verify 302          # no password step yet: back to the sign-in page
 
 # Content-Security-Policy: inline scripts need the response's nonce, and every inline script has it
 csp_check() {
@@ -178,7 +179,7 @@ login analyst analyst "$DEMO_PASSWORD"
 login viewer viewer "$DEMO_PASSWORD"
 
 READ_PAGES=(
-    / /search?q=RSK /search?q=LT- /search?q=phishing /account/profile /account/password
+    / /search?q=RSK /search?q=LT- /search?q=phishing /account/profile /account/password /account/security
     /risks "/risks?filter=all" "/risks?filter=mine" "/risks?filter=review-overdue" "/risks?filter=treatment-overdue" "/risks?filter=archived"
     "/risks?filter=all&sort=-residual_rating&status=in_treatment&q=a" "/risks?filter=open&residual_likelihood=2&residual_impact=4"
     /risks/heatmap "/risks/heatmap?heatmap=inherent" /risks/$R1 /risks/$R2 /risks/$R5 /risks/$R13
@@ -788,6 +789,29 @@ check guest /branding/logo 404
 post admin /admin/settings /admin/settings 302 \
     "BrandingForm[app_name]=" "BrandingForm[organisation]=" "BrandingForm[tagline]=Security operations console" \
     "BrandingForm[login_notice]=Restricted system · all access is monitored and audited" "BrandingForm[pdf_classification]=Confidential"
+
+# Two-step sign-in: the app setup page (the smoke sign-in is fresh, so no password prompt) and passkey options
+check viewer /account/totp 200
+grep -q 'class="gw-qr' "$BODY" && ok || bad "authenticator app setup shows no QR code"
+check viewer /account/recovery-codes 302
+reset_jar guest
+post guest /login /site/passkey-options 200 "mode=passwordless"
+if [[ "$BASE" == *127.0.0.1* ]]; then
+    grep -q 'not work on an IP address' "$BODY" && ok || bad "passkeys offered on an IP address: $(head -c 200 "$BODY")"
+    # The same server by name: passkeys work there
+    NAMED="${BASE/127.0.0.1/localhost}"
+    : > "$WORK/named.txt"
+    TOKEN=$(curl -s -b "$WORK/named.txt" -c "$WORK/named.txt" "$NAMED/login" | sed -n 's/.*<meta name="csrf-token" content="\([^"]*\)".*/\1/p' | head -1)
+    curl -s -b "$WORK/named.txt" -c "$WORK/named.txt" -o "$WORK/body.html" --data-urlencode "_csrf=$TOKEN" --data-urlencode "mode=passwordless" "$NAMED/site/passkey-options"
+fi
+grep -q '"challenge"' "$WORK/body.html" && ok || bad "passkey options carry no challenge: $(head -c 200 "$WORK/body.html")"
+post admin /admin/settings /admin/settings 302 "SecurityForm[mfa_required]=admins"
+[[ "$(sql "SELECT value FROM setting WHERE name='auth.mfa_required'")" == "admins" ]] && ok || bad "sign-in security not saved"
+check analyst /risks 200              # analysts are not affected
+REDIRECT=$(curl -s -o /dev/null -w '%{redirect_url}' -b "$(jar admin)" "$BASE/risks")
+[[ "$REDIRECT" == *account/security* ]] && ok || bad "admin without two-step sign-in not sent to set it up ($REDIRECT)"
+sql "UPDATE setting SET value='' WHERE name='auth.mfa_required'" >/dev/null   # the admin can no longer reach Settings
+check admin /admin/settings 200
 
 # Admin: backup directory with spaces (restored to the default afterwards)
 post admin /admin/settings /admin/settings 302 "BackupForm[backup_path]=/srv/Greywarden backups/nightly"

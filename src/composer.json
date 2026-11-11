@@ -6,7 +6,9 @@
     "minimum-stability": "stable",
     "require": {
         "php": ">=8.3",
+        "chillerlan/php-qrcode": "^6.0",
         "dompdf/dompdf": "^3.1",
+        "lbuchs/webauthn": "^2.2",
         "npm-asset/bootstrap-icons": "^1.11",
         "npm-asset/chart.js": "^4.4",
         "yiisoft/yii2": "~2.0.51",

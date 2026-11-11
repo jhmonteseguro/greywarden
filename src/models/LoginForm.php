@@ -2,18 +2,22 @@
 
 namespace app\models;
 
-use app\components\Actor;
 use app\components\LoginThrottle;
+use app\components\Mfa;
 use Yii;
 use yii\base\Model;
 
 /**
- * Login form with rate limiting / temporary lockout.
+ * Login form with rate limiting / temporary lockout. With two-step sign-in, a right password
+ * only starts the sign-in (Mfa::startPending) and the second step completes it.
  */
 class LoginForm extends Model
 {
     public $username;
     public $password;
+
+    /** Set by login() when the password was right and the user has two-step sign-in */
+    public bool $needsSecondStep = false;
 
     /** Used to equalise timing when the user does not exist */
     private const DUMMY_HASH = '$2y$12$dTDAw0rl/..8ND4y9GOzneeiGu5M5i5FKvYPGZRFqVR9g.huka2Ua';
@@ -60,10 +64,13 @@ class LoginForm extends Model
             return false;
         }
 
-        $throttle->record($this->username, $ip, true, $request->getUserAgent());
-        $user->updateAttributes(['last_login_at' => Actor::now(), 'last_login_ip' => $ip]);
-        Yii::$app->user->login($user);
-        AuditLog::record('user', $user->id, $user->getAuditLabel(), 'login');
+        if (Mfa::isEnabled($user)) {
+            // The password was right; the sign-in finishes on the second step (SiteController::actionVerify)
+            Mfa::startPending($user);
+            $this->needsSecondStep = true;
+            return false;
+        }
+        Mfa::completeLogin($user, 'password');
         return true;
     }
 }

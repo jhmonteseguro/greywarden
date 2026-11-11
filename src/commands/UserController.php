@@ -2,6 +2,7 @@
 
 namespace app\commands;
 
+use app\components\Mfa;
 use app\components\Rbac;
 use app\models\PasswordPolicy;
 use app\models\User;
@@ -75,10 +76,25 @@ class UserController extends Controller
         return ExitCode::OK;
     }
 
+    /** Removes a user's authenticator app, passkeys and recovery codes, for an admin locked out with no other admin to help */
+    public function actionResetMfa(string $username): int
+    {
+        $user = User::findByUsername($username);
+        if (!$user) {
+            $this->stderr("User '{$username}' not found.\n", Console::FG_RED);
+            return ExitCode::DATAERR;
+        }
+        Mfa::reset($user);
+        \Yii::$app->db->createCommand()->delete('login_attempt', ['username' => [$user->username, $user->email], 'success' => 0])->execute();
+        $this->stdout("Two-step sign-in reset for '{$username}' (lockout cleared). They sign in with their password"
+            . (Mfa::isRequiredFor($user) ? ' and must set up a new method straight away' : '') . ".\n", Console::FG_GREEN);
+        return ExitCode::OK;
+    }
+
     public function actionList(): int
     {
         foreach (User::find()->orderBy('username')->all() as $u) {
-            $this->stdout(sprintf("%-16s %-10s %-9s %s\n", $u->username, $u->getRoleLabel(), $u->isActive() ? 'active' : 'disabled', $u->email));
+            $this->stdout(sprintf("%-16s %-10s %-9s %-16s %s\n", $u->username, $u->getRoleLabel(), $u->isActive() ? 'active' : 'disabled', 'MFA: ' . Mfa::summary($u), $u->email));
         }
         return ExitCode::OK;
     }

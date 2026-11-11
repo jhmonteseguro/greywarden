@@ -227,6 +227,11 @@ All configuration comes from `.env`, which docker compose passes to the PHP and 
   Docker bridge networks. The web port is bound to 127.0.0.1, so only your machine can reach it.
 * `COOKIE_VALIDATION_KEY`: leave empty to auto-generate `src/runtime/cookie_validation.key`.
 * `COOKIE_SECURE=1` when served over HTTPS. `SESSION_TIMEOUT` is the idle timeout in seconds.
+* `TRUSTED_PROXIES`: a reverse proxy in front of Greywarden (for HTTPS), as nginx sees it: addresses or CIDRs,
+  comma-separated (for a proxy on the Docker host, usually `172.16.0.0/12`). Greywarden then believes its
+  `X-Forwarded-For`, `-Proto` and `-Host`, so lockouts and the audit log see the real client address and passkeys the
+  `https://` address. Leave it empty without a proxy: anyone could send those headers.
+* `WEBAUTHN_RP_ID`: the site name passkeys belong to; see [Two-step sign-in](#two-step-sign-in-and-passkeys).
 * `APP_TIMEZONE`: the timezone used for storing and displaying dates.
 * `EDGE_PULL_INTERVAL` (default `15`, `0` = off): minutes between the scheduler container's Cloudflare edge pulls
   (see [Edge findings](#edge-findings-cloudflare-traffic)). The **scheduler** service (`php yii schedule/run`, same
@@ -345,6 +350,8 @@ greywarden/
   * HttpOnly, SameSite=Lax session and CSRF cookies (Secure via `.env`)
   * session ID regenerated on login
   * login rate limiting and lockout (`login_attempt` table; admins can clear a lockout)
+  * two-step sign-in with an authenticator app or passkeys, which admins can require
+    (see [Two-step sign-in](#two-step-sign-in-and-passkeys))
   * forced password change for admin-set passwords
   * disabled users are signed out immediately
   * a Content-Security-Policy with a new nonce on every page: only the inline scripts Greywarden renders run, never
@@ -584,6 +591,44 @@ Admins (`settings.manage`) set how the instance presents itself. Nothing organis
   in `.env`. Migration `m261027_000001` copies any values still set there into the settings once; remove them from
   `.env` afterwards.
 
+### Two-step sign-in and passkeys
+
+Each user turns it on in **Account › Sign-in security** (the account menu, top right):
+
+* **Authenticator app** (TOTP, RFC 6238): any app that shows 6-digit codes (Google or Microsoft Authenticator,
+  1Password, Bitwarden...). The user scans a QR code, drawn on the server, and enters the first code to turn it on.
+  Each code works once.
+* **Passkeys** (WebAuthn): a passkey on the computer, a phone or a security key (YubiKey). A passkey signs in **on
+  its own** (*Sign in with a passkey*, no username or password; the device checks a fingerprint, face or PIN), or
+  as the second step after the password. Users can register several, and see when each was last used.
+* **Recovery codes**: ten one-time codes, made when the first method is set up and shown once. *Make new codes*
+  replaces them all.
+
+After the password, a user with two-step sign-in is asked for a code, a recovery code or a passkey. Wrong codes
+count towards the same lockout as wrong passwords, and the password step expires after 5 minutes. Turning methods
+on or off, adding passkeys and making new codes ask for the password again unless the user signed in or confirmed it
+in the last 15 minutes. Every change, sign-in method and recovery code used is in the audit log.
+
+**Requiring it**: *Admin › Settings › Sign-in security* makes it optional (the default), required for administrators,
+or required for everyone. A user who must use it and has no method is sent to set one up before they can open any
+other page, and cannot remove their last method. **Admin › Users** shows who has it on.
+
+**Lost phone or keys**: an admin can *Reset two-step sign-in* on the user's page, which removes their methods and
+codes; they then sign in with their password (and set up a new method if it is required). For the only admin:
+`make yii ARGS="user/reset-mfa <username>"`.
+
+**Passkeys and addresses.** A passkey belongs to a site name, and browsers refuse IP addresses. On
+`http://127.0.0.1:8080` the passkey options are hidden: open Greywarden as `http://localhost:8080`, or by its name over
+HTTPS (browsers require HTTPS for any name other than `localhost`). Passkeys registered on one name do not work on
+another, so register them on the address you use every day. Behind a reverse proxy, set `TRUSTED_PROXIES` so
+Greywarden sees the `https://` address. `WEBAUTHN_RP_ID` can set the name to a parent domain (`example.com` for
+`greywarden.example.com`); empty uses the host name in the address bar.
+
+**Secrets at rest**: authenticator app secrets are encrypted with libsodium using a key in
+`./storage/keys/mfa.key` (`MFA_KEY_PATH`), created on first use, so a copy of the database alone does not reveal
+them. Backups include the key (*Backup & restore*). Recovery codes are stored as SHA-256 hashes, passkeys as public
+keys only.
+
 ### Device import (Google Workspace)
 
 Export the devices from the Google Admin console (*Devices → Mobile & endpoints → Devices*, then *Download* as CSV;
@@ -796,7 +841,7 @@ Gii (`/gii`, dev only) can scaffold models. The CrudController and views pattern
 
 ```bash
 scripts/backup.sh                             # -> backups/greywarden-YYYYMMDD-HHMMSS.sql.gz (same as make backup)
-                                              #    + backups/attachments-YYYYMMDD-HHMMSS.tar.gz (attachments + logo)
+                                              #    + backups/attachments-YYYYMMDD-HHMMSS.tar.gz (attachments, logo, sign-in secrets key)
 make restore FILE=backups/greywarden-20261009-120000.sql.gz
 tar -xzf backups/attachments-20261009-120000.tar.gz   # restore uploaded files (run from the project root)
 ```

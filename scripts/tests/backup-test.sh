@@ -13,10 +13,11 @@ WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
 # A checkout whose path itself has a space in it
 PROJ="$WORK/grey warden"
-mkdir -p "$PROJ/scripts" "$PROJ/storage/attachments" "$PROJ/storage/branding" "$WORK/home"
+mkdir -p "$PROJ/scripts" "$PROJ/storage/attachments" "$PROJ/storage/branding" "$PROJ/storage/keys" "$WORK/home"
 cp "$SRC/scripts/backup.sh" "$PROJ/scripts/"
 printf 'DB_NAME=greywarden\n' >"$PROJ/.env"
 echo evidence >"$PROJ/storage/attachments/file.pdf"
+echo key >"$PROJ/storage/keys/mfa.key"
 export PATH="$SRC/scripts/tests/backup:$PATH" FAKE_DOCKER_LOG="$WORK/calls" HOME="$WORK/home"
 unset BACKUP_DIR FAKE_BACKUP_SETTING FAKE_BACKUP_SETTING_FAIL
 
@@ -33,6 +34,7 @@ backed_up() {
     files=$(find "$2" -maxdepth 1 -name 'attachments-*.tar.gz' 2>/dev/null | head -1)
     if [ -n "$dump" ] && [ "$(gunzip -c "$dump")" = "FAKE DUMP" ]; then pass; else failed "$1: no dump in '$2'"; sed 's/^/    /' "$WORK/out"; return; fi
     if [ -n "$files" ] && tar -tzf "$files" | grep -q '^storage/attachments/file.pdf$'; then pass; else failed "$1: no attachments archive in '$2'"; fi
+    if [ -n "$files" ] && tar -tzf "$files" | grep -q '^storage/keys/mfa.key$'; then pass; else failed "$1: the sign-in secrets key is not in the archive"; fi
     if [ "$(stat -c %a "$dump")" = 600 ]; then pass; else failed "$1: dump is not owner-only"; fi
     if grep -q -F "Backup written: $dump (" "$WORK/out"; then pass; else failed "$1: output does not name '$dump'"; fi
     if ! find "$2" -name '*.partial' | grep -q .; then pass; else failed "$1: partial file left behind"; fi
@@ -90,7 +92,7 @@ backed_up "setting unreadable" "$PROJ/backups"
 if ! grep -q "doesn't exist" "$WORK/out"; then pass; else failed "query error shown"; fi
 
 # No uploaded files: only the dump
-rm -rf "$PROJ/storage/attachments/file.pdf"
+rm -rf "$PROJ/storage/attachments/file.pdf" "$PROJ/storage/keys/mfa.key"
 run
 expect_ok "no attachments"
 if [ -z "$(find "$PROJ/backups" -name 'attachments-*')" ] && [ -n "$(find "$PROJ/backups" -name 'greywarden-*.sql.gz')" ]; then pass; else failed "attachments archive written with nothing to archive"; fi

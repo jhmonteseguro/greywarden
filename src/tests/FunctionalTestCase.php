@@ -48,6 +48,8 @@ abstract class FunctionalTestCase extends DbTestCase
     protected ?string $location = null;
     protected ?Response $response = null;
     protected ?\Throwable $exception = null;
+    /** params for the next requests, over config/params.php (e.g. ['webauthn.rpId' => ...]) */
+    protected array $params = [];
 
     public static function setUpBeforeClass(): void
     {
@@ -130,7 +132,7 @@ abstract class FunctionalTestCase extends DbTestCase
                     'assetManager' => ['bundles' => false],
                     'log' => ['targets' => []],
                 ],
-                'params' => ['attachments.path' => Yii::$app->params['attachments.path'], 'branding.path' => Yii::$app->params['branding.path']],
+                'params' => ['attachments.path' => Yii::$app->params['attachments.path'], 'branding.path' => Yii::$app->params['branding.path'], 'mfa.keyPath' => Yii::$app->params['mfa.keyPath']],
             ]);
             $web['components']['session'] = ['class' => TestSession::class];
             unset($web['components']['db']);
@@ -171,6 +173,7 @@ abstract class FunctionalTestCase extends DbTestCase
         // Fresh application per request, sharing the console app's DB connection (and its transaction)
         $config = self::config();
         $config['components']['db'] = $this->consoleApp->db;
+        $config['params'] = array_merge($config['params'] ?? [], $this->params);
         $this->app = new WebApplication($config);
         $request = $this->app->getRequest();
         $request->setPathInfo(rawurldecode($path));

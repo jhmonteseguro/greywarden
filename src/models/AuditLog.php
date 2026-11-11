@@ -51,6 +51,13 @@ class AuditLog extends ActiveRecord
         'password_change' => 'Password changed',
         'password_reset' => 'Password reset by admin',
         'unlock' => 'Sign-in lockout cleared',
+        'mfa_totp_on' => 'Authenticator app set up',
+        'mfa_totp_off' => 'Authenticator app turned off',
+        'passkey_add' => 'Passkey added',
+        'passkey_remove' => 'Passkey removed',
+        'recovery_codes' => 'Recovery codes made',
+        'recovery_code_used' => 'Recovery code used',
+        'mfa_reset' => 'Two-step sign-in reset',
     ];
 
     public static function tableName(): string

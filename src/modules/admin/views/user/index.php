@@ -6,6 +6,7 @@
  */
 
 use app\components\Rbac;
+use app\components\Mfa;
 use app\helpers\Badge;
 use app\models\User;
 use app\widgets\GridView;
@@ -49,6 +50,17 @@ $this->params['actions'] = Html::a('<i class="bi bi-person-plus"></i> New user',
             'value' => static fn(User $u) => Badge::render('user-status', (string) $u->status, User::statusLabels()[$u->status] ?? '?')
                 . ($u->must_change_password ? ' ' . Badge::flag('pending', 'Must change password') : ''),
             'filter' => User::statusLabels(),
+        ],
+        [
+            'label' => 'Two-step sign-in',
+            'format' => 'raw',
+            'value' => static function (User $u): string {
+                $summary = Mfa::summary($u);
+                if ($summary !== 'Off') {
+                    return Badge::render('mfa', 'on', $summary);
+                }
+                return Badge::render('mfa', Mfa::isRequiredFor($u) ? 'missing' : 'off', Mfa::isRequiredFor($u) ? 'Off (required)' : 'Off');
+            },
         ],
         ['attribute' => 'last_login_at', 'format' => 'relativeTime', 'filter' => false],
         [

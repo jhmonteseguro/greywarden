@@ -62,9 +62,10 @@ $DC exec -T db sh -c 'mariadb-dump -uroot -p"$MARIADB_ROOT_PASSWORD" --single-tr
 mv "$TMP" "$FILE"
 echo "Backup written: $FILE ($(du -h "$FILE" | cut -f1))"
 
-# Uploaded files the database rows point to (restore by extracting into the project root)
+# Uploaded files the database rows point to, and the key that encrypts sign-in secrets
+# (restore by extracting into the project root)
 DIRS=()
-for dir in storage/attachments storage/branding; do
+for dir in storage/attachments storage/branding storage/keys; do
     if [ -d "$dir" ] && [ -n "$(ls -A "$dir")" ]; then DIRS+=("$dir"); fi
 done
 if [ ${#DIRS[@]} -gt 0 ]; then

@@ -57,6 +57,7 @@ final class Badge
         'dpa' => ['signed' => 'success', 'not_signed' => 'danger'],
         'assurance' => ['current' => 'success', 'expiring' => 'warning', 'expired' => 'danger'],
         'user-status' => ['10' => 'success', '0' => 'muted'],
+        'mfa' => ['on' => 'success', 'off' => 'muted', 'missing' => 'danger'],
         'role' => ['admin' => 'critical', 'analyst' => 'info', 'viewer' => 'neutral'],
         'compliance' => ['compliant' => 'success', 'non-compliant' => 'danger', 'not-assessed' => 'warning', 'n-a' => 'muted'],
         // Device check result (app\modules\inventory\components\DevicePosture)
