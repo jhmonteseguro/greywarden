@@ -110,7 +110,7 @@ final class StoryClusterer
         }
     }
 
-    /** The recent story sharing the most CVEs, the latest when tied, if the article is mainly about it */
+    /** The recent story sharing the most CVEs (the latest when tied, then the oldest story), if the article is mainly about it */
     private function byCve(array $cves): ?ThreatStory
     {
         if (!$cves) {
@@ -119,7 +119,7 @@ final class StoryClusterer
         $best = (new Query())->select(['s.id', 'shared' => new Expression('COUNT(*)')])->from(['l' => 'threat_story_cve'])->innerJoin(['s' => 'threat_story'], 's.id = l.story_id')
             ->where(['l.cve_id' => $cves, 's.is_roundup' => 0])
             ->andWhere(['>=', 's.last_seen_at', date('Y-m-d H:i:s', $this->now - self::CVE_WINDOW_DAYS * 86400)])
-            ->groupBy('s.id')->orderBy([new Expression('COUNT(*) DESC'), 's.last_seen_at' => SORT_DESC])->limit(1)->one();
+            ->groupBy('s.id')->orderBy([new Expression('COUNT(*) DESC'), 's.last_seen_at' => SORT_DESC, 's.id' => SORT_ASC])->limit(1)->one();
         return $best && (int) $best['shared'] * 2 >= count($cves) ? ThreatStory::findOne($best['id']) : null;
     }
 

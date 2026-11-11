@@ -39,6 +39,8 @@ releases).
 - A reference number (RSK-0012, INC-0007...) is never handed out twice. Before, hard-deleting the newest record freed its
   number for the next one, and two records saved at the same moment could get the same number. Each prefix now has its
   own counter (migration `m261109_000001`).
+- Threat Watch: an article whose CVEs matched two recent stories equally well joined either of them at random. It now
+  joins the earlier story.
 
 ### Changed
 
