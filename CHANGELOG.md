@@ -6,6 +6,21 @@ releases).
 
 ## [Unreleased]
 
+### Added
+
+- `make edge-rescore` (`php yii edge/rescore`): scores every edge finding again from its stored evidence, with the
+  current settings and blocklist. Run it once after upgrading to clear the false *Got past the block* signals below.
+
+### Fixed
+
+- Edge findings: blocked addresses were flagged *Got past the block* although Cloudflare stopped every request. Two
+  causes: the check counted the finding's whole history, including requests from before the block was added, and it
+  compared request counts with security-event counts, which Cloudflare samples separately and which never quite
+  agree. Blocked and challenged requests are now counted from the request rows' own security action (where the plan
+  has `securityAction`; otherwise a small difference is treated as sampling noise), and only requests from a pull
+  whose whole window came after the block was in the Cloudflare rule count as getting through. *Got through* on the
+  findings list and page uses the same count.
+
 ## [0.19.0-alpha] - 2026-11-11
 
 ### Added

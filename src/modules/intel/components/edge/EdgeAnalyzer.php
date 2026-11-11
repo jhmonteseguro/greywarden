@@ -10,6 +10,8 @@ use app\modules\intel\components\IpAddress;
  *
  * Profile (also what a finding keeps as its evidence, merged across pulls):
  *   requests, stopped (blocked / challenged by Cloudflare), passed (challenges solved),
+ *   reached (requests Cloudflare let through), leaked (of those, the ones that came while
+ *   the address was already in the Cloudflare block rule; EdgePuller sets it),
  *   asn, country, agents [agent => n], methods [method => n], peak_rpm,
  *   paths [path => [count, statuses [status => n], group]]   (errors and successful probes)
  *   payloads [request => [count, status, families]]
@@ -29,7 +31,7 @@ final class EdgeAnalyzer
 
     public static function emptyProfile(): array
     {
-        return ['requests' => 0, 'stopped' => 0, 'passed' => 0, 'asn' => null, 'country' => null, 'agents' => [], 'methods' => [], 'peak_rpm' => 0, 'paths' => [], 'payloads' => []];
+        return ['requests' => 0, 'stopped' => 0, 'passed' => 0, 'reached' => 0, 'leaked' => 0, 'asn' => null, 'country' => null, 'agents' => [], 'methods' => [], 'peak_rpm' => 0, 'paths' => [], 'payloads' => []];
     }
 
     /**
@@ -42,6 +44,10 @@ final class EdgeAnalyzer
     public static function profiles(array $traffic, int $minutes, array $ignoredPaths = [], ?array $allowlist = null): array
     {
         $profiles = [];
+        // Stopped requests come from the request rows themselves when they carry the security action:
+        // the security-event counts are sampled separately and never quite match them
+        $requestActions = !empty($traffic['request_actions']);
+        $fromRows = [];
         $get = static function (string $raw) use (&$profiles): ?string {
             $ip = IpAddress::normalize($raw);
             if ($ip === null) {
@@ -61,6 +67,10 @@ final class EdgeAnalyzer
             $p['country'] ??= $r['country'];
             $p['agents'][$r['agent']] = ($p['agents'][$r['agent']] ?? 0) + $r['count'];
             $p['methods'][$r['method']] = ($p['methods'][$r['method']] ?? 0) + $r['count'];
+            if ($requestActions && isset($r['action'])) {
+                $fromRows[$ip] = true;
+                $p[in_array($r['action'], CloudflareTraffic::STOPPING_ACTIONS, true) ? 'stopped' : 'reached'] += $r['count'];
+            }
             unset($p);
         }
         foreach (['errors', 'exposures', 'payloads'] as $set) {
@@ -92,7 +102,9 @@ final class EdgeAnalyzer
                 continue;
             }
             if (in_array($r['action'], CloudflareTraffic::STOPPING_ACTIONS, true)) {
-                $profiles[$ip]['stopped'] += $r['count'];
+                if (!isset($fromRows[$ip])) {
+                    $profiles[$ip]['stopped'] += $r['count'];
+                }
             } elseif (in_array($r['action'], CloudflareTraffic::PASSED_ACTIONS, true)) {
                 $profiles[$ip]['passed'] += $r['count'];
             }
@@ -105,6 +117,10 @@ final class EdgeAnalyzer
             }
             // Errors and payload rows also count as requests when the volume query missed them (page limit)
             $p['requests'] = max($p['requests'], array_sum(array_column($p['paths'], 'count')));
+            if (!isset($fromRows[$ip])) {
+                // Counts from two samples: a few requests apart is noise, not traffic that got through
+                $p['reached'] = self::isHandled($p) ? 0 : max(0, $p['requests'] - $p['stopped']);
+            }
             $p['peak_rpm'] = (int) ceil(max(0, $p['requests'] - $p['stopped']) / max(1, $minutes));
             $p = self::trim($p);
         }
@@ -117,7 +133,7 @@ final class EdgeAnalyzer
     {
         $old += self::emptyProfile();
         $out = $old;
-        foreach (['requests', 'stopped', 'passed'] as $key) {
+        foreach (['requests', 'stopped', 'passed', 'reached', 'leaked'] as $key) {
             $out[$key] = (int) $old[$key] + (int) $new[$key];
         }
         $out['asn'] = $new['asn'] ?? $old['asn'];
@@ -166,7 +182,8 @@ final class EdgeAnalyzer
     /**
      * Scores a profile.
      *
-     * @param array $context volume_rpm (int), block (?array: reference, cloudflare bool) when the address is on the blocklist
+     * @param array $context volume_rpm (int), block (?array: reference, cloudflare bool) when the address is on the blocklist;
+     *   the rule-gap signal counts the profile's `leaked` requests
      * @return array{score: int, signals: array, headline: string, exposure: bool, error_paths: int, research: bool}
      *   signals: [key, weight, tone, label, short, detail], strongest first
      */
@@ -176,7 +193,7 @@ final class EdgeAnalyzer
         $add = static function (string $key, int $weight, string $tone, string $short, string $label, string $detail) use (&$signals): void {
             $signals[] = compact('key', 'weight', 'tone', 'short', 'label', 'detail');
         };
-        $reached = max(0, $profile['requests'] - $profile['stopped']);
+        $leaked = (int) ($profile['leaked'] ?? 0);
 
         // Sensitive paths that answered 2xx
         $exposed = [];
@@ -252,9 +269,9 @@ final class EdgeAnalyzer
                 sprintf('Up to %d requests a minute got through', $profile['peak_rpm']),
                 sprintf('Above the %d requests a minute set in Admin › Settings › Edge monitoring. A rate-limiting rule in Cloudflare handles floods better than blocking addresses one by one.', $rpm));
         }
-        if (!empty($context['block']) && $context['block']['cloudflare'] && $reached > 0) {
+        if (!empty($context['block']) && $context['block']['cloudflare'] && $leaked > 0) {
             $add('rule-gap', 45, 'high', 'Got past the block',
-                sprintf('Blocked by %s but %d request%s still reached the site', $context['block']['reference'], $reached, $reached === 1 ? '' : 's'),
+                sprintf('Blocked by %s but %d request%s still reached the site', $context['block']['reference'], $leaked, $leaked === 1 ? '' : 's'),
                 'The address is in the Cloudflare rule, yet requests were not stopped. Check that the rule is enabled and that no rule above it skips or allows this traffic.');
         }
         if ($profile['passed'] > 0 && $signals) {

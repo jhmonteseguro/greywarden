@@ -15,11 +15,17 @@ use Yii;
  * which fields) are read from the API's settings node first, so nothing that
  * the plan does not offer is asked for. Five queries run in parallel:
  *
- *   ips        every request, by client IP, ASN, country, user agent and method (volume, agents)
+ *   ips        every request, by client IP, ASN, country, user agent and method (volume, agents),
+ *              and by the security action taken on it when the plan has securityAction
  *   errors     responses >= 400, by client IP, path and status (probing, enumeration)
  *   exposures  responses < 400 on secret / web-shell paths (a probe that succeeded)
  *   payloads   query strings that look like attacks (when the plan has clientRequestQuery)
- *   firewall   security events by client IP and action (what Cloudflare already stopped)
+ *   firewall   security events by client IP and action (challenges solved, and what Cloudflare
+ *              stopped when the request rows carry no security action)
+ *
+ * Request and security-event counts are sampled separately, so they never quite
+ * agree: when the request rows carry their security action, what Cloudflare
+ * stopped is counted from those rows (`request_actions` is then true).
  *
  * Only `ips` and `errors` are required; the others add a warning when they fail.
  * .env: CLOUDFLARE_API_TOKEN (Zone > Analytics > Read), CLOUDFLARE_ZONE_ID.
@@ -115,8 +121,8 @@ final class CloudflareTraffic
     /**
      * Traffic between two UTC timestamps.
      *
-     * @return array{ips: array, errors: array, exposures: array, payloads: array, firewall: array, truncated: string[], warnings: string[]}
-     *   ips:       [ip, asn, country, agent, method, count]
+     * @return array{ips: array, errors: array, exposures: array, payloads: array, firewall: array, request_actions: bool, truncated: string[], warnings: string[]}
+     *   ips:       [ip, asn, country, agent, method, count], plus action when request_actions is true
      *   errors / exposures / payloads: [ip, path, query, status, count]
      *   firewall:  [ip, action, count]
      * @throws RuntimeException when a required query fails
@@ -138,9 +144,10 @@ final class CloudflareTraffic
         }
         $hasQuery = self::hasField($http, 'clientRequestQuery');
         $pathFields = 'clientIP clientRequestPath edgeResponseStatus' . ($hasQuery ? ' clientRequestQuery' : '');
+        $hasAction = self::hasField($http, 'securityAction');
 
         $queries = [
-            'ips' => self::groups(self::HTTP, "{ $window }", $limit, 'clientIP clientAsn clientCountryName userAgent clientRequestHTTPMethodName'),
+            'ips' => self::groups(self::HTTP, "{ $window }", $limit, 'clientIP clientAsn clientCountryName userAgent clientRequestHTTPMethodName' . ($hasAction ? ' securityAction' : '')),
             'errors' => self::groups(self::HTTP, "{ $window, edgeResponseStatus_geq: 400 }", $limit, $pathFields),
             'exposures' => self::groups(self::HTTP, "{ $window, edgeResponseStatus_lt: 400, OR: [" . self::likes('clientRequestPath', EdgeCatalogue::exposureLikes()) . '] }', $limit, $pathFields),
         ];
@@ -155,7 +162,7 @@ final class CloudflareTraffic
         $zone = ['zoneTag' => (string) gw_env('CLOUDFLARE_ZONE_ID')];
         $results = Cloudflare::graphqlAll(array_map(static fn(string $q) => [$q, $zone], $queries));
 
-        $out = ['ips' => [], 'errors' => [], 'exposures' => [], 'payloads' => [], 'firewall' => [], 'truncated' => [], 'warnings' => []];
+        $out = ['ips' => [], 'errors' => [], 'exposures' => [], 'payloads' => [], 'firewall' => [], 'request_actions' => $hasAction, 'truncated' => [], 'warnings' => []];
         foreach ($results as $name => $result) {
             if ($result['error'] !== null) {
                 if (in_array($name, ['ips', 'errors'], true)) {
@@ -169,16 +176,16 @@ final class CloudflareTraffic
                 $out['truncated'][] = $name;
             }
             foreach ($rows as $row) {
-                $out[$name][] = self::row($name, (array) ($row['dimensions'] ?? []), (int) ($row['count'] ?? 0));
+                $out[$name][] = self::row($name, (array) ($row['dimensions'] ?? []), (int) ($row['count'] ?? 0), $hasAction);
             }
         }
         return $out;
     }
 
-    private static function row(string $name, array $d, int $count): array
+    private static function row(string $name, array $d, int $count, bool $hasAction = false): array
     {
         return match ($name) {
-            'ips' => [
+            'ips' => ($hasAction ? ['action' => self::action($d['securityAction'] ?? '')] : []) + [
                 'ip' => (string) ($d['clientIP'] ?? ''),
                 'asn' => isset($d['clientAsn']) && (int) $d['clientAsn'] > 0 ? (int) $d['clientAsn'] : null,
                 'country' => ($d['clientCountryName'] ?? '') !== '' ? mb_substr((string) $d['clientCountryName'], 0, 64) : null,
@@ -188,7 +195,7 @@ final class CloudflareTraffic
             ],
             'firewall' => [
                 'ip' => (string) ($d['clientIP'] ?? ''),
-                'action' => strtolower(str_replace('_', '', (string) ($d['action'] ?? ''))),
+                'action' => self::action($d['action'] ?? ''),
                 'count' => $count,
             ],
             default => [
@@ -199,6 +206,12 @@ final class CloudflareTraffic
                 'count' => $count,
             ],
         };
+    }
+
+    /** A security action, normalised as STOPPING_ACTIONS are (lower case, no underscores) */
+    public static function action(mixed $action): string
+    {
+        return strtolower(str_replace('_', '', (string) $action));
     }
 
     /** One grouped query against a dataset; rows come back under `rows` */

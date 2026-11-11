@@ -18,7 +18,7 @@ use yii\console\ExitCode;
 use yii\mutex\FileMutex;
 
 /**
- * php yii edge/pull, edge/status and intel/expire-blocks against fake Cloudflare APIs.
+ * php yii edge/pull, edge/status, edge/rescore and intel/expire-blocks against fake Cloudflare APIs.
  */
 class EdgeConsoleTest extends DbTestCase
 {
@@ -97,6 +97,13 @@ class EdgeConsoleTest extends DbTestCase
         }
         $this->assertSame(ExitCode::TEMPFAIL, $code);
         $this->assertStringContainsString('Another edge pull is running', $out);
+    }
+
+    public function testRescore(): void
+    {
+        [$code, $out] = OutputCapture::run('edge/rescore');
+        $this->assertSame(ExitCode::OK, $code);
+        $this->assertStringContainsString('0 finding(s) rescored.', $out);
     }
 
     public function testStatus(): void

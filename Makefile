@@ -16,7 +16,7 @@ endif
 .DEFAULT_GOAL := help
 .PHONY: help env up down build rebuild restart ps logs shell composer yii migrate wait \
         reset-db create-admin seed test test-db test-all smoke hooks leak-check db-shell backup restore deploy attack-status attack-update intel-status intel-update import-devices \
-        import-cloud sync-cloudflare suppliers-from-cloud edge-pull edge-status threat-pull threat-status expire-blocks cloudflare-migrate
+        import-cloud sync-cloudflare suppliers-from-cloud edge-pull edge-status edge-rescore threat-pull threat-status expire-blocks cloudflare-migrate
 
 help: ## Show this help
 	@grep -hE '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
@@ -98,6 +98,9 @@ edge-pull: ## Pull Cloudflare traffic and update edge findings now (the schedule
 
 edge-status: ## Show the Cloudflare analytics limits for the zone and the recent edge pulls
 	$(PHP_T) php yii edge/status
+
+edge-rescore: ## Score every edge finding again from its stored evidence (after an upgrade that changes the scoring)
+	$(PHP_T) php yii edge/rescore
 
 threat-pull: ## Read the Threat Watch news sources now (the scheduler container does it every THREAT_PULL_INTERVAL min): make threat-pull [AS=jdoe] [FORCE=1]
 	$(PHP_T) php yii threat/pull $(if $(AS),--user=$(AS)) $(if $(FORCE),--force=1)

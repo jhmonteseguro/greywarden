@@ -22,6 +22,9 @@ use yii\mutex\FileMutex;
  *     and is cut to what the plan allows (maxDuration, notOlderThan).
  *   - Addresses Cloudflare already stopped (blocked / challenged) are skipped,
  *     as are allowlisted ones and scores below the minimum (Admin › Settings).
+ *   - Requests that reached the site from an address that was already in the
+ *     Cloudflare block rule when the window started count as leaked (the
+ *     rule-gap signal); a block added during the window does not count yet.
  *   - A dismissed or blocked finding reopens when its address comes back with
  *     a high enough score; ignored ones are only counted.
  *   - The highest new findings are investigated with the intel sources
@@ -173,16 +176,17 @@ final class EdgePuller
     {
         $minScore = EdgeSettings::minScore();
         $context = ['volume_rpm' => EdgeSettings::volumeRpm()];
+        $windowStart = $pull->window_start ? strtotime($pull->window_start) : null;
         $existing = $profiles ? EdgeFinding::find()->where(['ip' => array_keys($profiles)])->indexBy('ip')->all() : [];
         $toEnrich = [];
 
         foreach ($profiles as $ip => $profile) {
             /** @var EdgeFinding|null $finding */
             $finding = $existing[$ip] ?? null;
+            [$block, $live] = self::block($ip, $profile['asn'] ?? $finding?->asn, $windowStart);
+            $profile['leaked'] = $live ? (int) $profile['reached'] : 0;
             $merged = $finding ? EdgeAnalyzer::merge($finding->getProfile(), $profile) : $profile;
-            $block = BlocklistEntry::findForIp($ip, $merged['asn']);
-            $inForce = array_values(array_filter($block, static fn(BlocklistEntry $b) => $b->getIsInForce()));
-            $ctx = $context + ['block' => $inForce ? ['reference' => $inForce[0]->reference, 'cloudflare' => $inForce[0]->cloudflare_added_at !== null] : null];
+            $ctx = $context + ['block' => $block];
             $fresh = EdgeAnalyzer::score($profile, $ctx);
 
             if ($finding === null) {
@@ -204,20 +208,9 @@ final class EdgePuller
                 $pull->findings_updated++;
             }
 
-            $scored = EdgeAnalyzer::score($merged, $ctx);
-            $finding->setProfile($merged);
-            $finding->asn = $merged['asn'];
-            $finding->country = $merged['country'];
-            $finding->score = $scored['score'];
-            $finding->signals = json_encode($scored['signals'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
-            $finding->headline = $scored['headline'];
-            $finding->exposure = $scored['exposure'] ? 1 : 0;
-            $finding->requests = $merged['requests'];
-            $finding->stopped = $merged['stopped'];
-            $finding->error_paths = $scored['error_paths'];
+            self::scoreFinding($finding, $merged, $ctx);
             $finding->times_seen = (int) $finding->times_seen + 1;
             $finding->last_seen_at = $seenAt;
-            $finding->priority = EdgeAnalyzer::priority($scored['score'], $scored['exposure'], $finding->intel_rating);
             if (!$finding->save()) {
                 throw new RuntimeException(sprintf('Finding for %s not saved: %s', $ip, implode(' ', $finding->getErrorSummary(true))));
             }
@@ -232,6 +225,62 @@ final class EdgePuller
                 self::enrich($finding);
             }
         }
+    }
+
+    /**
+     * The block in force for an address, and whether one was already in the
+     * Cloudflare rule at $since (so it should have stopped every request after it).
+     *
+     * @return array{?array, bool} [reference, cloudflare] for the scoring context (null when not blocked), live
+     */
+    private static function block(string $ip, ?int $asn, ?int $since): array
+    {
+        $inForce = array_values(array_filter(BlocklistEntry::findForIp($ip, $asn), static fn(BlocklistEntry $b) => $b->getIsInForce()));
+        $live = array_values(array_filter($inForce, static fn(BlocklistEntry $b) => $b->cloudflare_added_at !== null
+            && $since !== null && strtotime($b->cloudflare_added_at) <= $since));
+        $shown = $live[0] ?? $inForce[0] ?? null;
+        return [$shown ? ['reference' => $shown->reference, 'cloudflare' => $shown->cloudflare_added_at !== null] : null, (bool) $live];
+    }
+
+    /** Sets a finding's evidence, score, signals and priority from a profile */
+    private static function scoreFinding(EdgeFinding $finding, array $profile, array $context): void
+    {
+        $scored = EdgeAnalyzer::score($profile, $context);
+        $finding->setProfile($profile);
+        $finding->asn = $profile['asn'];
+        $finding->country = $profile['country'];
+        $finding->score = $scored['score'];
+        $finding->signals = json_encode($scored['signals'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+        $finding->headline = $scored['headline'];
+        $finding->exposure = $scored['exposure'] ? 1 : 0;
+        $finding->requests = $profile['requests'];
+        $finding->stopped = $profile['stopped'];
+        $finding->error_paths = $scored['error_paths'];
+        $finding->priority = EdgeAnalyzer::priority($scored['score'], $scored['exposure'], $finding->intel_rating);
+    }
+
+    /**
+     * Scores every finding again from its stored evidence, with the current
+     * settings and blocklist (after a scoring change; nothing is read from Cloudflare).
+     *
+     * @return int findings whose score, signals or priority changed
+     */
+    public static function rescore(): int
+    {
+        $context = ['volume_rpm' => EdgeSettings::volumeRpm()];
+        $changed = 0;
+        foreach (EdgeFinding::find()->orderBy(['id' => SORT_ASC])->each(200) as $finding) {
+            /** @var EdgeFinding $finding */
+            $profile = $finding->getProfile();
+            [$block] = self::block($finding->ip, $profile['asn'], null);
+            self::scoreFinding($finding, $profile, $context + ['block' => $block]);
+            if (array_intersect(array_keys($finding->getDirtyAttributes()), ['score', 'signals', 'headline', 'priority', 'exposure', 'error_paths'])) {
+                // Only computed fields changed
+                $finding->save(false);
+                $changed++;
+            }
+        }
+        return $changed;
     }
 
     /** Investigates the address with the intel sources and records the rating on the finding */

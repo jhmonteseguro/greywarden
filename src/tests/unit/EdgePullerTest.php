@@ -7,6 +7,7 @@ use app\models\AuditLog;
 use app\models\Setting;
 use app\modules\intel\components\Cloudflare;
 use app\modules\intel\components\edge\CloudflareTraffic;
+use app\modules\intel\components\edge\EdgeAnalyzer;
 use app\modules\intel\components\edge\EdgePuller;
 use app\modules\intel\components\Http;
 use app\modules\intel\models\BlocklistEntry;
@@ -304,16 +305,98 @@ class EdgePullerTest extends DbTestCase
         $this->assertStringContainsString('Could not resolve host', $pull->message);
     }
 
-    public function testRuleGapWhenABlockedAddressGetsThrough(): void
+    /** A block in the Cloudflare rule since $addedAt */
+    private function block(string $ip, int $addedAt): BlocklistEntry
     {
         Actor::override($this->userId(), 'tester');
-        $entry = new BlocklistEntry(['value' => '192.0.2.50', 'severity' => 'high', 'direction' => 'inbound', 'reason' => 'test', 'cloudflare' => true]);
+        $entry = new BlocklistEntry(['value' => $ip, 'severity' => 'high', 'direction' => 'inbound', 'reason' => 'test', 'cloudflare' => true]);
         $this->assertTrue($entry->validate() && $entry->syncCloudflare() && $entry->save(false));
+        $entry->updateAttributes(['cloudflare_added_at' => date('Y-m-d H:i:s', $addedAt)]);
+        return $entry;
+    }
+
+    private static function actionRow(string $ip, int $count, string $action, string $agent = 'Mozilla/5.0 Chrome/129'): array
+    {
+        $row = self::ipRow($ip, $count, $agent);
+        $row['dimensions']['securityAction'] = $action;
+        return $row;
+    }
+
+    public function testRuleGapWhenABlockedAddressGetsThrough(): void
+    {
+        $entry = $this->block('192.0.2.50', self::NOW - 86400);
         $this->data = ['ips' => [self::ipRow('192.0.2.50', 12)], 'errors' => [self::pathRow('192.0.2.50', '/.env', 404)]];
         $this->puller()->run();
         $finding = EdgeFinding::findOne(['ip' => '192.0.2.50']);
         $this->assertSame('rule-gap', $finding->getSignalList()[0]['key']);
-        $this->assertStringContainsString($entry->reference, $finding->getSignalList()[0]['label']);
+        $this->assertStringContainsString($entry->reference . ' but 12 requests', $finding->getSignalList()[0]['label']);
+        $this->assertSame([12, 12], [$finding->getProfile()['leaked'], $finding->getReached()]);
+    }
+
+    public function testBlockAddedDuringTheWindowIsNoGap(): void
+    {
+        // Blocked half an hour into the first pull's hour: the earlier requests were not stopped, rightly
+        $this->block('192.0.2.51', self::NOW - 120 - 1800);
+        $this->data = ['ips' => [self::ipRow('192.0.2.51', 12)], 'errors' => [self::pathRow('192.0.2.51', '/.env', 404)]];
+        $this->puller()->run();
+        $finding = EdgeFinding::findOne(['ip' => '192.0.2.51']);
+        $this->assertNotContains('rule-gap', array_column($finding->getSignalList(), 'key'));
+        $this->assertSame([0, 12], [$finding->getProfile()['leaked'], $finding->getReached()]);
+    }
+
+    public function testBlockedAddressWithEarlierTrafficIsNoGap(): void
+    {
+        // The finding came before the block; afterwards Cloudflare stopped every request, while the
+        // separately sampled security events counted fewer of them
+        $this->limits['availableFields'][] = 'securityAction';
+        $this->data = ['ips' => [self::ipRow('192.0.2.52', 40, 'sqlmap')], 'errors' => [self::pathRow('192.0.2.52', '/.env', 404)]];
+        $this->puller()->run();
+        $this->assertStringContainsString('securityAction', $this->trafficQuery('ips'));
+        $this->block('192.0.2.52', self::NOW - 120);
+
+        $this->queries = [];
+        $this->data = [
+            'ips' => [self::actionRow('192.0.2.52', 280, 'block', 'sqlmap')],
+            'errors' => [self::pathRow('192.0.2.52', '/.env', 403, 280)],
+            'firewall' => [['count' => 257, 'dimensions' => ['clientIP' => '192.0.2.52', 'action' => 'block']]],
+        ];
+        $puller = $this->puller();
+        $puller->now = self::NOW + 900;
+        $puller->run();
+        $this->assertSame(['192.0.2.52' => 'updated'], $puller->changes);
+        $finding = EdgeFinding::findOne(['ip' => '192.0.2.52']);
+        $this->assertNotContains('rule-gap', array_column($finding->getSignalList(), 'key'));
+        $this->assertSame([320, 280, 40, 0], [(int) $finding->requests, (int) $finding->stopped, $finding->getReached(), $finding->getProfile()['leaked']]);
+
+        // Without securityAction on the plan the ips query does not ask for it
+        $this->limits['availableFields'] = ['clientIP', 'clientRequestPath', 'requestSource', 'edgeResponseStatus'];
+        Yii::$app->cache->flush();
+        $this->queries = [];
+        $puller->now = self::NOW + 1800;
+        $puller->run();
+        $this->assertStringNotContainsString('securityAction', $this->trafficQuery('ips'));
+    }
+
+    public function testRescoreDropsGapsFromOlderEvidence(): void
+    {
+        // A finding scored before leaked requests were tracked: the stored rule-gap signal goes
+        $entry = $this->block('192.0.2.53', self::NOW - 86400);
+        $profile = EdgeAnalyzer::emptyProfile();
+        unset($profile['reached'], $profile['leaked']);
+        $profile = ['requests' => 20, 'stopped' => 5, 'asn' => 64501, 'agents' => ['sqlmap' => 20]] + $profile;
+        $finding = new EdgeFinding(['ip' => '192.0.2.53', 'status' => EdgeFinding::STATUS_NEW, 'first_seen_at' => '2026-10-27 10:00:00', 'last_seen_at' => '2026-10-27 10:00:00',
+            'times_seen' => 1, 'score' => 75, 'priority' => 'high', 'headline' => 'Scanner tool · Got past the block', 'requests' => 20, 'stopped' => 5,
+            'signals' => json_encode([['key' => 'rule-gap', 'weight' => 45, 'tone' => 'high', 'short' => 'Got past the block', 'label' => $entry->reference, 'detail' => 'x']])]);
+        $finding->evidence = json_encode($profile);
+        $this->assertTrue($finding->save());
+        $this->assertSame(15, $finding->getReached(), 'older evidence: requests less stopped');
+
+        $this->assertSame(1, EdgePuller::rescore());
+        $finding->refresh();
+        $this->assertSame(['agent'], array_column($finding->getSignalList(), 'key'));
+        $this->assertSame([55, 'medium', 'Scanner tool'], [(int) $finding->score, $finding->priority, $finding->headline]);
+        $this->assertSame(15, $finding->getReached());
+        $this->assertSame(0, EdgePuller::rescore(), 'nothing left to change');
     }
 
     public function testDryRunSavesNothing(): void

@@ -214,6 +214,7 @@ Composer, Gii or the runtime create are owned by you. Uploaded files are stored 
 | `make suppliers-from-cloud AS=<user> [DRY_RUN=1]` | add one supplier per cloud provider in use, without linking the accounts (see [Supplier Register](#supplier-register)) |
 | `make edge-pull [AS=<user>] [MINUTES=60] [DRY_RUN=1]` / `make edge-status` | read the Cloudflare traffic since the last pull and update the edge findings now (the scheduler container also does this every `EDGE_PULL_INTERVAL` minutes) / show the zone's analytics limits and recent pulls (see [Edge findings](#edge-findings-cloudflare-traffic)) |
 | `make threat-pull [AS=<user>] [FORCE=1]` / `make threat-status` | read the Threat Watch sources that are due, or all of them with `FORCE=1` (the scheduler container does this every `THREAT_PULL_INTERVAL` minutes) / show source health and recent reads (see [Threat Watch](#threat-watch)) |
+| `make edge-rescore` | score every edge finding again from its stored evidence, with the current settings and blocklist (after an upgrade that changes the scoring; nothing is read from Cloudflare) |
 | `make expire-blocks` | take expired blocklist entries out of Cloudflare (`make edge-pull` does this too) |
 | `make cloudflare-migrate [OLD_RULE="Block Bad Actors"] [DRY_RUN=1]` | one-off: move *Add to Cloudflare* entries from the old rule into the IP list and the **Greywarden Blocklist** rule (see [Threat intel](#threat-intel-ip--asn-investigation)) |
 | `make intel-status` / `make intel-update` | show the local threat-feed status / download every feed now (stale feeds also refresh automatically in the background) |
@@ -951,14 +952,15 @@ don't have to scroll through the logs for addresses that slipped past your rules
   `make logs s=scheduler` what the scheduler did. *Pull now* on the page and `make edge-pull` pull straight away;
   a lock stops two pulls overlapping.
 * **Data**: the GraphQL Analytics API (`httpRequestsAdaptiveGroups` and `firewallEventsAdaptiveGroups`, available
-  on every plan). The counts are sampled estimates. Each pull reads from where the last one ended, cut to the plan's
+  on every plan). The counts are sampled estimates, and the two datasets are sampled separately, so what Cloudflare
+  blocked or challenged is counted from the request rows' security action where the plan has it. Each pull reads from where the last one ended, cut to the plan's
   limits, and is logged with any warnings. Raw logs (Logpush) are not needed.
 * **What is flagged**, per client address, with a weight for each signal (combined like the intel score):
   a sensitive path (`.env`, `.git`, backups, debug pages, web shells) that answered **2xx** (a possible exposure),
   requests for known attack paths (WordPress, phpMyAdmin, exploit targets), many paths with 4xx errors, attack
   payloads in the query string (SQL injection, traversal, XSS, command injection, SSRF), scanner or scripted user
   agents, WebDAV / debug methods, high request rates, addresses on the blocklist that still got through the
-  Cloudflare rule, and solved challenges followed by scanning. Addresses Cloudflare already blocked or challenged are
+  Cloudflare rule (only requests after the block was already in the rule count), and solved challenges followed by scanning. Addresses Cloudflare already blocked or challenged are
   skipped. New findings are checked against the intel sources, which can raise their priority.
 * **Recommended actions** on each finding: *Raise incident* (prefilled, with ATT&CK T1595 / T1190), *Block* for 1 to 90
   days or permanently (added to the Cloudflare rule and taken out again when it expires), a **suggested WAF rule**

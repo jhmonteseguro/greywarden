@@ -207,7 +207,13 @@ class EdgeFinding extends DomainRecord
     /** The traffic profile (EdgeAnalyzer), with every key present */
     public function getProfile(): array
     {
-        return (json_decode((string) $this->evidence, true) ?: []) + EdgeAnalyzer::emptyProfile();
+        $stored = json_decode((string) $this->evidence, true) ?: [];
+        $profile = $stored + EdgeAnalyzer::emptyProfile();
+        if (!array_key_exists('reached', $stored)) {
+            // Evidence from before reached was counted per request
+            $profile['reached'] = max(0, (int) $profile['requests'] - (int) $profile['stopped']);
+        }
+        return $profile;
     }
 
     public function setProfile(array $profile): void
@@ -218,7 +224,7 @@ class EdgeFinding extends DomainRecord
     /** Requests that got past Cloudflare */
     public function getReached(): int
     {
-        return max(0, (int) $this->requests - (int) $this->stopped);
+        return (int) $this->getProfile()['reached'];
     }
 
     public function getIndicator(): ?Indicator

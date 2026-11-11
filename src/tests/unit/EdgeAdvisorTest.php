@@ -146,9 +146,11 @@ class EdgeAdvisorTest extends DbTestCase
 
     public function testFindingModel(): void
     {
-        $f = $this->finding(['/.env' => [200 => 1]], ['requests' => 10, 'stopped' => 4]);
+        $f = $this->finding(['/.env' => [200 => 1]], ['requests' => 10, 'stopped' => 4, 'reached' => 5]);
         $this->assertMatchesRegularExpression('/^EDG-\d{4}$/', $f->reference);
-        $this->assertSame(6, $f->getReached());
+        $this->assertSame(5, $f->getReached(), 'counted per request, not requests less stopped');
+        $legacy = new EdgeFinding(['evidence' => json_encode(['requests' => 10, 'stopped' => 4])]);
+        $this->assertSame(6, $legacy->getReached(), 'evidence from before reached was kept');
         $this->assertTrue($f->getIsOpen());
         $this->assertSame('New', $f->getStatusLabel());
         $this->assertSame(['/intel/investigate/ip', 'ip' => $f->ip], array_intersect_key($f->getIndicatorUrl(), [0 => 1, 'ip' => 1]));

@@ -22,6 +22,7 @@ use yii\helpers\Console;
  *   php yii edge/pull --user=jdoe           # record jdoe as the actor (default: system)
  *   php yii edge/pull --dry-run=1           # show what would change, save nothing
  *   php yii edge/status                     # configuration, plan limits and recent pulls
+ *   php yii edge/rescore                    # score every finding again from its stored evidence (after an upgrade)
  */
 class EdgeController extends Controller
 {
@@ -81,6 +82,13 @@ class EdgeController extends Controller
         if ($pull->message) {
             $this->stdout($pull->message . "\n", Console::FG_YELLOW);
         }
+        return ExitCode::OK;
+    }
+
+    public function actionRescore(): int
+    {
+        $changed = EdgePuller::rescore();
+        $this->stdout(sprintf("%d finding(s) rescored.\n", $changed), Console::FG_GREEN);
         return ExitCode::OK;
     }
 

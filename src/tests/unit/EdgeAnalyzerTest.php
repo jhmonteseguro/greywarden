@@ -322,6 +322,10 @@ class EdgeAnalyzerTest extends DbTestCase
             'errors' => [self::path('192.0.2.4', '/.env', 404)],
             'firewall' => [['ip' => '192.0.2.4', 'action' => 'jschallengesolved', 'count' => 2]],
         ])['192.0.2.4'];
+        $this->assertSame(10, $p['reached']);
+        // Requests count as leaked only once EdgePuller knows the block was live for the whole window
+        $this->assertNotContains('rule-gap', self::keys(EdgeAnalyzer::score($p, ['block' => ['reference' => 'BLK-0009', 'cloudflare' => true]])));
+        $p['leaked'] = 10;
         $scored = EdgeAnalyzer::score($p, ['block' => ['reference' => 'BLK-0009', 'cloudflare' => true]]);
         $this->assertSame(['rule-gap', 'probe', 'challenge'], self::keys($scored));
         $this->assertSame('Blocked by BLK-0009 but 10 requests still reached the site', $scored['signals'][0]['label']);
@@ -329,11 +333,60 @@ class EdgeAnalyzerTest extends DbTestCase
 
         // Only a block that is in the Cloudflare rule counts, and only when requests got through
         $this->assertNotContains('rule-gap', self::keys(EdgeAnalyzer::score($p, ['block' => ['reference' => 'BLK-0009', 'cloudflare' => false]])));
-        $p['stopped'] = 10;
+        $p['leaked'] = 0;
         $this->assertNotContains('rule-gap', self::keys(EdgeAnalyzer::score($p, ['block' => ['reference' => 'BLK-0009', 'cloudflare' => true]])));
+        $this->assertNotContains('rule-gap', self::keys(EdgeAnalyzer::score(['leaked' => 3] + $p)), 'no longer blocked');
         // A solved challenge alone is not suspicious
         $quiet = self::profile(['ips' => [self::ip('192.0.2.5', 3)], 'firewall' => [['ip' => '192.0.2.5', 'action' => 'challengesolved', 'count' => 1]]])['192.0.2.5'];
         $this->assertSame([], EdgeAnalyzer::score($quiet)['signals']);
+    }
+
+    public function testStoppedFromRequestActions(): void
+    {
+        // Request rows carry the security action: stopped and reached come from them, exactly,
+        // while the separately sampled security events only add solved challenges
+        $profiles = self::profile([
+            'request_actions' => true,
+            'ips' => [
+                ['action' => 'block'] + self::ip('192.0.2.6', 280),
+                ['action' => 'managedchallenge'] + self::ip('192.0.2.6', 5, 'curl/8'),
+                ['action' => 'unknown'] + self::ip('192.0.2.7', 4),
+                ['action' => 'log'] + self::ip('192.0.2.7', 2, 'curl/8'),
+            ],
+            'firewall' => [
+                ['ip' => '192.0.2.6', 'action' => 'block', 'count' => 257],
+                ['ip' => '192.0.2.6', 'action' => 'managedchallengenoninteractivesolved', 'count' => 1],
+                // No request rows for this address (page limit): the security events still count
+                ['ip' => '192.0.2.8', 'action' => 'block', 'count' => 3],
+            ],
+            'errors' => [self::path('192.0.2.8', '/.env', 403, 3)],
+        ]);
+        $this->assertSame([285, 285, 0, 1], [$profiles['192.0.2.6']['requests'], $profiles['192.0.2.6']['stopped'], $profiles['192.0.2.6']['reached'], $profiles['192.0.2.6']['passed']]);
+        $this->assertTrue(EdgeAnalyzer::isHandled($profiles['192.0.2.6']));
+        $this->assertSame([6, 0, 6], [$profiles['192.0.2.7']['requests'], $profiles['192.0.2.7']['stopped'], $profiles['192.0.2.7']['reached']]);
+        $this->assertSame([3, 3, 0], [$profiles['192.0.2.8']['requests'], $profiles['192.0.2.8']['stopped'], $profiles['192.0.2.8']['reached']]);
+    }
+
+    public function testReachedFromSecurityEvents(): void
+    {
+        // Without request actions the two samples are compared, and a small difference is noise
+        $profiles = self::profile([
+            'ips' => [self::ip('192.0.2.9', 388), self::ip('192.0.2.10', 40)],
+            'firewall' => [
+                ['ip' => '192.0.2.9', 'action' => 'block', 'count' => 360],
+                ['ip' => '192.0.2.10', 'action' => 'block', 'count' => 10],
+            ],
+        ]);
+        $this->assertSame([360, 0], [$profiles['192.0.2.9']['stopped'], $profiles['192.0.2.9']['reached']]);
+        $this->assertSame([10, 30], [$profiles['192.0.2.10']['stopped'], $profiles['192.0.2.10']['reached']]);
+    }
+
+    public function testMergeSumsReachedAndLeaked(): void
+    {
+        $old = ['reached' => 4, 'leaked' => 0] + EdgeAnalyzer::emptyProfile();
+        $new = ['reached' => 2, 'leaked' => 2] + EdgeAnalyzer::emptyProfile();
+        $merged = EdgeAnalyzer::merge($old, $new);
+        $this->assertSame([6, 2], [$merged['reached'], $merged['leaked']]);
     }
 
     public function testPriority(): void
