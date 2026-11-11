@@ -15,10 +15,25 @@ final class SoftAuthenticator
     public string $userHandle = '';
     private \OpenSSLAsymmetricKey $key;
 
-    public function __construct(public string $origin = 'http://localhost', public string $rpId = 'localhost', public bool $userVerified = true)
+    public function __construct(public string $origin = 'http://localhost', public string $rpId = 'localhost', public bool $userVerified = true, ?\OpenSSLAsymmetricKey $key = null)
     {
-        $this->key = openssl_pkey_new(['curve_name' => 'prime256v1', 'private_key_type' => OPENSSL_KEYTYPE_EC]);
+        $this->key = $key ?? self::newKey();
         $this->credentialId = random_bytes(32);
+    }
+
+    private static function newKey(): \OpenSSLAsymmetricKey
+    {
+        return openssl_pkey_new(['curve_name' => 'prime256v1', 'private_key_type' => OPENSSL_KEYTYPE_EC]);
+    }
+
+    /** A key whose X or Y coordinate starts with a zero byte (OpenSSL then returns it shorter than 32 bytes) */
+    public static function shortCoordinateKey(): \OpenSSLAsymmetricKey
+    {
+        do {
+            $key = self::newKey();
+            $ec = openssl_pkey_get_details($key)['ec'];
+        } while (strlen($ec['x']) === 32 && strlen($ec['y']) === 32);
+        return $key;
     }
 
     /**
@@ -30,7 +45,7 @@ final class SoftAuthenticator
         $pk = $options['publicKey'];
         $this->userHandle = self::b64d($pk['user']['id']);
         $details = openssl_pkey_get_details($this->key)['ec'];
-        $cose = self::map([1 => 2, 3 => -7, -1 => 1, -2 => ['bytes' => $details['x']], -3 => ['bytes' => $details['y']]]);
+        $cose = self::map([1 => 2, 3 => -7, -1 => 1, -2 => ['bytes' => self::coordinate($details['x'])], -3 => ['bytes' => self::coordinate($details['y'])]]);
         $authData = hash('sha256', $this->rpId, true) . chr(0x01 | ($this->userVerified ? 0x04 : 0) | 0x40) . pack('N', $this->counter)
             . str_repeat("\0", 16) . pack('n', strlen($this->credentialId)) . $this->credentialId . $cose;
         $attestation = self::map(['fmt' => 'none', 'attStmt' => self::map([]), 'authData' => ['bytes' => $authData]], true);
@@ -59,6 +74,15 @@ final class SoftAuthenticator
             'signature' => self::b64($signature),
             'userHandle' => self::b64($this->userHandle),
         ];
+    }
+
+    /**
+     * A P-256 coordinate as COSE wants it: 32 bytes. OpenSSL drops leading zero bytes, so about
+     * one key in 128 has a shorter X or Y, which lbuchs/webauthn rejects ("Invalid Y-coordinate").
+     */
+    public static function coordinate(string $value): string
+    {
+        return str_pad($value, 32, "\0", STR_PAD_LEFT);
     }
 
     public static function b64(string $binary): string

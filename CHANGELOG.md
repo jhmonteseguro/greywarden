@@ -6,6 +6,12 @@ releases).
 
 ## [Unreleased]
 
+### Fixed
+
+- Tests: the passkey tests failed now and then (*Invalid Y-coordinate*). OpenSSL drops a key coordinate's leading
+  zero bytes, about one key in 128, and the test authenticator sent it short; it now pads to 32 bytes as real
+  authenticators do. Passkey sign-in itself was not affected.
+
 ## [0.21.0-alpha] - 2026-11-11
 
 ### Added

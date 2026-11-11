@@ -57,10 +57,10 @@ class MfaFlowsTest extends FunctionalTestCase
     }
 
     /** Registers a software passkey for $role through the JSON endpoints */
-    private function addPasskey(string $role, string $name = 'Test key'): SoftAuthenticator
+    private function addPasskey(string $role, string $name = 'Test key', ?SoftAuthenticator $key = null): SoftAuthenticator
     {
         $this->confirmedAs($role);
-        $key = new SoftAuthenticator();
+        $key ??= new SoftAuthenticator();
         $this->post('/account/passkey-options');
         $options = $this->json();
         $this->assertSame('required', $options['publicKey']['authenticatorSelection']['residentKey']);
@@ -353,6 +353,16 @@ class MfaFlowsTest extends FunctionalTestCase
         Yii::$app->params['webauthn.rpId'] = 'localhost';
         $this->assertNull(Passkeys::unavailableReason());
         $this->assertSame('', Passkeys::fromBase64Url('***'));
+    }
+
+    public function testAKeyWithAShortCoordinateRegisters(): void
+    {
+        // OpenSSL drops a coordinate's leading zero bytes (about one key in 128); COSE needs all 32
+        $soft = new SoftAuthenticator(key: SoftAuthenticator::shortCoordinateKey());
+        $this->addPasskey('analyst', 'Short key', $soft);
+        $this->assertTrue(UserPasskey::find()->where(['user_id' => $this->userIdFor('analyst'), 'name' => 'Short key'])->exists());
+        $this->assertSame(str_repeat("\0", 32), SoftAuthenticator::coordinate(''));
+        $this->assertSame(str_repeat("\0", 31) . 'x', SoftAuthenticator::coordinate('x'));
     }
 
     public function testRemovingPasskeys(): void
