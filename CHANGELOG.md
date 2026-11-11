@@ -6,6 +6,8 @@ releases).
 
 ## [Unreleased]
 
+## [0.20.0-alpha] - 2026-11-11
+
 ### Added
 
 - `make edge-rescore` (`php yii edge/rescore`): scores every edge finding again from its stored evidence, with the
@@ -507,7 +509,8 @@ First public release.
 - Repository safeguards: git hooks with a leak check and signed-push rules, and CI with all test suites, a secret
   scan and a production image build.
 
-[Unreleased]: https://github.com/jhmonteseguro/greywarden/compare/v0.19.0-alpha...HEAD
+[Unreleased]: https://github.com/jhmonteseguro/greywarden/compare/v0.20.0-alpha...HEAD
+[0.20.0-alpha]: https://github.com/jhmonteseguro/greywarden/compare/v0.19.0-alpha...v0.20.0-alpha
 [0.19.0-alpha]: https://github.com/jhmonteseguro/greywarden/compare/v0.18.1-alpha...v0.19.0-alpha
 [0.18.1-alpha]: https://github.com/jhmonteseguro/greywarden/compare/v0.18.0-alpha...v0.18.1-alpha
 [0.18.0-alpha]: https://github.com/jhmonteseguro/greywarden/compare/v0.17.0-alpha...v0.18.0-alpha
